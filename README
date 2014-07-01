@@ -1,0 +1,211 @@
+a trunnel is a primitive nail
+
+
+IntDecl = U64 name ; |
+          U32 name ; |
+          U16 name ; |
+          U8  name ;
+
+StringDecl = NULTERMINATED name ; |
+             ENDTERMINATED name ;
+
+SequenceTypeDecl = declstruct typename { DeclList }
+
+DeclList = Decl | Decl DeclList
+
+SequenceDecl = struct typename name ;
+
+SingletonType = IntDecl |
+                SequenceDecl |
+                StringDecl
+
+FixedArrayType = Type [ Int ]  name ;
+
+
+
+
+DependentType = SequenceType |
+                FixedArrayType |
+                VarArrayType
+
+
+
+
+Here's how we interpret constructs.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+===================================================================
+
+   const X = 20;
+
+   /* Assume these have real definitions. */
+   struct NAME2 { u8 foo; /* ... */ }
+   struct NAME3 { u8 foo; /* ... */ }
+   struct NAME4 { u8 foo; /* ... */ }
+   struct X { u8 foo; /* ... */ }
+   struct Y { u8 foo; /* ... */ }
+
+   const TYPE1 = 1;
+   const TYPE2 = 2;
+   const TYPE3 = 3;
+
+   struct NAME {
+      u8 thing1 IN [0..20];
+      u16 thing2;
+
+      u8 thingX IN [TYPE1, TYPE2, TYPE3];
+
+      u8 thing3[20];
+      u32 thing4[X];
+
+      struct NAME2 thing5;
+
+      struct NAME2 thing6[2];
+
+      nulterm thing7;
+
+      u8 count;
+
+      struct NAME2 counted[count];
+
+      u8 tag_field;
+      union[tag_field] { 3 : struct NAME3;
+                         4 : struct NAME4;
+                         default: reject; }
+
+      eos;
+   }
+
+   struct NAMEX {
+       u8 tag;
+       u8 length;
+
+       union[tag] WITH LENGTH length {
+           4: struct X name1;
+           5: struct Y name2;
+           default: ignore;
+       };
+   }
+
+
+
+
+   Can't express yet: list of structures terminated by a 0 byte.  (Do we have
+   any of those?)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+==============================
+
+ File = Declaration*
+
+ Declaration = ConstDecl | StructDecl
+
+ ConstDecl = "const" CONST_NAME "=" IntLiteral ";"
+
+ StructDecl = "struct" StructName "{" StructMember* SMEos? "}" ";"
+
+ SMEos = "eos" ";"
+
+ Integer = IntLiteral | CONST_NAME
+
+ StructMember = ( SMInteger |
+                  SMStruct |
+  		  SMString |
+ 		  SMArray |
+		  SMUnion ) ";"
+
+  SMInteger = IntType MemberName ( IN IntSet ) ?
+
+  IntSet = "[" IntList  "]"
+  IntList = IntListMember | IntList "," IntListMember
+  IntListMember = Integer | Integer ".." Integer
+
+  ArrayBounds = Integer | MemberName
+
+  SMStruct = "struct" StructName MemberName
+
+  SMString = "nulterm" Membername
+
+  SMArray = SMFixedArray | SMVarArray
+
+  SMVarArray = (IntType | "struct" StructName) MemberName "[" MemberName "]"
+
+  SMFixedArray = (IntType | "struct" StructName) MemberName "[" Integer "]"
+
+  SMUnion = "union" MemberName "[" MemberName "]" UnionLength?
+                    "{" UnionMember* UMDefault? "}" ";"
+
+  UnionLength = "WITH" "LENGTH" MemberName
+
+  UnionMember = IntList ":" (SMInteger | SMFixedArray | SMString | SMStruct) 
+                   ExtentSpec? ";"
+
+  ExtentSpec = "..."
+
+  UMDefault = "default" ":" ( u8 MemberName "[" "]" |
+                              "fail" |
+			      "ignore" ) ";"
+
+  MemberName = [a-z_][a-z0-9_]*
+  StructName = [a-z_][a-z0-9_]*
+  CONST_NAME = [A-Z_][A-Z0-9_]*
+ 
+Additional constraints:
+
+   Structure declarations form a DAG.
+
+   Field references in SMVarArray and SMUnion and SMUnionLength refer
+   only to earlier-occurring fields in the same structure.
+
+   No ExtentSpec unless the union has a UnionLength.
+
+
+
