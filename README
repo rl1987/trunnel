@@ -1,139 +1,67 @@
 a trunnel is a primitive nail
 
-
-IntDecl = U64 name ; |
-          U32 name ; |
-          U16 name ; |
-          U8  name ;
-
-StringDecl = NULTERMINATED name ; |
-             ENDTERMINATED name ;
-
-SequenceTypeDecl = declstruct typename { DeclList }
-
-DeclList = Decl | Decl DeclList
-
-SequenceDecl = struct typename name ;
-
-SingletonType = IntDecl |
-                SequenceDecl |
-                StringDecl
-
-FixedArrayType = Type [ Int ]  name ;
-
-
-
-
-DependentType = SequenceType |
-                FixedArrayType |
-                VarArrayType
-
-
-
-
-Here's how we interpret constructs.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ===================================================================
 
-   const X = 20;
-
-   /* Assume these have real definitions. */
-   struct NAME2 { u8 foo; /* ... */ }
-   struct NAME3 { u8 foo; /* ... */ }
-   struct NAME4 { u8 foo; /* ... */ }
-   struct X { u8 foo; /* ... */ }
-   struct Y { u8 foo; /* ... */ }
+const X = 20;
+   // Assume these have real definitions.
+   struct name2 { u8 foo; }
+   struct name3 { u8 foo; }
+   struct name4 { u8 foo; }
+   struct xx { u8 foo; }
+   struct yy { u8 foo; }
 
    const TYPE1 = 1;
    const TYPE2 = 2;
    const TYPE3 = 3;
 
-   struct NAME {
+   struct name {
       u8 thing1 IN [0..20];
       u16 thing2;
 
-      u8 thingX IN [TYPE1, TYPE2, TYPE3];
+
+      u8 thing_x IN [TYPE1, TYPE2, TYPE3];
 
       u8 thing3[20];
       u32 thing4[X];
 
-      struct NAME2 thing5;
+      struct name2 thing5;
 
-      struct NAME2 thing6[2];
+      struct name2 thing6[2];
 
       nulterm thing7;
 
       u8 count;
 
-      struct NAME2 counted[count];
+      struct name2 counted[count];
 
+      u8 count2;
+      char string[count2];
+      char buf[10];
+ 
       u8 tag_field;
-      union[tag_field] { 3 : struct NAME3;
-                         4 : struct NAME4;
-                         default: reject; }
+      union union_field[tag_field] {
+         3 : struct name3 v1 ;
+         4 : struct name4 v2 ;
+         default : fail;
+      };
 
       eos;
    }
 
-   struct NAMEX {
+
+   struct namex {
        u8 tag;
        u8 length;
 
-       union[tag] WITH LENGTH length {
-           4: struct X name1;
-           5: struct Y name2;
+       union fred[tag] WITH LENGTH length {
+           4: struct x field1;
+           5: struct x field2;
            default: ignore;
        };
    }
 
-
-
-
    Can't express yet: list of structures terminated by a 0 byte.  (Do we have
    any of those?)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -164,11 +92,11 @@ Here's how we interpret constructs.
 
   SMInteger = IntType MemberName ( IN IntSet ) ?
 
+  IntType = "u8" | "u16" | "u32" | "u64"
+
   IntSet = "[" IntList  "]"
   IntList = IntListMember | IntList "," IntListMember
   IntListMember = Integer | Integer ".." Integer
-
-  ArrayBounds = Integer | MemberName
 
   SMStruct = "struct" StructName MemberName
 
@@ -176,9 +104,11 @@ Here's how we interpret constructs.
 
   SMArray = SMFixedArray | SMVarArray
 
-  SMVarArray = (IntType | "struct" StructName) MemberName "[" MemberName "]"
+  ArrayBase = IntType | "struct" StructName | "char"
 
-  SMFixedArray = (IntType | "struct" StructName) MemberName "[" Integer "]"
+  SMVarArray = ArrayBase MemberName "[" MemberName "]"
+
+  SMFixedArray = ArrayBase MemberName "[" Integer "]"
 
   SMUnion = "union" MemberName "[" MemberName "]" UnionLength?
                     "{" UnionMember* UMDefault? "}" ";"
@@ -209,3 +139,95 @@ Additional constraints:
 
 
 
+========================================
+
+Expanded grammar:
+
+
+ File = Declaration
+      = File Declaration
+
+ Declaration = ConstDecl 
+             = StructDecl
+
+ ConstDecl = "const" CONST_NAME "=" IntLiteral ";"
+
+ StructDecl = "struct" StructName "{" StructMembers OptSMEos "}"
+
+ OptSMEos = "eos" ";"
+ OptSMEos =
+
+ StructMembers = StructMember ";"
+ StructMembers = StructMembers StructMember ";"
+
+ Integer = IntLiteral
+ Integer = CONST_NAME
+
+ StructMember = SMInteger
+ StructMember = SMStruct
+ StructMember = SMString
+ StructMember = SMArray
+ StructMember = SMUnion
+
+ SMInteger = IntType MemberName OptIntConstraint
+
+ IntType = "u8"
+ IntType = "u16"
+ IntType = "u32"
+ IntType = "u64"
+
+ OptIntConstraint = ( IN "[" IntList "]" )
+ OptIntConstraint =
+
+ IntList = IntListMember
+ IntList = IntListMember "," IntList
+ IntListMember = Integer
+ IntListMember = Integer ".." Integer
+
+ SMStruct = "struct" StructName MemberName
+
+ SMString = "nulterm" Membername
+
+ SMArray = SMFixedArray
+ SMArray = SMVarArray
+
+ ArrayBase = IntType
+ ArrayBase = "struct" StructName
+ ArrayBase = "char"
+
+ SMVarArray = ArrayBase MemberName "[" MemberName "]"
+
+ SMFixedArray = ArrayBase MemberName "[" Integer "]"
+
+ 
+ SMUnion = "union" MemberName "[" MemberName "]" OptUnionLength
+                   "{" UnionMembers OptUMDefault "}" 
+
+ OptUnionLength = "WITH" "LENGTH" MemberName
+ OptUnionLength =
+
+ UnionMembers = UnionMember ";"
+ UnionMembers = UnionMembers UnionMember ";"
+
+ UnionMember = IntList ":" UnionField
+                  OptExtentSpec
+
+ UnionField = SMInteger
+ UnionField = SMFixedArray
+ UnionField = SMString
+ UnionField = SMStruct
+
+ OptExtentSpec = "..."
+ OptExtentSpec =
+
+ OptUMDefault =
+ OptUMDefault = "default" ":" UMDefaultField ";"
+
+ UMDefaultField = "u8" MemberName "[" "]"
+ UMDefaultField = "fail"
+ UMDefaultField = "ignore"
+
+  MemberName = [a-z_][a-z0-9_]*
+  StructName = [a-z_][a-z0-9_]*
+  CONST_NAME = [A-Z_][A-Z0-9_]*
+ 

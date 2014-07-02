@@ -1,0 +1,7 @@
+
+ o Parse grammars
+ o check grammars
+ - Generate struct declarations
+ - Generate struct manipulators
+ - Generate struct encoders
+ - Generate struct parsers
