@@ -678,6 +678,7 @@ class ParseFnGenerator(IndentingGenerator):
             self.w('    }\n  }\n')
 
     def visitSMVarArray(self, sva):
+        # XXXX some of this is kinda cut-and-paste
         if type(sva.basetype) != str:
             self.needTruncated = True
             bytesPerElt = 1

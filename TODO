@@ -1,7 +1,15 @@
 
  o Parse grammars
  o check grammars
- - Generate struct declarations
- - Generate struct manipulators
- - Generate struct encoders
- - Generate struct parsers
+ o Generate struct declarations
+ o Generate struct manipulators
+ o Generate struct encoders
+ o Generate struct parsers
+
+ - Finish writing code
+ - Fix all XXXX items
+ - Write some tests for the C code
+ - Get complete coverage for generator
+ - Get complete coverage on generated code made by complete-coverage
+   generator
+
