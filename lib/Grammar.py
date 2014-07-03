@@ -140,6 +140,7 @@ class StructDecl(AST):
     def __init__(self, name, members, eos=False):
         self.name = name
         self.members = members
+        self.eos = eos
 
     def visitChildren(self, v, *args):
         for m in self.members:

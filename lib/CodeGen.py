@@ -411,9 +411,14 @@ class CheckFnGenerator(IndentingGenerator):
     def visitSMInteger(self, smi):
         pass
     def visitSMFixedArray(self, sfa):
-        # XXXX If this is an array of structs, we must check them.
-        # XXXX If it's array of char, it must have its extra byte set to NUL.
-        pass
+        if type(sfa.basetype) == str:
+            self.checkStructArray(sfa.basetype,
+                    "&obj->%s%s[idx]"%(self.prefix,sfa.name), sfa.width)
+        elif str(sfa.basetype) == 'char':
+            self.w('  if (obj->%s%s[%s] != 0)'
+                   'return "String not terminated";\n'
+                   %(self.prefix,sfa.name,sfa.width))
+
     def visitSMStruct(self, sms):
         self.w(("  {\n    const char *msg;\n"
                 "    if (NULL != (msg = %s_check(&obj->%s%s)))\n"
@@ -421,7 +426,20 @@ class CheckFnGenerator(IndentingGenerator):
                     sms.structname, self.prefix, sms.name))
     def visitSMVarArray(self, sva):
         self.w('  if (NULL == obj->%s%s)\n    return "Missing %s%s";\n'%(self.prefix,sva.name,self.prefix,sva.name))
-        # XXXX If this is an array of structs, we must check them.
+        if type(sva.basetype) == str:
+            self.checkStructArray(sva.basetype, "&obj->%s%s[idx]"%(self.prefix,sva.name), "obj->%s"%sva.widthfield)
+
+    def checkStructArray(self, structtype, element, num_items):
+        self.w(('  {\n'
+                '    unsigned idx;\n'
+                '    const char *msg;\n'
+                '    for (idx = 0; idx < %s; ++idx) {\n'
+                '      if (NULL != (msg = %s_check(%s)))\n'
+                '        return msg;\n'
+                '    }\n'
+                '  }\n') %(
+                    num_items, structtype, element))
+
     def visitSMString(self, ss):
         self.w('  if (NULL == obj->%s%s)\n    return "Missing %s%s";\n'%(self.prefix,ss.name,self.prefix,ss.name))
     def visitSMUnion(self, smu):
@@ -432,7 +450,7 @@ class CheckFnGenerator(IndentingGenerator):
 
         self.w("  }\n")
         self.prefix = ""
-        # XXXX Check for _extra_ values?
+
     def visitUnionMember(self, um):
         writeUnionMemberCaseLabel(self.w,um)
         self.indent = "    "
@@ -481,8 +499,6 @@ class EncodeFnGenerator(IndentingGenerator):
         self.w('  if (NULL != (msg = %s_check(obj)))\n    goto check_failed;\n\n'%sd.name)
         self.needTruncated = False
         sd.visitChildren(self)
-
-        #XXXX HANDLE eos!!!!!!!
 
         self.w('\n  return written;\n\n')
 
@@ -631,6 +647,9 @@ class ParseFnGenerator(IndentingGenerator):
         self.needTruncated = False
         sd.visitChildren(self)
 
+        if sd.eos:
+            self.w('  if (remaining) goto fail;')
+
         self.w('  return len_in - remaining;\n\n')
         if self.needOverflow:
             self.w(' overflow:\n  result = -1;\n  goto fail;\n')
@@ -699,7 +718,7 @@ class ParseFnGenerator(IndentingGenerator):
             self.w('    }\n  }\n')
 
     def visitSMVarArray(self, sva):
-        # XXXX some of this is kinda cut-and-paste
+        # FFFF some of this is kinda cut-and-paste
         if type(sva.basetype) != str:
             self.needTruncated = True
             bytesPerElt = 1
