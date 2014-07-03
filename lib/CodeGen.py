@@ -608,11 +608,8 @@ class EncodeFnGenerator(IndentingGenerator):
         self.w("      break;\n")
 
     def visitUDStore(self, uds):
-        self.w('    default: {\n')
-        # XXXX writeme.
-        self.w('    }\n')
-        self.w('    break;\n')
-
+        # FFFF can this be done safely?
+        self.w('    default:\n      goto fail;\n')
     def visitUDFail(self, udf):
         self.w('    default: tor_assert(0);');
     def visitUDIgnore(self, udi):
@@ -766,6 +763,7 @@ class ParseFnGenerator(IndentingGenerator):
             self.indent += '  '
 
         self.w('  switch (obj->%s) {\n'%smu.tagfield)
+        self.curunion = smu
         smu.visitChildren(self)
         self.visit(smu.default)
         self.w("  }\n")
@@ -786,8 +784,13 @@ class ParseFnGenerator(IndentingGenerator):
         self.w("      break;\n")
 
     def visitUDStore(self, uds):
+        lfield = self.curunion.lengthfield
         self.w('    default: {\n')
-        # XXXX writeme.
+        self.w('      obj->%s%s = tor_malloc(obj->%s);\n'
+               %(self.prefix,uds.fieldname,lfield))
+        self.w('      memcpy(obj->%s%s, ptr, obj->%s);\n'
+               %(self.prefix,uds.fieldname,lfield))
+        self.w('      remaining -= obj->%s; ptr += obj->%s;\n'%(lfield,lfield))
         self.w('    }\n')
         self.w('    break;\n')
 
