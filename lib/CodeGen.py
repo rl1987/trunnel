@@ -200,7 +200,7 @@ class Checker(ASTVisitor):
         self.unionTagMax = None
         self.containing = None
 
-        # Check union default.!!!! XXXXXX
+        # Check union default FFFF
 
 
     def visitUnionMember(self, um):
