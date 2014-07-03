@@ -1,4 +1,15 @@
 a trunnel is a primitive nail
+=============================
 
-
+The grammar is in GRAMMAR.
 
+A mostly-readable example is in doc/example2.trunnel.
+
+To see what it compiles into, run 
+
+      python lib/CodeGen.py doc/example2.trunnel
+
+That will create doc/example2.c and doc/example2.h
+
+
+Better documentation to follow, I hope.
