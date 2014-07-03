@@ -169,7 +169,7 @@ class Checker(ASTVisitor):
 
     def visitSMUnion(self, smu):
         if smu.name in self.structFieldNames:
-            raise CheckError("duplicate field %s.%s"%(self.structName,sms.name))
+            raise CheckError("duplicate field %s.%s"%(self.structName,smu.name))
 
         self.structFieldNames.add(smu.name)
 
@@ -599,8 +599,12 @@ class EncodeFnGenerator(IndentingGenerator):
         um.visitChildren(self)
         self.indent = ""
         if um.allow_extra:
-            self.w('  if (remaining > remaining_at_end)\n'
-                   '    remaining = remaining_at_end;\n')
+            self.w('  if (written != written_at_end) {\n'
+                   '    tor_assert(written < written_at_end);\n'
+                   '    memset(ptr, 0, written_at_end - written);\n'
+                   '    ptr += (written_at_end - written);\n'
+                   '    written = written_at_end;\n'
+                   '  }\n')
         self.w("      break;\n")
 
     def visitUDStore(self, uds):
@@ -855,6 +859,12 @@ x = """const X = 20;
            5: struct yy field2;
            default: ignore;
        };
+
+       union alice[tag] WITH LENGTH length {
+           5: struct yy field3 ...;
+           default: u8 junk[];
+       };
+
    }
 
 """
