@@ -323,8 +323,6 @@ class PrototypeGenerationVisitor(ASTVisitor):
         self.w("%s_t *%s_new(void);\n"%(name,name))
         self.w("void %s_free(%s_t *victim);\n"%(name, name))
         self.w("ssize_t %s_parse(%s_t **output, const uint8_t *input, const size_t len_in);\n"%(name,name))
-
-        self.w("ssize_t %s_parse(%s_t **obj, const uint8_t *input, const size_t len_in);\n"%(name,name))
         self.w("ssize_t %s_encode(uint8_t *output, const size_t avail, const %s_t *input);\n\n"%(name,name))
 
 
@@ -763,7 +761,7 @@ class ParseFnGenerator(IndentingGenerator):
 
     def visitSMString(self, ss):
         self.needTruncated = True
-        self.w('  {\n    uint8_t *eos = (uint8_t*)memchr(ptr, 0, remaining)\n;'
+        self.w('  {\n    uint8_t *eos = (uint8_t*)memchr(ptr, 0, remaining);\n'
                '    size_t memlen;\n')
         self.w('    if (eos == NULL) goto truncated;\n')
         self.w('    tor_assert(eos >= ptr);\n')
@@ -817,6 +815,7 @@ class ParseFnGenerator(IndentingGenerator):
     def visitUDFail(self, udf):
         self.w('    default:\n      goto fail;')
     def visitUDIgnore(self, udi):
+        # XXXX advance pointer and remaining
         pass
 
 
@@ -923,8 +922,4 @@ if __name__ == '__main__':
     PrototypeGenerationVisitor(c.sortedStructs, out_c, static=True).visit(parsed)
     CodeGenerationVisitor(c.sortedStructs, out_c).visit(parsed)
     out_c.close()
-
-
-
-
 

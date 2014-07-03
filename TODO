@@ -10,6 +10,7 @@
    o Fix all XXXX items
 
  o real frontend.
+ - Enforce integer constraints when parsing.
  - Write some tests for the C code
  . Get complete coverage for generator
  - Get complete coverage on generated code made by complete-coverage
@@ -17,4 +18,5 @@
  - Document it.
 
  - Set length fields for length-having unions automatically.
+ - add comments to output
 
