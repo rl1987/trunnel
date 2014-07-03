@@ -103,7 +103,7 @@ class Lexer(spark.GenericScanner, object):
 
 class AST(object):
     def visitChildren(self, visitor, *args):
-        pass
+        raise NotImplemented()
 
 class File(AST):
     def __init__(self, members):
@@ -434,7 +434,7 @@ class Parser(spark.GenericParser, object):
 
     def p_OptUMDefault_0(self, info):
         " OptUMDefault ::= "
-        return None
+        return UDFail()
 
     def p_OptUMDefault_1(self, info):
         " OptUMDefault ::= default : UMDefaultField ; "

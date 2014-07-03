@@ -9,8 +9,9 @@
  o Finish writing code
    o Fix all XXXX items
 
+ - real frontend.
  - Write some tests for the C code
- - Get complete coverage for generator
+ . Get complete coverage for generator
  - Get complete coverage on generated code made by complete-coverage
    generator
  - Document it.
