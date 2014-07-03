@@ -109,6 +109,7 @@ class File(AST):
     def __init__(self, members):
         self.constants = []
         self.declarations = []
+        self.declarationsByName = {}
         for m in members:
             self.add(m)
 
@@ -117,12 +118,23 @@ class File(AST):
             self.constants.append(m)
         else:
             self.declarations.append(m)
+            self.declarationsByName[m.name] = m
 
     def visitChildren(self, v, *args):
         for c in self.constants:
             v.visit(c, *args)
         for d in self.declarations:
             v.visit(d, *args)
+
+    def visitChildrenSorted(self, sort_order, v, *args):
+        if set(sort_order) != set(self.declarationsByName.keys()):
+            raise ValueError("sort_order does not match actual list "
+                             "of declartions")
+        for c in self.constants:
+            v.visit(c, *args)
+
+        for name in sort_order:
+            v.visit(self.declarationsByName[name], *args)
 
 class StructDecl(AST):
     def __init__(self, name, members, eos=False):
@@ -199,7 +211,7 @@ class UnionMember(AST):
         self.allow_extra = allow_extra
 
     def visitChildren(self, v, *args):
-        v.visit(self.decl, arg)
+        v.visit(self.decl, *args)
 
 class UnionDefault(AST):
     pass
