@@ -482,6 +482,8 @@ class EncodeFnGenerator(IndentingGenerator):
         self.needTruncated = False
         sd.visitChildren(self)
 
+        #XXXX HANDLE eos!!!!!!!
+
         self.w('\n  return written;\n\n')
 
         if self.needTruncated:
@@ -510,8 +512,8 @@ class EncodeFnGenerator(IndentingGenerator):
                 "  written += result; ptr += result;\n")%(
                     structtype, element_pointer))
     def visitSMFixedArray(self, sfa):
-        self.needTruncated = True
         if arrayIsBytes(sfa):
+            self.needTruncated = True
             if str(sfa.basetype) == 'char':
                 self.w('  tor_assert(written <= avail);\n')
                 self.w('  if (avail - written < %s) goto truncated;\n'
@@ -537,9 +539,10 @@ class EncodeFnGenerator(IndentingGenerator):
         self.w('  {\n    unsigned idx;\n    size_t len = %s;\n    for (idx = 0; idx < len; ++idx) {\n'%sfa.width)
         self.encodeArrayBody(sfa)
         self.w('    }\n  }\n')
+
     def visitSMVarArray(self, sva):
-        self.needTruncated = True
         if arrayIsBytes(sva):
+            self.needTruncated = True
             self.w('  tor_assert(written <= avail);\n')
             self.w('  if (avail - written < obj->%s) goto truncated;\n'
                    %(sva.widthfield))
@@ -552,6 +555,7 @@ class EncodeFnGenerator(IndentingGenerator):
         self.w('  {\n    unsigned idx;\n    size_t len = obj->%s%s;\n    for (idx = 0; idx < len; ++idx) {\n'%(self.prefix,sva.widthfield))
         self.encodeArrayBody(sva)
         self.w('    }\n  }\n')
+
     def encodeArrayBody(self, arry):
         oldIndent = self.indent
         self.indent += "    "
@@ -559,12 +563,12 @@ class EncodeFnGenerator(IndentingGenerator):
             self.encodeStruct(arry.basetype, "&obj->%s%s[idx]"%(self.prefix,arry.name))
         else:
             assert type(arry.basetype) == Grammar.IntType
-            # XXXX memcpy, then byteswap
+            # FFFF memcpy, then byteswap ?
             self.encodeInteger(arry.basetype.width, "obj->%s%s[idx]"%(self.prefix,arry.name))
         self.indent = oldIndent
     def visitSMString(self, ss):
         self.needTruncated = True
-        self.w('  tor_assert(written <= avail);\n');
+        self.w('  tor_assert(written <= avail);\n')
         self.w('  {\n    size_t len = strlen(obj->%s%s);\n'%(self.prefix, ss.name))
         self.w('    if (len >= avail - written) goto truncated;\n');
         self.w('    memcpy(ptr, obj->%s%s, len + 1);\n'%(self.prefix, ss.name))
@@ -573,10 +577,20 @@ class EncodeFnGenerator(IndentingGenerator):
 
     def visitSMUnion(self, smu):
         self.prefix = smu.name+"_"
+        if smu.lengthfield is not None:
+            self.w('  tor_assert(written <= avail);\n')
+            self.w('  {\n    size_t written_at_end;\n')
+            self.w('    if (obj->%s > written - avail) goto truncated;\n'%smu.lengthfield)
+            self.w('    written_at_end = written + obj->%s;\n'%smu.lengthfield)
+            self.indent += "  "
         self.w('  switch (obj->%s) {\n'%smu.tagfield)
         smu.visitChildren(self)
         self.visit(smu.default)
         self.w("  }\n")
+        if smu.lengthfield is not None:
+            self.indent = self.indent[:-2]
+            self.w('    if (written != written_at_end) goto fail;\n')
+            self.w('  }\n')
         self.prefix = ""
 
     def visitUnionMember(self, um):
@@ -584,11 +598,17 @@ class EncodeFnGenerator(IndentingGenerator):
         self.indent = "    "
         um.visitChildren(self)
         self.indent = ""
+        if um.allow_extra:
+            self.w('  if (remaining > remaining_at_end)\n'
+                   '    remaining = remaining_at_end;\n')
         self.w("      break;\n")
 
     def visitUDStore(self, uds):
-        # XXXX writeme
-        pass
+        self.w('    default: {\n')
+        # XXXX writeme.
+        self.w('    }\n')
+        self.w('    break;\n')
+
     def visitUDFail(self, udf):
         self.w('    default: tor_assert(0);');
     def visitUDIgnore(self, udi):
@@ -735,10 +755,20 @@ class ParseFnGenerator(IndentingGenerator):
 
     def visitSMUnion(self, smu):
         self.prefix = smu.name+"_"
+        if smu.lengthfield is not None:
+            self.w('  {\n    size_t remaining_at_end;\n')
+            self.w('    if (obj->%s > remaining) goto truncated;\n'%smu.lengthfield)
+            self.w('    remaining_at_end = remaining - obj->%s;\n'%smu.lengthfield)
+            self.indent += '  '
+
         self.w('  switch (obj->%s) {\n'%smu.tagfield)
         smu.visitChildren(self)
         self.visit(smu.default)
         self.w("  }\n")
+        if smu.lengthfield is not None:
+            self.indent = self.indent[:-2]
+            self.w('  if (remaining != remaining_at_end) goto fail;\n  }\n')
+
         self.prefix = ""
 
     def visitUnionMember(self, um):
@@ -746,11 +776,17 @@ class ParseFnGenerator(IndentingGenerator):
         self.indent = "    "
         um.visitChildren(self)
         self.indent = ""
+        if um.allow_extra:
+            self.w('  if (remaining > remaining_at_end)\n'
+                   '    remaining = remaining_at_end;\n')
         self.w("      break;\n")
 
     def visitUDStore(self, uds):
-        # XXXX writeme
-        pass
+        self.w('    default: {\n')
+        # XXXX writeme.
+        self.w('    }\n')
+        self.w('    break;\n')
+
     def visitUDFail(self, udf):
         self.w('    default:\n      goto fail;')
     def visitUDIgnore(self, udi):

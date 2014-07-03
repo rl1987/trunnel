@@ -6,10 +6,14 @@
  o Generate struct encoders
  o Generate struct parsers
 
- - Finish writing code
- - Fix all XXXX items
+ . Finish writing code
+   . Fix all XXXX items
+
  - Write some tests for the C code
  - Get complete coverage for generator
  - Get complete coverage on generated code made by complete-coverage
    generator
 
+ - Set length fields for length-having unions automatically.
+
+ - 
