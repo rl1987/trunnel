@@ -1,0 +1,150 @@
+
+==============================  Hand-written grammar, possibly outdated.
+
+ File = Declaration*
+
+ Declaration = ConstDecl | StructDecl
+
+ ConstDecl = "const" CONST_NAME "=" IntLiteral ";"
+
+ StructDecl = "struct" StructName "{" StructMember* SMEos? "}" ";"
+
+ SMEos = "eos" ";"
+
+ Integer = IntLiteral | CONST_NAME
+
+ StructMember = ( SMInteger |
+                  SMStruct |
+  		  SMString |
+ 		  SMArray |
+		  SMUnion ) ";"
+
+  SMInteger = IntType MemberName ( IN IntSet ) ?
+
+  IntType = "u8" | "u16" | "u32" | "u64"
+
+  IntSet = "[" IntList  "]"
+  IntList = IntListMember | IntList "," IntListMember
+  IntListMember = Integer | Integer ".." Integer
+
+  SMStruct = "struct" StructName MemberName
+
+  SMString = "nulterm" Membername
+
+  SMArray = SMFixedArray | SMVarArray
+
+  ArrayBase = IntType | "struct" StructName | "char"
+
+  SMVarArray = ArrayBase MemberName "[" MemberName "]"
+
+  SMFixedArray = ArrayBase MemberName "[" Integer "]"
+
+  SMUnion = "union" MemberName "[" MemberName "]" UnionLength?
+                    "{" UnionMember* UMDefault? "}" ";"
+
+  UnionLength = "WITH" "LENGTH" MemberName
+
+  UnionMember = IntList ":" (SMInteger | SMFixedArray | SMString | SMStruct)
+                   ExtentSpec? ";"
+
+  ExtentSpec = "..."
+
+  UMDefault = "default" ":" ( u8 MemberName "[" "]" |
+                              "fail" |
+			      "ignore" ) ";"
+
+  MemberName = [a-z_][a-z0-9_]*
+  StructName = [a-z_][a-z0-9_]*
+  CONST_NAME = [A-Z_][A-Z0-9_]*
+
+Additional constraints:
+
+   Structure declarations form a DAG.
+
+   Field references in SMVarArray and SMUnion and SMUnionLength refer
+   only to earlier-occurring fields in the same structure.
+
+   No ExtentSpec unless the union has a UnionLength.
+
+
+=================== HERE IS OUR ACTUAL GRAMMAR, extracted from Grammar.py
+
+         File ::= Declaration
+         File ::= File Declaration
+
+         Declaration ::= ConstDecl
+         Declaration ::= StructDecl
+
+         ConstDecl ::= const CONST_ID = INT ;
+
+         StructDecl ::= struct ID { StructMembers OptSMEos }
+
+         OptSMEos ::=
+         OptSMEos ::= eos ;
+
+         StructMembers ::= StructMember ;
+         StructMembers ::= StructMembers StructMember ;
+
+         Integer ::= INT
+         Integer ::= CONST_ID
+
+         StructMember ::= SMInteger
+         StructMember ::= SMStruct
+         StructMember ::= SMString
+         StructMember ::= SMArray
+         StructMember ::= SMUnion
+
+         SMInteger ::= IntType ID OptIntConstraint
+
+         IntType ::= u8
+         IntType ::= u16
+         IntType ::= u32
+         IntType ::= u64
+
+         OptIntConstraint ::=
+         OptIntConstraint ::= IN [ IntList ]
+
+         IntList ::= IntListMember
+         IntList ::= IntList , IntListMember
+
+         IntListMember ::= Integer
+         IntListMember ::= Integer .. Integer
+
+         SMStruct ::= struct ID ID
+         SMString ::= nulterm ID
+
+         SMArray ::= SMFixedArray
+         SMArray ::= SMVarArray
+
+         ArrayBase ::= IntType
+         ArrayBase ::= struct ID
+         ArrayBase ::= char
+
+         SMVarArray ::= ArrayBase ID [ ID ]
+
+         SMFixedArray ::= ArrayBase ID [ Integer ]
+
+         SMUnion ::= union ID [ ID ] OptUnionLength { UnionMembers OptUMDefault }
+
+         OptUnionLength ::=
+         OptUnionLength ::= WITH LENGTH ID
+
+         UnionMembers ::= UnionMember ;
+         UnionMembers ::= UnionMembers UnionMember ;
+
+         UnionMember ::= IntList : UnionField OptExtentSpec
+
+         OptExtentSpec ::=
+         OptExtentSpec ::= ...
+
+         UnionField ::= SMInteger
+         UnionField ::= SMFixedArray
+         UnionField ::= SMString
+         UnionField ::= SMStruct
+
+         OptUMDefault ::=
+         OptUMDefault ::= default : UMDefaultField ;
+
+         UMDefaultField ::= u8 ID [ ]
+         UMDefaultField ::= fail
+         UMDefaultField ::= ignore
