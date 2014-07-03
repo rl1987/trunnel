@@ -20,3 +20,8 @@
  - Set length fields for length-having unions automatically.
  - add comments to output
 
+
+ - Allow "u8 until_end[];" in eos position.
+ - Do we need 'struct x until_end[];' ?
+ - Pass minimal inputs to struct parsing inside length-specified unions.
+
