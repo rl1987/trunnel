@@ -700,7 +700,20 @@ class ParseFnGenerator(IndentingGenerator):
 
     def visitSMInteger(self, smi):
         self.eltHeader(smi.name)
-        self.parseInteger(smi.inttype.width, "obj->%s%s"%(self.prefix,smi.name))
+        v = "obj->%s%s" % (self.prefix,smi.name)
+        self.parseInteger(smi.inttype.width, v)
+
+        if smi.constraints is not None:
+            tests = []
+            for lo,hi in smi.constraints.ranges:
+                if lo == hi:
+                    tests.append('%s == %s'%(v, lo))
+                else:
+                    tests.append('(%s >= %s && %s <= %s)'%(v,lo,v,hi))
+
+            self.w(('  if (! (%s))\n'
+                    '    goto fail;\n')%(" || ".join(tests)))
+
 
     def parseInteger(self, width, element):
         nbytes = width // 8
@@ -709,6 +722,7 @@ class ParseFnGenerator(IndentingGenerator):
         self.w('  if (remaining < %s)\n    goto truncated;\n'%nbytes)
         self.w('  %s = %s(get_uint%d(ptr));\n'%(element, ntoh, width))
         self.w('  remaining -= %s; ptr += %s;\n' % (nbytes, nbytes))
+
 
     def visitSMStruct(self, sms):
         self.eltHeader(sms.name)

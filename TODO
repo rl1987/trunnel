@@ -11,7 +11,7 @@
 
  o real frontend.
 
- - Enforce integer constraints when parsing.
+ o Enforce integer constraints when parsing.
 
  - Write some tests for the C code
  . Get complete coverage for generator
@@ -27,3 +27,4 @@
  - Do we need 'struct x until_end[];' ?
  - Pass minimal inputs to struct parsing inside length-specified unions.
 
+ - Extend checker to simplify?  Eg ranges.  C field names.
