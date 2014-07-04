@@ -1,4 +1,6 @@
 
+FOR VERSION 1
+
  o Parse grammars
  o check grammars
  o Generate struct declarations
@@ -13,18 +15,26 @@
 
  o Enforce integer constraints when parsing.
 
+ o Pass minimal inputs to struct parsing inside length-specified unions.
+
+ - Add comments to output (passthrough)
+ - Add extra structure data fields and corresponding "clear" functions to
+   output.
+
  - Write some tests for the C code
  . Get complete coverage for generator
  - Get complete coverage on generated code made by complete-coverage
    generator
  - Document it.
 
- - Set length fields for length-having unions automatically.
- - add comments to output
 
+
+FOR VERSION 1.1 OR LATER
+
+
+ - Set length fields for length-having unions automatically.
 
  - Allow "u8 until_end[];" in eos position.
  - Do we need 'struct x until_end[];' ?
- - Pass minimal inputs to struct parsing inside length-specified unions.
 
  - Extend checker to simplify?  Eg ranges.  C field names.

@@ -827,10 +827,13 @@ class ParseFnGenerator(IndentingGenerator):
         self.eltHeader(smu.name)
         self.prefix = smu.name+"_"
         if smu.lengthfield is not None:
-            self.w('  {\n    size_t remaining_at_end;\n')
-            self.w('    if (obj->%s > remaining)\n     goto truncated;\n'%smu.lengthfield)
-            self.w('    remaining_at_end = remaining - obj->%s;\n'%smu.lengthfield)
+            self.w('  {\n')
             self.pushIndent(2)
+            self.w('  size_t remaining_after;\n')
+            self.w('  if (obj->%s > remaining)\n     goto truncated;\n'%smu.lengthfield)
+            self.w('  remaining_after = remaining - obj->%s;\n'%smu.lengthfield)
+            self.w('  remaining = obj->%s;\n'%smu.lengthfield)
+
 
         self.w('  switch (obj->%s) {\n'%smu.tagfield)
         self.curunion = smu
@@ -838,8 +841,10 @@ class ParseFnGenerator(IndentingGenerator):
         self.visit(smu.default)
         self.w("  }\n")
         if smu.lengthfield is not None:
+            self.w('  if (remaining != 0)\n    goto fail;\n')
+            self.w('  remaining = remaining_after;\n')
             self.popIndent(2)
-            self.w('  if (remaining != remaining_at_end)\n    goto fail;\n  }\n')
+            self.w('  }\n')
 
         self.prefix = ""
 
@@ -850,8 +855,9 @@ class ParseFnGenerator(IndentingGenerator):
         if um.allow_extra:
             self.pushIndent(4)
             self.comment("Allow extra data at the end")
-            self.w('  if (remaining > remaining_at_end)\n'
-                   '    remaining = remaining_at_end;\n')
+            self.w('  if (remaining != 0) {\n'
+                   '    ptr += remaining; remaining = 0;\n'
+                   '  }\n')
             self.popIndent(4)
         self.popIndent(4)
         self.w("      break;\n")
