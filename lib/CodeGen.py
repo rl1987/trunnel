@@ -633,6 +633,7 @@ class EncodeFnGenerator(IndentingGenerator):
             self.w('    if (written != written_at_end)\n    goto fail;\n')
             self.w('  }\n')
             self.popIndent(2)
+        self.prefix = ""
 
     def visitUnionMember(self, um):
         writeUnionMemberCaseLabel(self.w,um)

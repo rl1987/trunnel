@@ -121,5 +121,6 @@ struct union_with_len {
     // We could also say "default: ignore;" to not retain the data.
   };
 
+  u16 right_after_the_union;
 }
 
