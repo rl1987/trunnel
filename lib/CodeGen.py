@@ -394,7 +394,10 @@ class IndentingGenerator(ASTVisitor):
         if lines[-1] == "":
             del lines[-1]
         for line in lines:
-            self.w_("%s%s\n"%(self.indent, line))
+            if line.isspace() or not line:
+                self.w_('\n')
+            else:
+                self.w_("%s%s\n"%(self.indent, line))
 
     def pushIndent(self, n):
         self.indent += " "*n
@@ -404,7 +407,6 @@ class IndentingGenerator(ASTVisitor):
 
     def comment(self, string):
         self.w('  /* %s */\n'%string)
-
 
     def eltHeader(self, string, skipLine=True):
         nl = ("\n" if skipLine else "")
@@ -629,9 +631,8 @@ class EncodeFnGenerator(IndentingGenerator):
         self.visit(smu.default)
         self.w("  }\n")
         if smu.lengthfield is not None:
-            self.indent = self.indent[:-2]
-            self.w('    if (written != written_at_end)\n    goto fail;\n')
-            self.w('  }\n')
+            self.w('  if (written != written_at_end)\n    goto fail;\n')
+            self.w('}\n')
             self.popIndent(2)
         self.prefix = ""
 
