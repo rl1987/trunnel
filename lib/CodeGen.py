@@ -84,9 +84,12 @@ class Checker(ASTVisitor):
             for structname, uses in self.structUses.items():
                 uses.difference_update(removed)
                 if len(uses) == 0:
-                    sorted_structs.append(structname)
-                    removed.add(structname)
                     removed_this_time.append(structname)
+
+            removed_this_time.sort()
+            sorted_structs.extend(removed_this_time)
+            removed.update(removed_this_time)
+
             for s in removed_this_time:
                 del self.structUses[s]
 
