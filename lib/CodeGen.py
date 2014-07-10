@@ -262,20 +262,32 @@ class DeclarationGenerationVisitor(ASTVisitor):
         f.visitChildrenSorted(self.sort_order, self)
 
     def visitConstDecl(self, cd):
+        if cd.annotation != None:
+            self.w(cd.annotation)
         self.w("#define %s %s\n"%(cd.name,cd.value.value))
 
     def visitStructDecl(self, sd):
+        if sd.annotation != None:
+            self.w(sd.annotation)
         self.w("typedef struct %s_st {\n"%sd.name)
         sd.visitChildren(self)
         self.w("} %s_t;\n\n"%sd.name);
 
     def visitSMInteger(self, smi):
+        if smi.annotation != None:
+            self.w(smi.annotation)
         self.w("  uint%d_t %s%s;\n"%(smi.inttype.width,self.fieldPrefix,smi.name))
 
     def visitSMStruct(self, sms):
+        if sms.annotation != None:
+            self.w(sms.annotation)
+
         self.w("  %s_t %s%s;\n"%(sms.structname,self.fieldPrefix,sms.name))
 
     def visitSMFixedArray(self, sfa):
+        if sfa.annotation != None:
+            self.w(sfa.annotation)
+
         if type(sfa.basetype) == str:
             self.w("  %s_t %s%s[%s];\n"%(sfa.basetype, self.fieldPrefix, sfa.name, sfa.width))
         elif str(sfa.basetype) == "char":
@@ -284,6 +296,9 @@ class DeclarationGenerationVisitor(ASTVisitor):
             self.w("  uint%d_t %s%s[%s];\n"%(sfa.basetype.width, self.fieldPrefix,sfa.name, sfa.width))
 
     def visitSMVarArray(self, sva):
+        if sva.annotation != None:
+            self.w(sva.annotation)
+
         if type(sva.basetype) == str:
             self.w("  %s_t *%s%s;\n"%(sva.basetype, self.fieldPrefix, sva.name))
         elif str(sva.basetype) == "char":
@@ -292,9 +307,15 @@ class DeclarationGenerationVisitor(ASTVisitor):
             self.w("  uint%d_t *%s%s;\n"%(sva.basetype.width, self.fieldPrefix, sva.name))
 
     def visitSMString(self, ss):
+        if ss.annotation != None:
+            self.w(ss.annotation)
+
         self.w("  char *%s%s;\n"%(self.fieldPrefix,ss.name))
 
     def visitSMUnion(self, smu):
+        if smu.annotation != None:
+            self.w(smu.annotation)
+
         self.fieldPrefix = smu.name + "_"
         smu.visitChildren(self)
         if isinstance(smu.default, Grammar.UDStore):

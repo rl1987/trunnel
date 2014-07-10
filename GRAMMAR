@@ -72,8 +72,8 @@ Additional constraints:
          File ::= Declaration
          File ::= File Declaration
 
-         Declaration ::= ConstDecl
-         Declaration ::= StructDecl
+         Declaration ::= OptAnnotation ConstDecl
+         Declaration ::= OptAnnotation StructDecl
 
          ConstDecl ::= const CONST_ID = INT ;
 
@@ -82,11 +82,14 @@ Additional constraints:
          OptSMEos ::=
          OptSMEos ::= eos ;
 
-         StructMembers ::= StructMember ;
-         StructMembers ::= StructMembers StructMember ;
+         StructMembers ::= OptAnnotation StructMember ;
+         StructMembers ::= StructMembers OptAnnotation StructMember ;
 
          Integer ::= INT
          Integer ::= CONST_ID
+
+         OptAnnotation ::=
+         OptAnnotation ::= ANNOTATION
 
          StructMember ::= SMInteger
          StructMember ::= SMStruct

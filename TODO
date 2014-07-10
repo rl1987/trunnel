@@ -1,40 +1,40 @@
 
 FOR VERSION 1
 
- o Parse grammars
- o check grammars
- o Generate struct declarations
- o Generate struct manipulators
- o Generate struct encoders
- o Generate struct parsers
+  o Parse grammars
+  o check grammars
+  o Generate struct declarations
+  o Generate struct manipulators
+  o Generate struct encoders
+  o Generate struct parsers
 
- o Finish writing code
-   o Fix all XXXX items
+  o Finish writing code
+    o Fix all XXXX items
 
- o real frontend.
+  o real frontend.
 
- o Enforce integer constraints when parsing.
+  o Enforce integer constraints when parsing.
 
- o Pass minimal inputs to struct parsing inside length-specified unions.
+  o Pass minimal inputs to struct parsing inside length-specified unions.
 
- - Add comments to output (passthrough)
- - Add extra structure data fields and corresponding "clear" functions to
-   output.
+  - Add comments to output (passthrough)
+  - Add extra structure data fields and corresponding "clear" functions to
+    output.
 
- - Write some tests for the C code
- . Get complete coverage for generator
- - Get complete coverage on generated code made by complete-coverage
-   generator
- - Document it.
+  - Write some tests for the C code
+  . Get complete coverage for generator
+  - Get complete coverage on generated code made by complete-coverage
+    generator
+  - Document it.
 
 
 
 FOR VERSION 1.1 OR LATER
 
 
- - Set length fields for length-having unions automatically.
+  - Set length fields for length-having unions automatically.
 
- - Allow "u8 until_end[];" in eos position.
- - Do we need 'struct x until_end[];' ?
+  - Allow "u8 until_end[];" in eos position.
+  - Do we need 'struct x until_end[];' ?
 
- - Extend checker to simplify?  Eg ranges.  C field names.
+  - Extend checker to simplify?  Eg ranges.  C field names.

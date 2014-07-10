@@ -48,6 +48,14 @@ class IntLiteral(Token):
     def __repr__(self):
         return "IntLiteral(%r,%r)"%(self.value, self.lineno)
 
+class Annotation(Token):
+    def __init__(self, value, lineno):
+        Token.__init__(self, "ANNOTATION", lineno)
+        self.value = value
+
+    def __str__(self):
+        return self.value + "\n"
+
 KEYWORDS = set("""
   union struct
   u8 u16 u32 u64 char
@@ -90,6 +98,10 @@ class Lexer(spark.GenericScanner, object):
     def t_comment(self, s):
         r"\/\/.*"
         pass
+
+    def t_annotation(self, s):
+        r'/\*\*(?:[^\*]|\*+[^*/])*\*/'
+        self.rv.append(Annotation(s, self.lineno))
 
     def t_newline(self, s):
         r"\n"
@@ -141,6 +153,7 @@ class StructDecl(AST):
         self.name = name
         self.members = members
         self.eos = eos
+        self.annotation = None
 
     def visitChildren(self, v, *args):
         for m in self.members:
@@ -150,9 +163,11 @@ class ConstDecl(AST):
     def __init__(self, name, value):
         self.name = name
         self.value = value
+        self.annotation = None
 
 class StructMember(AST):
-    pass
+    def __init__(self):
+        self.annotation = None
 
 class IntType(AST):
     def __init__(self, width):
@@ -164,6 +179,7 @@ class IntConstraint(AST):
 
 class SMInteger(StructMember):
     def __init__(self, inttype, name, constraints):
+        StructMember.__init__(self)
         self.inttype = inttype
         self.name = name
         self.constraints = constraints
@@ -174,27 +190,32 @@ class SMInteger(StructMember):
 
 class SMStruct(StructMember):
     def __init__(self, structname, name):
+        StructMember.__init__(self)
         self.structname = structname
         self.name = name
 
 class SMString(StructMember):
     def __init__(self, name):
+        StructMember.__init__(self)
         self.name = name
 
 class SMFixedArray(StructMember):
     def __init__(self, basetype, name, width):
+        StructMember.__init__(self)
         self.basetype = basetype
         self.name = name
         self.width = width
 
 class SMVarArray(StructMember):
     def __init__(self, basetype, name, widthfield):
+        StructMember.__init__(self)
         self.basetype = basetype
         self.name = name
         self.widthfield = widthfield
 
 class SMUnion(StructMember):
     def __init__(self, name, tagfield, lengthfield, members, default):
+        StructMember.__init__(self)
         self.name = name
         self.tagfield = tagfield
         self.lengthfield = lengthfield
@@ -250,12 +271,18 @@ class Parser(spark.GenericParser, object):
         return f
 
     def p_Decl_1(self, info):
-        " Declaration ::= ConstDecl "
-        return info[0]
+        " Declaration ::= OptAnnotation ConstDecl "
+        a, d = info
+        if a:
+            d.annotation = str(a)
+        return d
 
     def p_Decl_2(self, info):
-        " Declaration ::= StructDecl "
-        return info[0]
+        " Declaration ::= OptAnnotation StructDecl "
+        a,d = info
+        if a:
+            d.annotation = str(a)
+        return d
 
     def p_ConstDecl(self, info):
         " ConstDecl ::= const CONST_ID = INT ; "
@@ -276,13 +303,18 @@ class Parser(spark.GenericParser, object):
         return True
 
     def p_StructMembers_1(self, info):
-        " StructMembers ::= StructMember ; "
-        return [ info[0] ]
+        " StructMembers ::= OptAnnotation StructMember ; "
+        a, m, _ = info
+        if a:
+            m.annotation = str(a)
+        return [ m ]
 
     def p_structMembers_2(self, info):
-        " StructMembers ::= StructMembers StructMember ; "
-        lst = info[0]
-        lst.append(info[1])
+        " StructMembers ::= StructMembers OptAnnotation StructMember ; "
+        lst, a, m, _ = info
+        if a:
+            m.annotation = str(a)
+        lst.append(m)
         return lst
 
     def p_Integer_1(self, info):
@@ -292,6 +324,13 @@ class Parser(spark.GenericParser, object):
     def p_Integer_2(self, info):
         " Integer ::= CONST_ID"
         return info[0].value
+
+    def p_OptAnnotation_1(self, info):
+        " OptAnnotation ::= "
+        return None
+    def p_OptAnnotation_2(self, info):
+        " OptAnnotation ::= ANNOTATION "
+        return info[0]
 
     def p_StructMember_0(self,info):
         " StructMember ::= SMInteger "
