@@ -131,3 +131,10 @@ struct union_with_len {
   u16 right_after_the_union;
 }
 
+
+struct with_remainder {
+
+   u8 len;
+   u8 bytes[len];
+   u8 remainder[];
+}

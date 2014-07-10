@@ -257,6 +257,13 @@ class SMVarArray(StructMember):
 
         return "%s%s %s[%s]"%(struct, str(self.basetype), self.getName(), self.widthfield)
 
+class SMRemainder(StructMember):
+    def __init__(self, name):
+        StructMember.__init__(self)
+        self.name = name
+
+    def __str__(self):
+        return "u8 %s[]"%(self.getName())
 
 class SMUnion(StructMember):
     def __init__(self, name, tagfield, lengthfield, members, default):
@@ -341,17 +348,27 @@ class Parser(spark.GenericParser, object):
         return ConstDecl(str(name), val)
 
     def p_StructDecl(self, info):
-        " StructDecl ::= struct ID { StructMembers OptSMEos } "
-        _0, name, _1, members, eos, _2 = info
+        " StructDecl ::= struct ID { StructMembers StructEnding } "
+        _0, name, _1, members, ending, _2 = info
+        eos = False
+        if isinstance(ending, SMRemainder):
+            members.append(ending)
+        elif ending == "EOS":
+            eos = True
+
         return StructDecl(str(name), members, eos)
 
-    def p_OptSMEos_1(self, info):
-        " OptSMEos ::= "
-        return False
+    def p_StructEnding_1(self, info):
+        " StructEnding ::= "
+        return None
 
-    def p_OptSMEos_2(self, info):
-        " OptSMEos ::= eos ; "
-        return True
+    def p_StructEnding_2(self, info):
+        " StructEnding ::= eos ; "
+        return "EOS"
+
+    def p_StructEnding_3(self, info):
+        " StructEnding ::= u8 ID [ ] ; "
+        return SMRemainder(str(info[1]))
 
     def p_StructMembers_1(self, info):
         " StructMembers ::= OptAnnotation StructMember ; "

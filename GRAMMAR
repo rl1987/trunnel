@@ -7,9 +7,12 @@
 
  ConstDecl = "const" CONST_NAME "=" IntLiteral ";"
 
- StructDecl = "struct" StructName "{" StructMember* SMEos? "}" ";"
+ StructDecl = "struct" StructName "{" StructMember* StructEnding? "}" ";"
+
+ StructEnding = SMEos | SMRemainder
 
  SMEos = "eos" ";"
+ SMRemainder = "u8" MemberName "[" "]" ";"
 
  Integer = IntLiteral | CONST_NAME
 
@@ -77,10 +80,11 @@ Additional constraints:
 
          ConstDecl ::= const CONST_ID = INT ;
 
-         StructDecl ::= struct ID { StructMembers OptSMEos }
+         StructDecl ::= struct ID { StructMembers StructEnding }
 
-         OptSMEos ::=
-         OptSMEos ::= eos ;
+         StructEnding ::=
+         StructEnding ::= eos ;
+         StructEnding ::= u8 ID [ ] ;
 
          StructMembers ::= OptAnnotation StructMember ;
          StructMembers ::= StructMembers OptAnnotation StructMember ;

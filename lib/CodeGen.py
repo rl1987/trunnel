@@ -170,6 +170,12 @@ class Checker(ASTVisitor):
 
         self.structFieldNames.add(sms.name)
 
+    def visitSMRemainder(self, smr):
+        if smr.name in self.structFieldNames:
+            raise CheckError("duplicate field %s.%s"%(self.structName,smr.name))
+
+        self.structFieldNames.add(smr.name)
+
     def visitSMUnion(self, smu):
         if smu.name in self.structFieldNames:
             raise CheckError("duplicate field %s.%s"%(self.structName,smu.name))
@@ -283,6 +289,8 @@ class Annotator(ASTVisitor):
         self.annotateMember(sva)
     def visitSMString(self, ss):
         self.annotateMember(ss)
+    def visitSMRemainder(self, smr):
+        self.annotateMember(smr)
     def visitSMUnion(self, smu):
         self.annotateMember(smu)
         self.prefix = smu.name + "_"
@@ -387,6 +395,13 @@ class DeclarationGenerationVisitor(IndentingGenerator):
 
         self.w("char *%s;\n"%(ss.c_name))
 
+    def visitSMRemainder(self, smr):
+        self.w("/** Length of %s */"%smr.c_name)
+        self.w("size_t %s_len;\n"%(smr.c_name))
+        if smr.annotation != None:
+            self.w(smr.annotation)
+        self.w("uint8_t *%s;\n"%(smr.c_name))
+
     def visitSMUnion(self, smu):
         if smu.annotation != None:
             self.w(smu.annotation)
@@ -472,6 +487,8 @@ class FreeFnGenerator(IndentingGenerator):
         self.w("tor_free(obj->%s);\n"%(sva.c_name))
     def visitSMString(self, ss):
         self.w("tor_free(obj->%s);\n"%(ss.c_name))
+    def visitSMRemainder(self, smr):
+        self.w("tor_free(obj->%s);\n"%(smr.c_name))
     def visitSMUnion(self, smu):
         smu.visitChildren(self)
         if isinstance(smu.default, Grammar.UDStore):
@@ -532,6 +549,9 @@ class CheckFnGenerator(IndentingGenerator):
 
     def visitSMString(self, ss):
         self.w('if (NULL == obj->%s)\n  return "Missing %s";\n'%(ss.c_name, ss.c_name))
+
+    def visitSMRemainder(self, smr):
+        self.w('if (NULL == obj->%s)\n  return "Missing %s";\n'%(smr.c_name, smr.c_name))
 
     def visitSMUnion(self, smu):
         self.w('switch (obj->%s) {\n'%smu.tagfield)
@@ -724,6 +744,16 @@ class EncodeFnGenerator(IndentingGenerator):
         self.popIndent(2)
         self.w('}\n')
 
+    def visitSMRemainder(self, smr):
+        self.eltHeader(smr)
+        self.needTruncated = True
+        self.w('tor_assert(written <= avail);\n')
+        self.w(('if (obj->%s_len > avail - written)\n'
+                '  goto truncated;\n')%(smr.c_name))
+        self.w(('if (obj->%s_len)\n'
+                '  memcpy(ptr, obj->%s, obj->%s_len);\n')
+               %(smr.c_name, smr.c_name, smr.c_name))
+        self.w('ptr += obj->%s_len; written += obj->%s_len;\n'%(smr.c_name, smr.c_name))
 
     def visitSMUnion(self, smu):
         self.eltHeader(smu)
@@ -935,7 +965,6 @@ class ParseFnGenerator(IndentingGenerator):
             self.w('  }\n'
                    '}\n')
 
-
     def visitSMString(self, ss):
         self.eltHeader(ss)
         self.needTruncated = True
@@ -953,6 +982,13 @@ class ParseFnGenerator(IndentingGenerator):
         self.w('remaining -= memlen; ptr += memlen;\n')
         self.popIndent(2)
         self.w('}\n')
+
+    def visitSMRemainder(self, smr):
+        self.eltHeader(smr)
+        self.w('obj->%s_len = remaining;\n'%smr.c_name)
+        self.w('obj->%s = tor_malloc(remaining);\n'%(smr.c_name))
+        self.w('memcpy(obj->%s, ptr, remaining);\n'%(smr.c_name))
+        self.w('ptr += remaining; remaining = 0;\n')
 
     def visitSMUnion(self, smu):
         self.eltHeader(smu)

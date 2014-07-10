@@ -17,7 +17,7 @@ FOR VERSION 1
 
   o Pass minimal inputs to struct parsing inside length-specified unions.
 
-  - Add comments to output (passthrough)
+  . Add comments to output (passthrough)
   - Add extra structure data fields and corresponding "clear" functions to
     output.
 
@@ -27,14 +27,13 @@ FOR VERSION 1
     generator
   - Document it.
 
+  o Allow "u8 until_end[];" in eos position.
 
 
 FOR VERSION 1.1 OR LATER
 
-
   - Set length fields for length-having unions automatically.
 
-  - Allow "u8 until_end[];" in eos position.
   - Do we need 'struct x until_end[];' ?
 
   - Extend checker to simplify?  Eg ranges.  C field names.
