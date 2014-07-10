@@ -44,6 +44,7 @@ class Checker(ASTVisitor):
         self.constValues = {}
         self.structFieldNames = None
         self.structUses = {}
+        self.memberPrefix = ""
 
     def visitFile(self, f):
         for c in f.constants:
@@ -107,10 +108,16 @@ class Checker(ASTVisitor):
         self.structFieldNames = None
         self.structIntFieldNames = None
 
-    def addMemberName(self, m):
+    def addMemberName_(self, m):
         if m in self.structFieldNames:
-            raise CheckError("duplicate field %s.%s"%(self.structName,smi.name))
+            raise CheckError("duplicate field %s.%s"%(self.structName,m))
         self.structFieldNames.add(m)
+
+    def addMemberName(self, m):
+        self.addMemberName_(m)
+
+        if self.memberPrefix != "":
+            m = self.addMemberName_("%s%s"%(self.memberPrefix, m))
 
     def visitSMInteger(self, smi):
         self.addMemberName(smi.name)
@@ -179,6 +186,7 @@ class Checker(ASTVisitor):
         self.unionMatching = []
         self.unionTagMax = TYPE_MAXIMA[self.structIntFieldNames[smu.tagfield]]
         self.containing = "%s.%s"%(self.structName,smu.name)
+        self.memberPrefix = smu.name+"_"
         smu.visitChildren(self)
 
         self.unionMatching.sort()
@@ -190,12 +198,13 @@ class Checker(ASTVisitor):
             assert hi >= lo
             lasthi = hi
 
+        self.visit(smu.default)
+
+        self.memberPrefix = ""
         self.unionName = None
         self.unionMatching = None
         self.unionTagMax = None
         self.containing = None
-
-        self.visit(smu.default)
 
     def visitUnionMember(self, um):
         self.checkIntegerList(um.tagvalue, self.unionTagMax, self.unionMatching)
