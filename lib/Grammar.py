@@ -59,7 +59,7 @@ class Annotation(Token):
 KEYWORDS = set("""
   union struct
   u8 u16 u32 u64 char
-  IN const eos nulterm WITH LENGTH default fail ignore
+  IN const nulterm WITH LENGTH default fail ignore
 """.split())
 
 class Lexer(spark.GenericScanner, object):
@@ -350,21 +350,22 @@ class Parser(spark.GenericParser, object):
     def p_StructDecl(self, info):
         " StructDecl ::= struct ID { StructMembers StructEnding } "
         _0, name, _1, members, ending, _2 = info
-        eos = False
         if isinstance(ending, SMRemainder):
             members.append(ending)
-        elif ending == "EOS":
-            eos = True
+            eos = False
+        else:
+            assert(isinstance(ending, bool))
+            eos = ending
 
         return StructDecl(str(name), members, eos)
 
     def p_StructEnding_1(self, info):
         " StructEnding ::= "
-        return None
+        return True
 
     def p_StructEnding_2(self, info):
-        " StructEnding ::= eos ; "
-        return "EOS"
+        " StructEnding ::= ... "
+        return False
 
     def p_StructEnding_3(self, info):
         " StructEnding ::= OptAnnotation u8 ID [ ] ; "

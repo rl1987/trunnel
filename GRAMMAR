@@ -9,9 +9,8 @@
 
  StructDecl = "struct" StructName "{" StructMember* StructEnding? "}" ";"
 
- StructEnding = SMEos | SMRemainder
+ StructEnding = "..." | SMRemainder
 
- SMEos = "eos" ";"
  SMRemainder = "u8" MemberName "[" "]" ";"
 
  Integer = IntLiteral | CONST_NAME
@@ -83,7 +82,7 @@ Additional constraints:
          StructDecl ::= struct ID { StructMembers StructEnding }
 
          StructEnding ::=
-         StructEnding ::= eos ;
+         StructEnding ::= ...
          StructEnding ::= OptAnnotation u8 ID [ ] ;
 
          StructMembers ::= OptAnnotation StructMember ;
