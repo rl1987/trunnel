@@ -10,7 +10,7 @@ class ASTVisitor(object):
         return method(ast, *args)
 
     def visit_other(self, ast, *args):
-        raise NotImplemented(visit + ast.__class__.__name__)
+        raise ValueError("visit" + ast.__class__.__name__)
 
 class CheckError(Exception):
     pass
@@ -254,6 +254,50 @@ class Checker(ASTVisitor):
             raise CheckError("Non-integer %s field %s for %s"%(
                 ftype,fieldname,inside))
 
+class Annotator(ASTVisitor):
+    def __init__(self):
+        ASTVisitor.__init__(self)
+        self.prefix = ""
+
+    def visitFile(self, f):
+        f.visitChildren(self)
+
+    def visitConstDecl(self, cd):
+        pass
+
+    def visitStructDecl(self, sd):
+        self.cur_struct = sd.name
+        sd.visitChildren(self)
+        self.cur_truct = None
+
+    def annotateMember(self, member):
+        member.c_name = "%s%s" % (self.prefix, member.name)
+
+    def visitSMInteger(self, smi):
+        self.annotateMember(smi)
+    def visitSMStruct(self, sms):
+        self.annotateMember(sms)
+    def visitSMFixedArray(self, sfa):
+        self.annotateMember(sfa)
+    def visitSMVarArray(self, sva):
+        self.annotateMember(sva)
+    def visitSMString(self, ss):
+        self.annotateMember(ss)
+    def visitSMUnion(self, smu):
+        self.annotateMember(smu)
+        self.prefix = smu.name + "_"
+        smu.visitChildren(self)
+        self.visit(smu.default)
+        self.prefix = ""
+    def visitUnionMember(self, um):
+        um.visitChildren(self)
+    def visitUDFail(self, uf):
+        pass
+    def visitUDIgnore(self, ui):
+        pass
+    def visitUDStore(self, us):
+        us.c_name = "%s%s" % (self.prefix, us.fieldname)
+
 class IndentingGenerator(ASTVisitor):
     def __init__(self, writefn):
         self.w_ = writefn
@@ -278,15 +322,14 @@ class IndentingGenerator(ASTVisitor):
     def comment(self, string):
         self.w('/* %s */\n'%string)
 
-    def eltHeader(self, string, skipLine=True):
+    def eltHeader(self, element, skipLine=True):
         nl = ("\n" if skipLine else "")
-        self.w('%s/* %s %s%s */\n'%(nl, self.action, self.prefix, string))
+        self.w('%s/* %s %s */\n'%(nl, self.action, element.c_name))
 
 class DeclarationGenerationVisitor(IndentingGenerator):
     def __init__(self, sort_order, f):
         IndentingGenerator.__init__(self, f.write)
         self.sort_order = sort_order
-        self.fieldPrefix = ""
 
     def visitFile(self, f):
         f.visitChildrenSorted(self.sort_order, self)
@@ -308,51 +351,49 @@ class DeclarationGenerationVisitor(IndentingGenerator):
     def visitSMInteger(self, smi):
         if smi.annotation != None:
             self.w(smi.annotation)
-        self.w("uint%d_t %s%s;\n"%(smi.inttype.width,self.fieldPrefix,smi.name))
+        self.w("uint%d_t %s;\n"%(smi.inttype.width,smi.c_name))
 
     def visitSMStruct(self, sms):
         if sms.annotation != None:
             self.w(sms.annotation)
 
-        self.w("%s_t %s%s;\n"%(sms.structname,self.fieldPrefix,sms.name))
+        self.w("%s_t %s;\n"%(sms.structname,sms.c_name))
 
     def visitSMFixedArray(self, sfa):
         if sfa.annotation != None:
             self.w(sfa.annotation)
 
         if type(sfa.basetype) == str:
-            self.w("%s_t %s%s[%s];\n"%(sfa.basetype, self.fieldPrefix, sfa.name, sfa.width))
+            self.w("%s_t %s[%s];\n"%(sfa.basetype, sfa.c_name, sfa.width))
         elif str(sfa.basetype) == "char":
-            self.w("char %s%s[%s+1];\n"%(self.fieldPrefix, sfa.name, sfa.width))
+            self.w("char %s[%s+1];\n"%(sfa.c_name, sfa.width))
         else:
-            self.w("uint%d_t %s%s[%s];\n"%(sfa.basetype.width, self.fieldPrefix,sfa.name, sfa.width))
+            self.w("uint%d_t %s[%s];\n"%(sfa.basetype.width, sfa.c_name, sfa.width))
 
     def visitSMVarArray(self, sva):
         if sva.annotation != None:
             self.w(sva.annotation)
 
         if type(sva.basetype) == str:
-            self.w("%s_t *%s%s;\n"%(sva.basetype, self.fieldPrefix, sva.name))
+            self.w("%s_t *%s;\n"%(sva.basetype, sva.c_name))
         elif str(sva.basetype) == "char":
-            self.w("char *%s%s;\n"%(self.fieldPrefix, sva.name))
+            self.w("char *%s;\n"%(sva.c_name))
         else:
-            self.w("uint%d_t *%s%s;\n"%(sva.basetype.width, self.fieldPrefix, sva.name))
+            self.w("uint%d_t *%s;\n"%(sva.basetype.width, sva.c_name))
 
     def visitSMString(self, ss):
         if ss.annotation != None:
             self.w(ss.annotation)
 
-        self.w("char *%s%s;\n"%(self.fieldPrefix,ss.name))
+        self.w("char *%s;\n"%(ss.c_name))
 
     def visitSMUnion(self, smu):
         if smu.annotation != None:
             self.w(smu.annotation)
 
-        self.fieldPrefix = smu.name + "_"
         smu.visitChildren(self)
         if isinstance(smu.default, Grammar.UDStore):
-            self.w("uint8_t *%s%s;\n"%(self.fieldPrefix,smu.default.fieldname))
-        self.fieldPrefix = ""
+            self.w("uint8_t *%s;\n"% smu.default.c_name)
 
     def visitUnionMember(self, um):
         um.visitChildren(self)
@@ -405,7 +446,7 @@ class NewFnGenerator(ASTVisitor):
 class FreeFnGenerator(IndentingGenerator):
     def __init__(self, writefn):
         IndentingGenerator.__init__(self, writefn)
-        self.prefix = ""
+
     def visitStructDecl(self, sd):
         self.structName = name = sd.name
         self.w("static void\n%s_clear(%s_t *obj)\n{\n"%(name,name))
@@ -426,17 +467,15 @@ class FreeFnGenerator(IndentingGenerator):
     def visitSMFixedArray(self, sfa):
         pass
     def visitSMStruct(self, sms):
-        self.w("%s_clear(&obj->%s%s);\n"%(sms.structname, self.prefix, sms.name))
+        self.w("%s_clear(&obj->%s);\n"%(sms.structname, sms.c_name))
     def visitSMVarArray(self, sva):
-        self.w("tor_free(obj->%s%s);\n"%(self.prefix,sva.name))
+        self.w("tor_free(obj->%s);\n"%(sva.c_name))
     def visitSMString(self, ss):
-        self.w("tor_free(obj->%s%s);\n"%(self.prefix,ss.name))
+        self.w("tor_free(obj->%s);\n"%(ss.c_name))
     def visitSMUnion(self, smu):
-        self.prefix = smu.name+"_"
         smu.visitChildren(self)
         if isinstance(smu.default, Grammar.UDStore):
-            self.w("tor_free(obj->%s%s);\n"%(self.prefix,smu.default.fieldname))
-        self.prefix = ""
+            self.w("tor_free(obj->%s);\n"%(smu.default.c_name))
     def visitUnionMember(self, um):
         um.visitChildren(self)
 
@@ -445,7 +484,6 @@ class FreeFnGenerator(IndentingGenerator):
 class CheckFnGenerator(IndentingGenerator):
     def __init__(self, writefn):
         IndentingGenerator.__init__(self, writefn)
-        self.prefix = ""
 
     def visitStructDecl(self, sd):
         self.structName = name = sd.name
@@ -461,25 +499,25 @@ class CheckFnGenerator(IndentingGenerator):
     def visitSMFixedArray(self, sfa):
         if type(sfa.basetype) == str:
             self.checkStructArray(sfa.basetype,
-                    "&obj->%s%s[idx]"%(self.prefix,sfa.name), sfa.width)
+                    "&obj->%s[idx]"%(sfa.c_name), sfa.width)
         elif str(sfa.basetype) == 'char':
-            self.w('if (obj->%s%s[%s] != 0)\n'
+            self.w('if (obj->%s[%s] != 0)\n'
                    '  return "String not terminated";\n'
-                   %(self.prefix,sfa.name,sfa.width))
+                   %(sfa.c_name,sfa.width))
 
     def visitSMStruct(self, sms):
         self.w(("{\n"
                 "  const char *msg;\n"
-                "  if (NULL != (msg = %s_check(&obj->%s%s)))\n"
+                "  if (NULL != (msg = %s_check(&obj->%s)))\n"
                 "    return msg;\n"
                 "}\n")%(
-                    sms.structname, self.prefix, sms.name))
+                    sms.structname, sms.c_name))
     def visitSMVarArray(self, sva):
-        self.w(('if (NULL == obj->%s%s)\n'
-                '  return "Missing %s%s";\n')
-               %(self.prefix,sva.name,self.prefix,sva.name))
+        self.w(('if (NULL == obj->%s)\n'
+                '  return "Missing %s";\n')
+               %(sva.c_name, sva.c_name))
         if type(sva.basetype) == str:
-            self.checkStructArray(sva.basetype, "&obj->%s%s[idx]"%(self.prefix,sva.name), "obj->%s"%sva.widthfield)
+            self.checkStructArray(sva.basetype, "&obj->%s[idx]"%(sva.c_name), "obj->%s"%sva.widthfield)
 
     def checkStructArray(self, structtype, element, num_items):
         self.w(('{\n'
@@ -493,16 +531,14 @@ class CheckFnGenerator(IndentingGenerator):
                     num_items, structtype, element))
 
     def visitSMString(self, ss):
-        self.w('if (NULL == obj->%s%s)\n  return "Missing %s%s";\n'%(self.prefix,ss.name,self.prefix,ss.name))
+        self.w('if (NULL == obj->%s)\n  return "Missing %s";\n'%(ss.c_name, ss.c_name))
 
     def visitSMUnion(self, smu):
-        self.prefix = smu.name+"_"
         self.w('switch (obj->%s) {\n'%smu.tagfield)
         smu.visitChildren(self)
         self.visit(smu.default)
 
         self.w("}\n")
-        self.prefix = ""
 
     def visitUnionMember(self, um):
         self.pushIndent(2)
@@ -516,11 +552,10 @@ class CheckFnGenerator(IndentingGenerator):
     def visitUDStore(self, uds):
         self.pushIndent(2)
         self.w(('default:\n'
-                '  if (NULL == obj->%s%s)\n'
-                '    return "Missing %s%s";\n'
+                '  if (NULL == obj->%s)\n'
+                '    return "Missing %s";\n'
                 '  break;\n')%(
-                    self.prefix,uds.fieldname,
-                    self.prefix,uds.fieldname))
+                    uds.c_name, uds.c_name))
         self.popIndent(2)
     def visitUDFail(self, udf):
         self.pushIndent(2)
@@ -551,7 +586,6 @@ def arrayIsBytes(arry):
 class EncodeFnGenerator(IndentingGenerator):
     def __init__(self, writefn):
         IndentingGenerator.__init__(self, writefn)
-        self.prefix = ""
         self.action = "Encode"
 
     def visitStructDecl(self, sd):
@@ -579,8 +613,8 @@ class EncodeFnGenerator(IndentingGenerator):
         self.w("}\n\n")
 
     def visitSMInteger(self, smi):
-        self.eltHeader(smi.name)
-        self.encodeInteger(smi.inttype.width, "obj->%s%s"%(self.prefix,smi.name))
+        self.eltHeader(smi)
+        self.encodeInteger(smi.inttype.width, "obj->%s"%(smi.c_name))
 
     def encodeInteger(self, width, element):
         nbytes = width // 8
@@ -593,8 +627,8 @@ class EncodeFnGenerator(IndentingGenerator):
         self.w('written += %s; ptr += %s;\n' % (nbytes, nbytes))
 
     def visitSMStruct(self, sms):
-        self.eltHeader(sms.name)
-        self.encodeStruct(sms.structname, "&obj->%s%s"%(self.prefix,sms.name))
+        self.eltHeader(sms)
+        self.encodeStruct(sms.structname, "&obj->%s"%(sms.c_name))
 
     def encodeStruct(self, structtype, element_pointer):
         self.w('tor_assert(written <= avail);\n');
@@ -605,7 +639,7 @@ class EncodeFnGenerator(IndentingGenerator):
                     structtype, element_pointer))
 
     def visitSMFixedArray(self, sfa):
-        self.eltHeader(sfa.name)
+        self.eltHeader(sfa)
         if arrayIsBytes(sfa):
             self.needTruncated = True
             if str(sfa.basetype) == 'char':
@@ -614,12 +648,12 @@ class EncodeFnGenerator(IndentingGenerator):
                        %(sfa.width))
                 self.w('{\n')
                 self.pushIndent(2)
-                self.w('size_t len = strlen(obj->%s%s);\n'
-                       %(self.prefix,sfa.name))
+                self.w('size_t len = strlen(obj->%s);\n'
+                       %(sfa.c_name))
 
                 self.w('tor_assert(len <= %s);\n'%sfa.width)
-                self.w('memcpy(ptr, obj->%s%s, len);\n'
-                       %(self.prefix,sfa.name))
+                self.w('memcpy(ptr, obj->%s, len);\n'
+                       %(sfa.c_name))
                 self.w('memset(ptr + len, 0, %s - len);\n'%sfa.width)
                 self.w('written += %s; ptr += %s;\n'%(sfa.width,sfa.width))
                 self.popIndent(2)
@@ -628,8 +662,8 @@ class EncodeFnGenerator(IndentingGenerator):
                 self.w('tor_assert(written <= avail);\n')
                 self.w('if (avail - written < %s)\n  goto truncated;\n'
                    %(sfa.width))
-                self.w('memcpy(ptr, obj->%s%s, %s);\n'
-                       %(self.prefix,sfa.name,sfa.width))
+                self.w('memcpy(ptr, obj->%s, %s);\n'
+                       %(sfa.c_name,sfa.width))
                 self.w('written += %s; ptr += %s;\n'%(sfa.width,sfa.width))
             return
 
@@ -644,14 +678,14 @@ class EncodeFnGenerator(IndentingGenerator):
         self.w('}\n')
 
     def visitSMVarArray(self, sva):
-        self.eltHeader(sva.name)
+        self.eltHeader(sva)
         if arrayIsBytes(sva):
             self.needTruncated = True
             self.w('tor_assert(written <= avail);\n')
             self.w('if (avail - written < obj->%s) goto truncated;\n'
                    %(sva.widthfield))
-            self.w('memcpy(ptr, obj->%s%s, obj->%s);\n'
-                   %(self.prefix,sva.name,sva.widthfield))
+            self.w('memcpy(ptr, obj->%s, obj->%s);\n'
+                   %(sva.c_name,sva.widthfield))
             self.w('written += obj->%s; ptr += obj->%s;\n'
                    %(sva.widthfield,sva.widthfield))
             return
@@ -659,8 +693,8 @@ class EncodeFnGenerator(IndentingGenerator):
         self.w('{\n')
         self.pushIndent(2)
         self.w(('unsigned idx;\n'
-               'size_t len = obj->%s%s;\n'
-               'for (idx = 0; idx < len; ++idx) {\n')%(self.prefix,sva.widthfield))
+               'size_t len = obj->%s;\n'
+               'for (idx = 0; idx < len; ++idx) {\n')%(sva.widthfield))
         self.encodeArrayBody(sva)
         self.w('}\n')
         self.popIndent(2)
@@ -669,31 +703,30 @@ class EncodeFnGenerator(IndentingGenerator):
     def encodeArrayBody(self, arry):
         self.pushIndent(2)
         if type(arry.basetype) == str:
-            self.encodeStruct(arry.basetype, "&obj->%s%s[idx]"%(self.prefix,arry.name))
+            self.encodeStruct(arry.basetype, "&obj->%s[idx]"%(arry.c_name))
         else:
             assert type(arry.basetype) == Grammar.IntType
             # FFFF memcpy, then byteswap ?
-            self.encodeInteger(arry.basetype.width, "obj->%s%s[idx]"%(self.prefix,arry.name))
+            self.encodeInteger(arry.basetype.width, "obj->%s[idx]"%(arry.c_name))
         self.popIndent(2)
 
     def visitSMString(self, ss):
-        self.eltHeader(ss.name)
+        self.eltHeader(ss)
         self.needTruncated = True
         self.w('tor_assert(written <= avail);\n')
         self.w('{\n')
         self.pushIndent(2)
-        self.w('size_t len = strlen(obj->%s%s);\n'%(self.prefix, ss.name))
+        self.w('size_t len = strlen(obj->%s);\n'%(ss.c_name))
         self.w('if (len >= avail - written)\n'
                '  goto truncated;\n')
-        self.w('memcpy(ptr, obj->%s%s, len + 1);\n'%(self.prefix, ss.name))
+        self.w('memcpy(ptr, obj->%s, len + 1);\n'%(ss.c_name))
         self.w('ptr += len + 1; written += len + 1;\n')
         self.popIndent(2)
         self.w('}\n')
 
 
     def visitSMUnion(self, smu):
-        self.eltHeader(smu.name)
-        self.prefix = smu.name+"_"
+        self.eltHeader(smu)
         if smu.lengthfield is not None:
             self.w('tor_assert(written <= avail);\n')
             self.w('{\n')
@@ -710,7 +743,6 @@ class EncodeFnGenerator(IndentingGenerator):
             self.w('if (written != written_at_end)\n  goto fail;\n')
             self.popIndent(2)
             self.w('}\n')
-        self.prefix = ""
 
     def visitUnionMember(self, um):
         self.pushIndent(2)
@@ -744,7 +776,6 @@ class EncodeFnGenerator(IndentingGenerator):
 class ParseFnGenerator(IndentingGenerator):
     def __init__(self, writefn):
         IndentingGenerator.__init__(self, writefn)
-        self.prefix = ""
         self.action = "Parse"
 
     def visitStructDecl(self, sd):
@@ -784,8 +815,8 @@ class ParseFnGenerator(IndentingGenerator):
                '}\n'%(name))
 
     def visitSMInteger(self, smi):
-        self.eltHeader(smi.name)
-        v = "obj->%s%s" % (self.prefix,smi.name)
+        self.eltHeader(smi)
+        v = "obj->%s" % (smi.c_name)
         self.parseInteger(smi.inttype.width, v)
 
         if smi.constraints is not None:
@@ -810,8 +841,8 @@ class ParseFnGenerator(IndentingGenerator):
 
 
     def visitSMStruct(self, sms):
-        self.eltHeader(sms.name)
-        self.parseStruct(sms.structname, "&obj->%s%s"%(self.prefix,sms.name))
+        self.eltHeader(sms)
+        self.parseStruct(sms.structname, "&obj->%s"%(sms.c_name))
 
     def parseStruct(self, structtype, element_pointer):
         self.w(("result = %s_parse_into(%s, ptr, remaining);\n"
@@ -821,7 +852,7 @@ class ParseFnGenerator(IndentingGenerator):
                     structtype, element_pointer))
 
     def visitSMFixedArray(self, sfa):
-        self.eltHeader(sfa.name)
+        self.eltHeader(sfa)
         if type(sfa.basetype) != str:
             self.needTruncated = True
             bytesPerElt = 1
@@ -831,16 +862,16 @@ class ParseFnGenerator(IndentingGenerator):
                 if bytesPerElt > 1:
                     multiplier = "%s * "%bytesPerElt
             self.w('if (remaining < (%s%s))\n  goto truncated;\n'%(multiplier, sfa.width))
-            self.w('memcpy(obj->%s%s, ptr, %s%s);\n'%(self.prefix, sfa.name , multiplier, sfa.width))
+            self.w('memcpy(obj->%s, ptr, %s%s);\n'%(sfa.c_name, multiplier, sfa.width))
             if type(sfa.basetype) == Grammar.IntType:
                 self.w(('{\n'
                         '  unsigned idx;\n'
                         '  for (idx = 0; idx < %s; ++idx)\n'
-                        '    obj->%s%s[idx] = %s(obj->%s%s[idx]);\n'
+                        '    obj->%s[idx] = %s(obj->%s[idx]);\n'
                         '}\n')%(sfa.width,
-                                  self.prefix,sfa.name,
+                                  sfa.c_name,
                                   NTOH_FN[sfa.basetype.width],
-                                  self.prefix,sfa.name))
+                                  sfa.c_name))
             self.w(('remaining -= %s%s; ptr += %s%s;\n')%(
                 multiplier, sfa.width, multiplier, sfa.width))
 
@@ -851,13 +882,13 @@ class ParseFnGenerator(IndentingGenerator):
                     '  unsigned idx;\n'
                     '  for (idx = 0; idx < %s; ++idx) {\n')%sfa.width)
             self.pushIndent(4)
-            self.parseStruct(sfa.basetype, "&obj->%s%s[idx]"%(self.prefix,sfa.name))
+            self.parseStruct(sfa.basetype, "&obj->%s[idx]"%(sfa.c_name))
             self.popIndent(4)
             self.w('  }\n'
                    '}\n')
 
     def visitSMVarArray(self, sva):
-        self.eltHeader(sva.name)
+        self.eltHeader(sva)
         # FFFF some of this is kinda cut-and-paste
         if type(sva.basetype) != str:
             self.needTruncated = True
@@ -876,16 +907,16 @@ class ParseFnGenerator(IndentingGenerator):
             self.w('if (NULL == (tor_calloc(obj->%s, %s)))\n  goto overflow;\n'%(
                 sva.widthfield, bytesPerElt))
 
-            self.w('memcpy(obj->%s%s, ptr, %sobj->%s);\n'%(self.prefix, sva.name , multiplier, sva.widthfield))
+            self.w('memcpy(obj->%s, ptr, %sobj->%s);\n'%(sva.c_name, multiplier, sva.widthfield))
             if type(sva.basetype) == Grammar.IntType:
                 self.w(('{\n'
                         '  unsigned idx;\n'
                         '  for (idx = 0; idx < obj->%s; ++idx)\n'
-                        '    obj->%s%s[idx] = %s(obj->%s%s[idx]);\n'
+                        '    obj->%s[idx] = %s(obj->%s[idx]);\n'
                         '}\n')%(sva.widthfield,
-                                  self.prefix,sva.name,
-                                  NTOH_FN[sva.basetype.width],
-                                  self.prefix,sva.name))
+                                sva.c_name,
+                                NTOH_FN[sva.basetype.width],
+                                sva.c_name))
             self.w(('remaining -= %sobj->%s; ptr += %sobj->%s;\n')%(
                 multiplier, sva.widthfield, multiplier, sva.widthfield))
 
@@ -900,13 +931,13 @@ class ParseFnGenerator(IndentingGenerator):
             self.w(('{\n'
                     '  unsigned idx;\n'
                     '  for (idx = 0; idx < obj->%s; ++idx) {\n')%sva.widthfield)
-            self.parseStruct(sva.basetype, "&obj->%s%s[idx]"%(self.prefix,sva.name))
+            self.parseStruct(sva.basetype, "&obj->%s[idx]"%(sva.c_name))
             self.w('  }\n'
                    '}\n')
 
 
     def visitSMString(self, ss):
-        self.eltHeader(ss.name)
+        self.eltHeader(ss)
         self.needTruncated = True
         self.w('{\n')
         self.pushIndent(2)
@@ -917,15 +948,14 @@ class ParseFnGenerator(IndentingGenerator):
         self.w('tor_assert(eos >= ptr);\n')
         self.w('tor_assert((size_t)(eos - ptr) < SIZE_MAX - 1);\n')
         self.w('memlen = ((size_t)(eos - ptr)) + 1;\n')
-        self.w('obj->%s%s = tor_malloc(memlen);\n'%(self.prefix,ss.name))
-        self.w('memcpy(obj->%s%s, ptr, memlen);\n'%(self.prefix,ss.name))
+        self.w('obj->%s = tor_malloc(memlen);\n'%(ss.c_name))
+        self.w('memcpy(obj->%s, ptr, memlen);\n'%(ss.c_name))
         self.w('remaining -= memlen; ptr += memlen;\n')
         self.popIndent(2)
         self.w('}\n')
 
     def visitSMUnion(self, smu):
-        self.eltHeader(smu.name)
-        self.prefix = smu.name+"_"
+        self.eltHeader(smu)
         if smu.lengthfield is not None:
             self.w('{\n')
             self.pushIndent(2)
@@ -947,7 +977,6 @@ class ParseFnGenerator(IndentingGenerator):
             self.popIndent(2)
             self.w('}\n')
 
-        self.prefix = ""
 
     def visitUnionMember(self, um):
         self.pushIndent(2)
@@ -968,11 +997,11 @@ class ParseFnGenerator(IndentingGenerator):
     def visitUDStore(self, uds):
         lfield = self.curunion.lengthfield
         self.w('\n  default: {\n')
-        self.w('    /* On unmatched tag, store into %s%s */\n'%(self.prefix, uds.fieldname))
-        self.w('    obj->%s%s = tor_malloc(obj->%s);\n'
-               %(self.prefix,uds.fieldname,lfield))
-        self.w('    memcpy(obj->%s%s, ptr, obj->%s);\n'
-               %(self.prefix,uds.fieldname,lfield))
+        self.w('    /* On unmatched tag, store into %s */\n'%(uds.c_name))
+        self.w('    obj->%s = tor_malloc(obj->%s);\n'
+               %(uds.c_name,lfield))
+        self.w('    memcpy(obj->%s, ptr, obj->%s);\n'
+               %(uds.c_name,lfield))
         self.w('    remaining -= obj->%s; ptr += obj->%s;\n'%(lfield,lfield))
         self.w('  }\n')
         self.w('  break;\n')
@@ -1073,6 +1102,8 @@ if __name__ == '__main__':
     parsed = Grammar.Parser().parse(t)
     c = Checker()
     c.visit(parsed)
+
+    Annotator().visit(parsed)
 
     out_h = open(h_fname, 'w')
     macro = "TRUNNEL_"+os.path.split(h_fname)[1].upper().replace(".","_")
