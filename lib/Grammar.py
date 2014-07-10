@@ -169,13 +169,31 @@ class StructMember(AST):
     def __init__(self):
         self.annotation = None
 
+    def getName(self):
+        if hasattr(self, 'c_name'):
+            return self.c_name
+        else:
+            return self.name
+
 class IntType(AST):
     def __init__(self, width):
         self.width = width
 
+    def __str__(self):
+        return "u%s"%self.width
+
 class IntConstraint(AST):
     def __init__(self, ranges):
         self.ranges = ranges
+
+    def __str__(self):
+        return "[%s]"%(", ".join(self._rstr(lo,hi) for lo, hi in self.ranges))
+
+    def _rstr(self, lo, hi):
+        if lo == hi:
+            return str(lo)
+        else:
+            return "%s..%s"%(lo,hi)
 
 class SMInteger(StructMember):
     def __init__(self, inttype, name, constraints):
@@ -188,16 +206,28 @@ class SMInteger(StructMember):
         if self.constraints is not None:
             v.visit(self.constraints, *args)
 
+    def __str__(self):
+        cstr = ""
+        if self.constraints:
+            cstr = " IN %s" % self.constraints
+        return "%s %s%s"%(self.inttype, self.getName(), cstr)
+
 class SMStruct(StructMember):
     def __init__(self, structname, name):
         StructMember.__init__(self)
         self.structname = structname
         self.name = name
 
+    def __str__(self):
+        return "struct %s %s"%(self.structname, self.getName())
+
 class SMString(StructMember):
     def __init__(self, name):
         StructMember.__init__(self)
         self.name = name
+
+    def __str__(self):
+        return "nulterm %s"%self.getName()
 
 class SMFixedArray(StructMember):
     def __init__(self, basetype, name, width):
@@ -206,12 +236,27 @@ class SMFixedArray(StructMember):
         self.name = name
         self.width = width
 
+    def __str__(self):
+        struct = ""
+        if type(self.basetype) == str:
+            struct = "struct "
+
+        return "%s%s %s[%s]"%(struct, str(self.basetype), self.getName(), self.width)
+
 class SMVarArray(StructMember):
     def __init__(self, basetype, name, widthfield):
         StructMember.__init__(self)
         self.basetype = basetype
         self.name = name
         self.widthfield = widthfield
+
+    def __str__(self):
+        struct = ""
+        if type(self.basetype) == str:
+            struct = "struct "
+
+        return "%s%s %s[%s]"%(struct, str(self.basetype), self.getName(), self.widthfield)
+
 
 class SMUnion(StructMember):
     def __init__(self, name, tagfield, lengthfield, members, default):
@@ -221,6 +266,12 @@ class SMUnion(StructMember):
         self.lengthfield = lengthfield
         self.members = members
         self.default = default
+
+    def __str__(self):
+        lenf = ""
+        if self.lengthfield:
+            lenf = " WITH LENGTH %s"%self.lengthfield
+        return "union %s[%s]%s"%(self.getName(), self.tagfield, lenf)
 
     def visitChildren(self, v, *args):
         for m in self.members:

@@ -324,7 +324,7 @@ class IndentingGenerator(ASTVisitor):
 
     def eltHeader(self, element, skipLine=True):
         nl = ("\n" if skipLine else "")
-        self.w('%s/* %s %s */\n'%(nl, self.action, element.c_name))
+        self.w('%s/* %s %s */\n'%(nl, self.action, element))
 
 class DeclarationGenerationVisitor(IndentingGenerator):
     def __init__(self, sort_order, f):
