@@ -84,7 +84,7 @@ Additional constraints:
 
          StructEnding ::=
          StructEnding ::= eos ;
-         StructEnding ::= u8 ID [ ] ;
+         StructEnding ::= OptAnnotation u8 ID [ ] ;
 
          StructMembers ::= OptAnnotation StructMember ;
          StructMembers ::= StructMembers OptAnnotation StructMember ;

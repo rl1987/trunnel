@@ -367,8 +367,11 @@ class Parser(spark.GenericParser, object):
         return "EOS"
 
     def p_StructEnding_3(self, info):
-        " StructEnding ::= u8 ID [ ] ; "
-        return SMRemainder(str(info[1]))
+        " StructEnding ::= OptAnnotation u8 ID [ ] ; "
+        m = SMRemainder(info[2])
+        if info[0]:
+            m.annotation = str(info[0])
+        return m
 
     def p_StructMembers_1(self, info):
         " StructMembers ::= OptAnnotation StructMember ; "
