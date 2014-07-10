@@ -43,7 +43,7 @@ class IntLiteral(Token):
         self.value = int(value)
 
     def __str__(self):
-        return self.value
+        return str(self.value)
 
     def __repr__(self):
         return "IntLiteral(%r,%r)"%(self.value, self.lineno)
