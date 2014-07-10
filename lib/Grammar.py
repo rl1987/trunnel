@@ -368,7 +368,7 @@ class Parser(spark.GenericParser, object):
 
     def p_StructEnding_3(self, info):
         " StructEnding ::= OptAnnotation u8 ID [ ] ; "
-        m = SMRemainder(info[2])
+        m = SMRemainder(str(info[2]))
         if info[0]:
             m.annotation = str(info[0])
         return m

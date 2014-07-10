@@ -107,11 +107,14 @@ class Checker(ASTVisitor):
         self.structFieldNames = None
         self.structIntFieldNames = None
 
-    def visitSMInteger(self, smi):
-        if smi.name in self.structFieldNames:
+    def addMemberName(self, m):
+        if m in self.structFieldNames:
             raise CheckError("duplicate field %s.%s"%(self.structName,smi.name))
+        self.structFieldNames.add(m)
 
-        self.structFieldNames.add(smi.name)
+    def visitSMInteger(self, smi):
+        self.addMemberName(smi.name)
+
         self.structIntFieldNames[smi.name] = smi.inttype.width
 
         self.containing = "%s.%s"%(self.structName,smi.name)
@@ -125,10 +128,7 @@ class Checker(ASTVisitor):
         self.checkIntegerList(ic.ranges, maximum, None)
 
     def visitSMStruct(self, sms):
-        if sms.name in self.structFieldNames:
-            raise CheckError("duplicate field %s.%s"%(self.structName,sms.name))
-
-        self.structFieldNames.add(sms.name)
+        self.addMemberName(sms.name)
 
         if sms.structname not in self.structNames:
             raise CheckError("Unrecognized structure %s used in %s"%(
@@ -137,10 +137,7 @@ class Checker(ASTVisitor):
         self.structUses[self.structName].add(sms.structname)
 
     def visitSMFixedArray(self, sfa):
-        if sfa.name in self.structFieldNames:
-            raise CheckError("duplicate field %s.%s"%(self.structName,sfa.name))
-
-        self.structFieldNames.add(sfa.name)
+        self.addMemberName(sfa.name)
 
         if type(sfa.width) == str:
             self.expandConstant(sfa.width)
@@ -151,10 +148,7 @@ class Checker(ASTVisitor):
                     sfa.basetype,self.structName,sfa.name))
 
     def visitSMVarArray(self, sva):
-        if sva.name in self.structFieldNames:
-            raise CheckError("duplicate field %s.%s"%(self.structName,sfa.name))
-
-        self.structFieldNames.add(sva.name)
+        self.addMemberName(sva.name)
 
         self.checkIntField(sva.widthfield, "length", "%s.%s"%
                            (self.structName,sva.name))
@@ -165,22 +159,14 @@ class Checker(ASTVisitor):
                     sva.basetype,self.structName,sva.name))
 
     def visitSMString(self, sms):
-        if sms.name in self.structFieldNames:
-            raise CheckError("duplicate field %s.%s"%(self.structName,sms.name))
-
-        self.structFieldNames.add(sms.name)
+        self.addMemberName(sms.name)
 
     def visitSMRemainder(self, smr):
-        if smr.name in self.structFieldNames:
-            raise CheckError("duplicate field %s.%s"%(self.structName,smr.name))
-
-        self.structFieldNames.add(smr.name)
+        self.addMemberName(smr.name)
+        self.addMemberName(smr.name+"_len")
 
     def visitSMUnion(self, smu):
-        if smu.name in self.structFieldNames:
-            raise CheckError("duplicate field %s.%s"%(self.structName,smu.name))
-
-        self.structFieldNames.add(smu.name)
+        self.addMemberName(smu.name)
 
         self.checkIntField(smu.tagfield, "tag", "%s.%s"%
                            (self.structName,smu.name))
@@ -209,8 +195,7 @@ class Checker(ASTVisitor):
         self.unionTagMax = None
         self.containing = None
 
-        # Check union default FFFF
-
+        self.visit(smu.default)
 
     def visitUnionMember(self, um):
         self.checkIntegerList(um.tagvalue, self.unionTagMax, self.unionMatching)
@@ -225,6 +210,12 @@ class Checker(ASTVisitor):
         self.visit(um.decl)
         self.structIntFieldNames = saved
 
+    def visitUDFail(self, udf):
+        pass
+    def visitUDIgnore(self, udi):
+        pass
+    def visitUDStore(self, uds):
+        self.addMemberName(uds.fieldname)
 
     def checkIntegerList(self, lst, maximum, expandInto=None):
         for lo, hi in lst:
