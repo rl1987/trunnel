@@ -31,7 +31,7 @@ def _namelist(instance):
                 for b in c.__bases__:
                         classlist.append(b)
                 for name in c.__dict__.keys():
-                        if not namedict.has_key(name):
+                        if name not in namedict:
                                 namelist.append(name)
                                 namedict[name] = 1
         return namelist
@@ -57,10 +57,10 @@ class GenericScanner:
                                 rv.append(self.makeRE(name))
 
                 rv.append(self.makeRE('t_default'))
-                return string.join(rv, '|')
+                return "|".join(rv)
 
         def error(self, s, pos):
-                print "Lexical error at position %s" % pos
+                print( "Lexical error at position %s" % pos )
                 raise SystemExit
 
         def position(self, newpos=None):
@@ -82,12 +82,12 @@ class GenericScanner:
                         self.pos = m.end()
                         for i in range(len(groups)):
                                 if groups[i] is not None and \
-                                   self.index2func.has_key(i):
+                                   (i in self.index2func):
                                         self.index2func[i](groups[i])
 
         def t_default(self, s):
                 r'( . | \n )+'
-                print "Specification error: unmatched input"
+                print( "Specification error: unmatched input" )
                 raise SystemExit
 
 #
@@ -149,7 +149,7 @@ class GenericParser:
                         for k, v in self.edges.items():
                                 if v is None:
                                         state, sym = k
-                                        if self.states.has_key(state):
+                                        if state in self.states:
                                                 self.goto(state, sym)
                                                 changes = 1
                 rv = self.__dict__.copy()
@@ -180,7 +180,7 @@ class GenericParser:
 
         def addRule(self, doc, func, _preprocess=1):
                 fn = func
-                rules = string.split(doc)
+                rules = doc.split()
 
                 index = []
                 for i in range(len(rules)):
@@ -196,7 +196,7 @@ class GenericParser:
                         if _preprocess:
                                 rule, fn = self.preprocess(rule, func)
 
-                        if self.rules.has_key(lhs):
+                        if lhs in self.rules:
                                 self.rules[lhs].append(rule)
                         else:
                                 self.rules[lhs] = [ rule ]
@@ -234,7 +234,7 @@ class GenericParser:
                                 #  grammars.
                                 #
                                 for sym in rhs:
-                                        if not self.rules.has_key(sym):
+                                        if sym not in self.rules:
                                                 break
                                 else:
                                         tbd.append(rule)
@@ -277,7 +277,7 @@ class GenericParser:
                         n = len(rhs)
                         while i < n:
                                 sym = rhs[i]
-                                if not self.rules.has_key(sym) or \
+                                if (sym not in self.rules) or \
                                    not self.nullable[sym]:
                                         candidate = 0
                                         i = i + 1
@@ -294,7 +294,7 @@ class GenericParser:
                                 if candidate:
                                         lhs = self._NULLABLE+lhs
                                         rule = (lhs, rhs)
-                                if self.newrules.has_key(lhs):
+                                if lhs in self.newrules:
                                         self.newrules[lhs].append(rule)
                                 else:
                                         self.newrules[lhs] = [ rule ]
@@ -304,7 +304,7 @@ class GenericParser:
                 return None
 
         def error(self, token):
-                print "Syntax error at or near `%s' token" % token
+                print( "Syntax error at or near `%s' token" % token )
                 raise SystemExit
 
         def parse(self, tokens):
@@ -321,7 +321,7 @@ class GenericParser:
                         self.states = { 0: self.makeState0() }
                         self.makeState(0, self._BOF)
 
-                for i in xrange(len(tokens)):
+                for i in range(len(tokens)):
                         sets.append([])
 
                         if sets[i] == []:
@@ -350,7 +350,8 @@ class GenericParser:
                 #
                 return self._NULLABLE == sym[0:len(self._NULLABLE)]
 
-        def skip(self, (lhs, rhs), pos=0):
+        def skip(self, x, pos=0):
+                lhs, rhs = x
                 n = len(rhs)
                 while pos < n:
                         if not self.isnullable(rhs[pos]):
@@ -373,7 +374,7 @@ class GenericParser:
 
                 core.sort()
                 tcore = tuple(core)
-                if self.cores.has_key(tcore):
+                if tcore in self.cores:
                         return self.cores[tcore]
                 #
                 #  Nope, doesn't exist.  Compute it and the associated
@@ -397,13 +398,13 @@ class GenericParser:
 
                                 nextSym = rhs[pos]
                                 key = (X.stateno, nextSym)
-                                if not rules.has_key(nextSym):
-                                        if not edges.has_key(key):
+                                if nextSym not in rules:
+                                        if key not in edges:
                                                 edges[key] = None
                                                 X.T.append(nextSym)
                                 else:
                                         edges[key] = None
-                                        if not predicted.has_key(nextSym):
+                                        if nextSym not in predicted:
                                                 predicted[nextSym] = 1
                                                 for prule in rules[nextSym]:
                                                         ppos = self.skip(prule)
@@ -427,10 +428,10 @@ class GenericParser:
                 #  need to know the entire set of predicted nonterminals
                 #  to do this without accidentally duplicating states.
                 #
-                core = predicted.keys()
+                core = list( predicted.keys() )
                 core.sort()
                 tcore = tuple(core)
-                if self.cores.has_key(tcore):
+                if tcore in self.cores:
                         self.edges[(k, None)] = self.cores[tcore]
                         return k
 
@@ -441,7 +442,7 @@ class GenericParser:
 
         def goto(self, state, sym):
                 key = (state, sym)
-                if not self.edges.has_key(key):
+                if key not in self.edges:
                         #
                         #  No transitions from state on sym.
                         #
@@ -639,7 +640,7 @@ class GenericParser:
 
                 for i in range(len(rhs)-1, -1, -1):
                         sym = rhs[i]
-                        if not self.newrules.has_key(sym):
+                        if sym not in self.newrules:
                                 if sym != self._BOF:
                                         attr[i] = tokens[k-1]
                                         key = (item, k)
@@ -669,7 +670,7 @@ class GenericParser:
                         sortlist.append((len(rhs), name))
                         name2index[name] = i
                 sortlist.sort()
-                list = map(lambda (a,b): b, sortlist)
+                list = map(lambda x: x[1], sortlist)
                 return rules[name2index[self.resolve(list)]]
 
         def resolve(self, list):
@@ -834,15 +835,15 @@ class GenericASTMatcher(GenericParser):
 
 def _dump(tokens, sets, states):
         for i in range(len(sets)):
-                print 'set', i
+                print( 'set', i )
                 for item in sets[i]:
-                        print '\t', item
+                        print( '\t', item )
                         for (lhs, rhs), pos in states[item[0]].items:
-                                print '\t\t', lhs, '::=',
-                                print string.join(rhs[:pos]),
-                                print '.',
-                                print string.join(rhs[pos:])
+                                print( '\t\t', lhs, '::=', )
+                                print( string.join(rhs[:pos]), )
+                                print( '.', )
+                                print( string.join(rhs[pos:]) )
                 if i < len(tokens):
-                        print
-                        print 'token', str(tokens[i])
-                        print
+                        print()
+                        print( 'token', str(tokens[i]))
+                        print()
