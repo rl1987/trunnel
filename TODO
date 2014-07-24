@@ -18,8 +18,6 @@ FOR VERSION 1
   o Pass minimal inputs to struct parsing inside length-specified unions.
 
   . Add comments to output (passthrough)
-  - Add extra structure data fields and corresponding "clear" functions to
-    output.
 
   - Write some tests for the C code
   . Get complete coverage for generator
@@ -31,6 +29,9 @@ FOR VERSION 1
 
 
 FOR VERSION 1.1 OR LATER
+
+  - Add extra structure data fields and corresponding "clear" functions to
+    output.
 
   - Set length fields for length-having unions automatically.
 
