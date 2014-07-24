@@ -181,6 +181,7 @@ class Checker(ASTVisitor):
             self.checkIntField(smu.lengthfield, "length", "%s.%s"%
                                (self.structName,smu.name))
 
+        self.curunion = smu
         self.unionHasLength = smu.lengthfield is not None
         self.unionName = smu.name
         self.unionMatching = []
@@ -188,6 +189,7 @@ class Checker(ASTVisitor):
         self.containing = "%s.%s"%(self.structName,smu.name)
         self.memberPrefix = smu.name+"_"
         smu.visitChildren(self)
+        self.curunion = None
 
         self.unionMatching.sort()
         lasthi = -1
@@ -208,14 +210,10 @@ class Checker(ASTVisitor):
         if um.tagvalue is not None:
             self.checkIntegerList(um.tagvalue, self.unionTagMax, self.unionMatching)
 
-        if um.allow_extra and not self.unionHasLength:
-            raise CheckError("'...' found in union %s without a length field"%
-                             self.containing)
-
         # save list of int fields so that other declarations can't
         # depend on integers declared here.
         saved = self.structIntFieldNames.copy()
-        self.visit(um.decl)
+        um.visitChildren(self)
         self.structIntFieldNames = saved
 
     def visitSMNil(self, nil):
@@ -225,7 +223,9 @@ class Checker(ASTVisitor):
     def visitSMFail(self, fail):
         pass
     def visitSMIgnore(self, ignore):
-        pass
+        if self.curunion is not None and not self.unionHasLength:
+            raise CheckError("'...' found in union %s without a length field"%
+                             self.containing)
 
     def checkIntegerList(self, lst, maximum, expandInto=None):
         for lo, hi in lst:
@@ -793,17 +793,6 @@ class EncodeFnGenerator(IndentingGenerator):
         writeUnionMemberCaseLabel(self.w,um)
         self.pushIndent(2)
         um.visitChildren(self)
-        if um.allow_extra:
-            self.comment("Allow extra data at the end")
-            self.pushIndent(2)
-            self.w('if (written != written_at_end) {\n'
-                   '  tor_assert(written < written_at_end);\n'
-                   '  memset(ptr, 0, written_at_end - written);\n'
-                   '  ptr += (written_at_end - written);\n'
-                   '  written = written_at_end;\n'
-                   '}\n')
-            self.popIndent(2)
-
         self.w("break;\n")
         self.popIndent(2)
         self.popIndent(2)
@@ -811,7 +800,16 @@ class EncodeFnGenerator(IndentingGenerator):
     def visitSMFail(self, udf):
         self.w('tor_assert(0);\n');
     def visitSMIgnore(self, udi):
-        pass
+        self.comment("Allow extra data at the end")
+        self.pushIndent(2)
+        self.w('if (written != written_at_end) {\n'
+               '  tor_assert(written < written_at_end);\n'
+               '  memset(ptr, 0, written_at_end - written);\n'
+               '  ptr += (written_at_end - written);\n'
+               '  written = written_at_end;\n'
+               '}\n')
+        self.popIndent(2)
+
     def visitSMNil(self, nil):
         pass
     def visitSMEos(self, eos):
@@ -1030,13 +1028,6 @@ class ParseFnGenerator(IndentingGenerator):
         writeUnionMemberCaseLabel(self.w,um)
         self.pushIndent(2)
         um.visitChildren(self)
-        if um.allow_extra:
-            self.pushIndent(4)
-            self.comment("Allow extra data at the end")
-            self.w('if (remaining != 0) {\n'
-                   '  ptr += remaining; remaining = 0;\n'
-                   '}\n')
-            self.popIndent(4)
         self.w("break;\n")
         self.popIndent(2)
         self.popIndent(2)

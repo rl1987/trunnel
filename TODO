@@ -19,15 +19,22 @@ FOR VERSION 1
 
   . Add comments to output (passthrough)
 
+  . Identify and remove as many special cases as possible
+    o Default: stuff.
+    o At-end stuff.
+    - Allow more things in unions.
+
+  - Access functions
+    - for unions?
+    - for array members?
+
   - Set length fields for length-having unions automatically.
 
   - Write some tests for the C code
   . Get complete coverage for generator
   - Get complete coverage on generated code made by complete-coverage
     generator
-  . Identify and remove as many special cases as possible
-    . Default: stuff.
-    . At-end stuff.
+
 
   - Document it.
     - Explain that I don't care about things that need backtracking

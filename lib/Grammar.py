@@ -283,14 +283,14 @@ class SMUnion(StructMember):
             v.visit(m, *args)
 
 class UnionMember(AST):
-    def __init__(self, tagvalue, decl, allow_extra):
+    def __init__(self, tagvalue, decls):
         self.tagvalue = tagvalue
-        self.decl = decl
-        self.allow_extra = allow_extra
+        self.decls = decls
         self.is_default = (tagvalue is None)
 
     def visitChildren(self, v, *args):
-        v.visit(self.decl, *args)
+        for d in self.decls:
+            v.visit(d, *args)
 
 class SMFail(StructMember):
     pass
@@ -358,7 +358,7 @@ class Parser(spark.GenericParser, object):
 
     def p_StructEnding_2(self, info):
         " StructEnding ::= ... "
-        return SMIgnore()
+        return None
 
     def p_StructEnding_3(self, info):
         " StructEnding ::= SMRemainder "
@@ -519,7 +519,10 @@ class Parser(spark.GenericParser, object):
     def p_UnionMember(self, info):
         " UnionMember ::= IntList : UnionField OptExtentSpec "
         tagvals, _, field, extends = info
-        return UnionMember(tagvals, field, extends)
+        members = [ field ]
+        if extends:
+            members.append(SMIgnore())
+        return UnionMember(tagvals, members)
 
     def p_OptExtentSpec_1(self, info):
         " OptExtentSpec ::= "
@@ -543,18 +546,18 @@ class Parser(spark.GenericParser, object):
 
     def p_OptUMDefault_0(self, info):
         " OptUMDefault ::= "
-        return UnionMember(None, SMFail(), False)
+        return UnionMember(None, [ SMFail() ])
 
     def p_OptUMDefault_1(self, info):
         " OptUMDefault ::= default : SMRemainder "
-        return UnionMember(None, info[2], False)
+        return UnionMember(None, [ info[2] ])
 
     def p_OptUMDefault_2(self, info):
         " OptUMDefault ::= default : fail ; "
-        return UnionMember(None, SMFail(), False)
+        return UnionMember(None, [ SMFail() ])
 
     def p_OptUMDefault_3(self, info):
         " OptUMDefault ::= default : ignore ; "
-        return UnionMember(None, SMNil(), True)
+        return UnionMember(None, [ SMIgnore() ])
 
 
