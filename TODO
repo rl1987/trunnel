@@ -19,11 +19,18 @@ FOR VERSION 1
 
   . Add comments to output (passthrough)
 
+  - Set length fields for length-having unions automatically.
+
   - Write some tests for the C code
   . Get complete coverage for generator
   - Get complete coverage on generated code made by complete-coverage
     generator
+  . Identify and remove as many special cases as possible
+    . Default: stuff.
+    . At-end stuff.
+
   - Document it.
+    - Explain that I don't care about things that need backtracking
 
   o Allow "u8 until_end[];" in eos position.
 
@@ -33,8 +40,8 @@ FOR VERSION 1.1 OR LATER
   - Add extra structure data fields and corresponding "clear" functions to
     output.
 
-  - Set length fields for length-having unions automatically.
-
   - Do we need 'struct x until_end[];' ?
 
   - Extend checker to simplify?  Eg ranges.  C field names.
+
+  - Write a thing to output nail grammars.

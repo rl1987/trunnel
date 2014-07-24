@@ -149,10 +149,9 @@ class File(AST):
             v.visit(self.declarationsByName[name], *args)
 
 class StructDecl(AST):
-    def __init__(self, name, members, eos=False):
+    def __init__(self, name, members):
         self.name = name
         self.members = members
-        self.eos = eos
         self.annotation = None
 
     def visitChildren(self, v, *args):
@@ -266,13 +265,12 @@ class SMRemainder(StructMember):
         return "u8 %s[]"%(self.getName())
 
 class SMUnion(StructMember):
-    def __init__(self, name, tagfield, lengthfield, members, default):
+    def __init__(self, name, tagfield, lengthfield, members):
         StructMember.__init__(self)
         self.name = name
         self.tagfield = tagfield
         self.lengthfield = lengthfield
         self.members = members
-        self.default = default
 
     def __str__(self):
         lenf = ""
@@ -289,23 +287,22 @@ class UnionMember(AST):
         self.tagvalue = tagvalue
         self.decl = decl
         self.allow_extra = allow_extra
+        self.is_default = (tagvalue is None)
 
     def visitChildren(self, v, *args):
         v.visit(self.decl, *args)
 
-class UnionDefault(AST):
+class SMFail(StructMember):
     pass
 
-class UDStore(UnionDefault):
-    def __init__(self, fieldname):
-        self.fieldname = fieldname
-
-class UDFail(UnionDefault):
+class SMNil(StructMember):
     pass
 
-class UDIgnore(UnionDefault):
+class SMEos(StructMember):
     pass
 
+class SMIgnore(StructMember):
+    pass
 
 class Parser(spark.GenericParser, object):
     def __init__(self):
@@ -350,25 +347,25 @@ class Parser(spark.GenericParser, object):
     def p_StructDecl(self, info):
         " StructDecl ::= struct ID { StructMembers StructEnding } "
         _0, name, _1, members, ending, _2 = info
-        if isinstance(ending, SMRemainder):
+        if ending is not None:
             members.append(ending)
-            eos = False
-        else:
-            assert(isinstance(ending, bool))
-            eos = ending
 
-        return StructDecl(str(name), members, eos)
+        return StructDecl(str(name), members)
 
     def p_StructEnding_1(self, info):
         " StructEnding ::= "
-        return True
+        return SMEos()
 
     def p_StructEnding_2(self, info):
         " StructEnding ::= ... "
-        return False
+        return SMIgnore()
 
     def p_StructEnding_3(self, info):
-        " StructEnding ::= OptAnnotation u8 ID [ ] ; "
+        " StructEnding ::= SMRemainder "
+        return info[0]
+
+    def p_SMRemainder(self, info):
+        " SMRemainder ::= OptAnnotation u8 ID [ ] ; "
         m = SMRemainder(str(info[2]))
         if info[0]:
             m.annotation = str(info[0])
@@ -497,8 +494,9 @@ class Parser(spark.GenericParser, object):
 
     def p_SMUnion(self, info):
         " SMUnion ::= union ID [ ID ] OptUnionLength { UnionMembers OptUMDefault } "
-        _1, unionfield, _2, tagfield, _3, optlength, _4, members, optdefaults, _5, = info
-        return SMUnion(str(unionfield), str(tagfield), optlength, members, optdefaults)
+        _1, unionfield, _2, tagfield, _3, optlength, _4, members, optdefault, _5, = info
+        members.append(optdefault)
+        return SMUnion(str(unionfield), str(tagfield), optlength, members)
 
     def p_OptUnionLength_1(self, info):
         " OptUnionLength ::= "
@@ -545,19 +543,18 @@ class Parser(spark.GenericParser, object):
 
     def p_OptUMDefault_0(self, info):
         " OptUMDefault ::= "
-        return UDFail()
+        return UnionMember(None, SMFail(), False)
 
     def p_OptUMDefault_1(self, info):
-        " OptUMDefault ::= default : UMDefaultField ; "
-        return info[2]
+        " OptUMDefault ::= default : SMRemainder "
+        return UnionMember(None, info[2], False)
 
-    def p_UMDefaultField_0(self, info):
-        " UMDefaultField ::= u8 ID [ ] "
-        return UDStore(info[1])
-    def p_UMDefaultField_1(self, info):
-        " UMDefaultField ::= fail "
-        return UDFail()
-    def p_UMDefaultField_2(self, info):
-        " UMDefaultField ::= ignore "
-        return UDIgnore()
+    def p_OptUMDefault_2(self, info):
+        " OptUMDefault ::= default : fail ; "
+        return UnionMember(None, SMFail(), False)
+
+    def p_OptUMDefault_3(self, info):
+        " OptUMDefault ::= default : ignore ; "
+        return UnionMember(None, SMNil(), True)
+
 

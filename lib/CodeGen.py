@@ -198,8 +198,6 @@ class Checker(ASTVisitor):
             assert hi >= lo
             lasthi = hi
 
-        self.visit(smu.default)
-
         self.memberPrefix = ""
         self.unionName = None
         self.unionMatching = None
@@ -207,7 +205,8 @@ class Checker(ASTVisitor):
         self.containing = None
 
     def visitUnionMember(self, um):
-        self.checkIntegerList(um.tagvalue, self.unionTagMax, self.unionMatching)
+        if um.tagvalue is not None:
+            self.checkIntegerList(um.tagvalue, self.unionTagMax, self.unionMatching)
 
         if um.allow_extra and not self.unionHasLength:
             raise CheckError("'...' found in union %s without a length field"%
@@ -219,12 +218,14 @@ class Checker(ASTVisitor):
         self.visit(um.decl)
         self.structIntFieldNames = saved
 
-    def visitUDFail(self, udf):
+    def visitSMNil(self, nil):
         pass
-    def visitUDIgnore(self, udi):
+    def visitSMEos(self, eos):
         pass
-    def visitUDStore(self, uds):
-        self.addMemberName(uds.fieldname)
+    def visitSMFail(self, fail):
+        pass
+    def visitSMIgnore(self, ignore):
+        pass
 
     def checkIntegerList(self, lst, maximum, expandInto=None):
         for lo, hi in lst:
@@ -295,16 +296,18 @@ class Annotator(ASTVisitor):
         self.annotateMember(smu)
         self.prefix = smu.name + "_"
         smu.visitChildren(self)
-        self.visit(smu.default)
         self.prefix = ""
     def visitUnionMember(self, um):
         um.visitChildren(self)
-    def visitUDFail(self, uf):
+    def visitSMNil(self, nil):
         pass
-    def visitUDIgnore(self, ui):
+    def visitSMFail(self, fail):
         pass
-    def visitUDStore(self, us):
-        us.c_name = "%s%s" % (self.prefix, us.fieldname)
+    def visitSMEos(self, eos):
+        pass
+    def visitSMIgnore(self, ignore):
+        pass
+
 
 class IndentingGenerator(ASTVisitor):
     def __init__(self, writefn):
@@ -407,12 +410,18 @@ class DeclarationGenerationVisitor(IndentingGenerator):
             self.w(smu.annotation)
 
         smu.visitChildren(self)
-        if isinstance(smu.default, Grammar.UDStore):
-            self.w("uint8_t *%s;\n"% smu.default.c_name)
 
     def visitUnionMember(self, um):
         um.visitChildren(self)
 
+    def visitSMNil(self, nil):
+        pass
+    def visitSMFail(self, fail):
+        pass
+    def visitSMEos(self, eos):
+        pass
+    def visitSMIgnore(self, ignore):
+        pass
 
 class PrototypeGenerationVisitor(IndentingGenerator):
     def __init__(self, sort_order, f, static=False):
@@ -491,11 +500,17 @@ class FreeFnGenerator(IndentingGenerator):
         self.w("tor_free(obj->%s);\n"%(smr.c_name))
     def visitSMUnion(self, smu):
         smu.visitChildren(self)
-        if isinstance(smu.default, Grammar.UDStore):
-            self.w("tor_free(obj->%s);\n"%(smu.default.c_name))
     def visitUnionMember(self, um):
         um.visitChildren(self)
 
+    def visitSMNil(self, nil):
+        pass
+    def visitSMEos(self, eos):
+        pass
+    def visitSMFail(self, fail):
+        pass
+    def visitSMIgnore(self, ignore):
+        pass
 
 
 class CheckFnGenerator(IndentingGenerator):
@@ -556,8 +571,6 @@ class CheckFnGenerator(IndentingGenerator):
     def visitSMUnion(self, smu):
         self.w('switch (obj->%s) {\n'%smu.tagfield)
         smu.visitChildren(self)
-        self.visit(smu.default)
-
         self.w("}\n")
 
     def visitUnionMember(self, um):
@@ -569,23 +582,25 @@ class CheckFnGenerator(IndentingGenerator):
         self.popIndent(2)
         self.w("    break;\n")
 
-    def visitUDStore(self, uds):
-        self.pushIndent(2)
-        self.w(('default:\n'
-                '  if (NULL == obj->%s)\n'
-                '    return "Missing %s";\n'
-                '  break;\n')%(
-                    uds.c_name, uds.c_name))
-        self.popIndent(2)
-    def visitUDFail(self, udf):
-        self.pushIndent(2)
-        self.w('default:\n  return "Bad tag for union";\n')
-        self.popIndent(2)
-    def visitUDIgnore(self, udi):
+
+    def visitSMNil(self, nil):
         pass
+    def visitSMEos(self, eos):
+        pass
+    def visitSMIgnore(self, ignore):
+        pass
+    def visitSMFail(self, fail):
+        self.pushIndent(2)
+        self.w('return "Bad tag for union";\n')
+        self.popIndent(2)
+
 
 def writeUnionMemberCaseLabel(w, um):
     w("\n")
+    if um.tagvalue == None:
+        w("default:\n")
+        return
+
     for lo, hi in um.tagvalue:
         if lo == hi:
             w("case %s:\n"%lo)
@@ -767,7 +782,6 @@ class EncodeFnGenerator(IndentingGenerator):
             self.w('written_at_end = written + obj->%s;\n'%smu.lengthfield)
         self.w('switch (obj->%s) {\n'%smu.tagfield)
         smu.visitChildren(self)
-        self.visit(smu.default)
         self.w("}\n")
         if smu.lengthfield is not None:
             self.w('if (written != written_at_end)\n  goto fail;\n')
@@ -794,12 +808,13 @@ class EncodeFnGenerator(IndentingGenerator):
         self.popIndent(2)
         self.popIndent(2)
 
-    def visitUDStore(self, uds):
-        # FFFF can this be done safely?
-        self.w('  default:\n    goto fail;\n')
-    def visitUDFail(self, udf):
-        self.w('  default: tor_assert(0);\n');
-    def visitUDIgnore(self, udi):
+    def visitSMFail(self, udf):
+        self.w('tor_assert(0);\n');
+    def visitSMIgnore(self, udi):
+        pass
+    def visitSMNil(self, nil):
+        pass
+    def visitSMEos(self, eos):
         pass
 
 
@@ -819,9 +834,6 @@ class ParseFnGenerator(IndentingGenerator):
         self.needOverflow = False
         self.needTruncated = False
         sd.visitChildren(self)
-
-        if sd.eos:
-            self.w('if (remaining)\n  goto fail;')
 
         self.w('return len_in - remaining;\n\n')
 
@@ -1004,7 +1016,6 @@ class ParseFnGenerator(IndentingGenerator):
         self.w('switch (obj->%s) {\n'%smu.tagfield)
         self.curunion = smu
         smu.visitChildren(self)
-        self.visit(smu.default)
         self.w("}\n")
         if smu.lengthfield is not None:
             self.w('if (remaining != 0)\n'
@@ -1030,24 +1041,15 @@ class ParseFnGenerator(IndentingGenerator):
         self.popIndent(2)
         self.popIndent(2)
 
-    def visitUDStore(self, uds):
-        lfield = self.curunion.lengthfield
-        self.w('\n  default: {\n')
-        self.w('    /* On unmatched tag, store into %s */\n'%(uds.c_name))
-        self.w('    obj->%s = tor_malloc(obj->%s);\n'
-               %(uds.c_name,lfield))
-        self.w('    memcpy(obj->%s, ptr, obj->%s);\n'
-               %(uds.c_name,lfield))
-        self.w('    remaining -= obj->%s; ptr += obj->%s;\n'%(lfield,lfield))
-        self.w('  }\n')
-        self.w('  break;\n')
-
-    def visitUDFail(self, udf):
-        self.w('\n  default:\n    goto fail;')
-    def visitUDIgnore(self, udi):
-        # XXXX advance pointer and remaining
+    def visitSMNil(self, nil):
         pass
-
+    def visitSMEos(self, eos):
+        self.w('if (remaining)\n  goto fail;\n')
+    def visitSMFail(self, udf):
+        self.w('goto fail;\n')
+    def visitSMIgnore(self, udi):
+        self.w('/* Skip to end of union */\n')
+        self.w('ptr += remaining; remaining = 0;\n')
 
 HEADER_BOILERPLATE = """
 /* %(fname)s -- generated by trunnel. */
