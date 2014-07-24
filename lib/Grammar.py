@@ -517,9 +517,8 @@ class Parser(spark.GenericParser, object):
         return lst
 
     def p_UnionMember(self, info):
-        " UnionMember ::= IntList : UnionField OptExtentSpec "
-        tagvals, _, field, extends = info
-        members = [ field ]
+        " UnionMember ::= IntList : UnionFields OptExtentSpec "
+        tagvals, _, members, extends = info
         if extends:
             members.append(SMIgnore())
         return UnionMember(tagvals, members)
@@ -530,6 +529,16 @@ class Parser(spark.GenericParser, object):
     def p_OptExtentSpec_2(self, info):
         " OptExtentSpec ::= ... "
         return True
+
+    def p_UnionFields_1(self, info):
+        " UnionFields ::= UnionField "
+        return [ info[0] ]
+
+    def p_UnionFields_2(self, info):
+        " UnionFields ::= UnionFields UnionField "
+        fields, field = info
+        fields.append(field)
+        return fields
 
     def p_UnionField_1(self, info):
         " UnionField ::= SMInteger "

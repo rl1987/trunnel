@@ -19,10 +19,10 @@ FOR VERSION 1
 
   . Add comments to output (passthrough)
 
-  . Identify and remove as many special cases as possible
+  o Identify and remove as many special cases as possible
     o Default: stuff.
     o At-end stuff.
-    - Allow more things in unions.
+    o Allow more things in unions.
 
   - Access functions
     - for unions?
