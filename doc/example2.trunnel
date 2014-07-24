@@ -66,8 +66,8 @@ const T_COLOR = 1;
 const T_DATE = 2;
 const T_INTEGER = 3;
 const T_INTARRAY = 4;
-const T_VARARRAY = 4;
-const T_STRING = 5;
+const T_VARARRAY = 5;
+const T_STRING = 6;
 
 // We support tagged unions.  They can appear within a structure; not
 // at toplevel.
