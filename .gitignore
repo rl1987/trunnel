@@ -4,5 +4,8 @@
 *.o
 *,cover
 
+/test/valid/*.[ch]
+/doc/*.[ch]
+
 /.coverage
 /tests.log

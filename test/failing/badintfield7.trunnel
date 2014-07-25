@@ -1,0 +1,11 @@
+
+struct x {
+   u8 a;
+
+   union u[a] WITH LENGTH b {
+     1 : u8 x;
+     2 : u16 y;
+   };
+   u8 b;
+}
+
