@@ -358,11 +358,11 @@ class Parser(spark.GenericParser, object):
         return None
 
     def p_StructEnding_3(self, info):
-        " StructEnding ::= SMRemainder "
+        " StructEnding ::= SMRemainder ; "
         return info[0]
 
     def p_SMRemainder(self, info):
-        " SMRemainder ::= OptAnnotation u8 ID [ ] ; "
+        " SMRemainder ::= OptAnnotation u8 ID [ ] "
         m = SMRemainder(str(info[2]))
         if info[0]:
             m.annotation = str(info[0])
@@ -516,24 +516,27 @@ class Parser(spark.GenericParser, object):
     def p_UnionMember(self, info):
         " UnionMember ::= IntList : UnionFields OptExtentSpec "
         tagvals, _, members, extends = info
-        if extends:
-            members.append(SMIgnore())
+        if extends is not None:
+            members.append(extends)
         return UnionMember(tagvals, members)
 
     def p_OptExtentSpec_1(self, info):
         " OptExtentSpec ::= "
-        return False
+        return None
     def p_OptExtentSpec_2(self, info):
         " OptExtentSpec ::= ... "
-        return True
+        return SMIgnore()
+    def p_OptExtendSpec_3(self, info):
+        " OptExtentSpec ::= ; SMRemainder "
+        return info[1]
 
     def p_UnionFields_1(self, info):
         " UnionFields ::= UnionField "
         return [ info[0] ]
 
     def p_UnionFields_2(self, info):
-        " UnionFields ::= UnionFields UnionField "
-        fields, field = info
+        " UnionFields ::= UnionFields ; UnionField "
+        fields, _, field = info
         fields.append(field)
         return fields
 
@@ -555,7 +558,7 @@ class Parser(spark.GenericParser, object):
         return UnionMember(None, [ SMFail() ])
 
     def p_OptUMDefault_1(self, info):
-        " OptUMDefault ::= default : SMRemainder "
+        " OptUMDefault ::= default : SMRemainder ; "
         return UnionMember(None, [ info[2] ])
 
     def p_OptUMDefault_2(self, info):
