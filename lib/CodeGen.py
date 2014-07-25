@@ -1117,6 +1117,10 @@ if __name__ == '__main__':
     import sys
     import os
 
+    if len(sys.argv) != 2:
+        sys.stderr.write("Syntax: CodeGen.py <fname>\n")
+        sys.exit(1)
+
     input_fname = sys.argv[1]
     basename = input_fname
     if basename.endswith(".trunnel"):
