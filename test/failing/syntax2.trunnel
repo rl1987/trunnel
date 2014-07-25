@@ -1,0 +1,5 @@
+
+struct bad {
+   u8 foo
+   u16 bar
+}

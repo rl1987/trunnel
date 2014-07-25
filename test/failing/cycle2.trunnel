@@ -1,0 +1,8 @@
+
+struct x {
+  struct y z;
+}
+
+struct y {
+  struct x z;
+}

@@ -1,0 +1,6 @@
+const Y = 20;
+const Y = 20;
+
+struct z {
+  u8 x[Y];
+}

@@ -1,0 +1,9 @@
+
+struct y {
+  u8 z;
+}
+
+struct x {
+  u8 a;
+  struct y a;
+}

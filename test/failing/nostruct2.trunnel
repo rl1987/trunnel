@@ -1,0 +1,4 @@
+
+struct x {
+  struct y yy[8];
+}

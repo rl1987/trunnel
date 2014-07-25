@@ -1,0 +1,9 @@
+
+
+struct x {
+  u8 a;
+  union u[a] {
+   4: u8 a;
+   6: u8 b;
+  };
+}

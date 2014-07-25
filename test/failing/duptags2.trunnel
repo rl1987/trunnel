@@ -1,0 +1,11 @@
+
+const THREE = 3;
+
+struct x {
+
+   u8 a;
+   union u[a] {
+     3 : u16 y;
+     THREE : u32 z;
+   };
+}

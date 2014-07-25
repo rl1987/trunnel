@@ -1,0 +1,4 @@
+
+struct x {
+   u8 b[a];
+}

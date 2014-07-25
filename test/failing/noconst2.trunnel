@@ -1,0 +1,10 @@
+
+const Y = 100;
+
+struct x {
+  u8 a;
+  union u[a] {
+    Y : u16 y;
+    Z : u32 z;
+  };
+}
