@@ -29,7 +29,7 @@ for fn in `dirname $0`/valid/*.trunnel; do
   echo >>tests.log "==== $fn"
   $RUN $TRUNNEL $fn 2>>tests.log || echo "FAILED: $fn"
   CNAME=`echo $fn | sed -e 's/trunnel$/c/'`
-  $CC $CFLAGS -c CNAME || echo "FAILED: $CC $CFLAGS $fn"
+  $CC $CFLAGS -c $CNAME || echo "FAILED: $CC $CFLAGS $fn"
 done
 
 $COVERAGE report $TRUNNEL $GRAMMAR

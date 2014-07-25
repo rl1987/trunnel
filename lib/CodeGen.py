@@ -154,6 +154,8 @@ class Checker(ASTVisitor):
                 raise CheckError("Unrecognized structure %s used in %s.%s"%(
                     sfa.basetype,self.structName,sfa.name))
 
+            self.structUses[self.structName].add(sfa.basetype)
+
     def visitSMVarArray(self, sva):
         self.addMemberName(sva.name)
 
@@ -164,6 +166,8 @@ class Checker(ASTVisitor):
             if sva.basetype not in self.structNames:
                 raise CheckError("Unrecognized structure %s used in %s.%s"%(
                     sva.basetype,self.structName,sva.name))
+
+            self.structUses[self.structName].add(sva.basetype)
 
     def visitSMString(self, sms):
         self.addMemberName(sms.name)
