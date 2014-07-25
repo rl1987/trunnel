@@ -295,9 +295,6 @@ class UnionMember(AST):
 class SMFail(StructMember):
     pass
 
-class SMNil(StructMember):
-    pass
-
 class SMEos(StructMember):
     pass
 

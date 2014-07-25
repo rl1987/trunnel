@@ -216,8 +216,6 @@ class Checker(ASTVisitor):
         um.visitChildren(self)
         self.structIntFieldNames = saved
 
-    def visitSMNil(self, nil):
-        pass
     def visitSMEos(self, eos):
         pass
     def visitSMFail(self, fail):
@@ -299,8 +297,6 @@ class Annotator(ASTVisitor):
         self.prefix = ""
     def visitUnionMember(self, um):
         um.visitChildren(self)
-    def visitSMNil(self, nil):
-        pass
     def visitSMFail(self, fail):
         pass
     def visitSMEos(self, eos):
@@ -414,8 +410,6 @@ class DeclarationGenerationVisitor(IndentingGenerator):
     def visitUnionMember(self, um):
         um.visitChildren(self)
 
-    def visitSMNil(self, nil):
-        pass
     def visitSMFail(self, fail):
         pass
     def visitSMEos(self, eos):
@@ -503,8 +497,6 @@ class FreeFnGenerator(IndentingGenerator):
     def visitUnionMember(self, um):
         um.visitChildren(self)
 
-    def visitSMNil(self, nil):
-        pass
     def visitSMEos(self, eos):
         pass
     def visitSMFail(self, fail):
@@ -583,8 +575,6 @@ class CheckFnGenerator(IndentingGenerator):
         self.w("    break;\n")
 
 
-    def visitSMNil(self, nil):
-        pass
     def visitSMEos(self, eos):
         pass
     def visitSMIgnore(self, ignore):
@@ -810,8 +800,6 @@ class EncodeFnGenerator(IndentingGenerator):
                '}\n')
         self.popIndent(2)
 
-    def visitSMNil(self, nil):
-        pass
     def visitSMEos(self, eos):
         pass
 
@@ -1032,8 +1020,6 @@ class ParseFnGenerator(IndentingGenerator):
         self.popIndent(2)
         self.popIndent(2)
 
-    def visitSMNil(self, nil):
-        pass
     def visitSMEos(self, eos):
         self.w('if (remaining)\n  goto fail;\n')
     def visitSMFail(self, udf):
