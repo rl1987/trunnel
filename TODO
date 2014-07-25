@@ -17,7 +17,7 @@ FOR VERSION 1
 
   o Pass minimal inputs to struct parsing inside length-specified unions.
 
-  . Add comments to output (passthrough)
+  o Add comments to output (passthrough)
 
   o Identify and remove as many special cases as possible
     o Default: stuff.
@@ -31,10 +31,9 @@ FOR VERSION 1
   - Set length fields for length-having unions automatically.
 
   - Write some tests for the C code
-  . Get complete coverage for generator
+  o Get complete coverage for generator
   - Get complete coverage on generated code made by complete-coverage
     generator
-
 
   - Document it.
     - Explain that I don't care about things that need backtracking
