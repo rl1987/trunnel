@@ -4,13 +4,16 @@ MORE_CFLAGS=-fno-inline --coverage
 CC=gcc
 CFLAGS=-g -O2 -D_FORTIFY_SOURCE=2 -Qunused-arguments -fstack-protector-all -Wstack-protector -fwrapv --param ssp-buffer-size=1 -fPIE -fasynchronous-unwind-tables -Wall -fno-strict-aliasing -Wno-deprecated-declarations -W -Wfloat-equal -Wundef -Wpointer-arith -Wstrict-prototypes -Wmissing-prototypes -Wwrite-strings -Wredundant-decls -Wchar-subscripts -Wcomment -Wformat=2 -Wwrite-strings -Wmissing-declarations -Wredundant-decls -Wnested-externs -Wbad-function-cast -Wswitch-enum -Werror -Winit-self -Wmissing-field-initializers -Wdeclaration-after-statement -Wold-style-definition -Waddress -Wmissing-noreturn -Wstrict-overflow=1 -Wshorten-64-to-32 -I . $(MORE_CFLAGS)
 
-
-OBJS=tinytest/tinytest.o \
+TEST_OBJS = \
     c/test.o \
     c/test_numbers.o \
     c/test_restricted.o \
     c/test_strings.o \
-    valid/basic.o
+    c/test_eos.o
+
+OBJS=tinytest/tinytest.o \
+    valid/basic.o \
+    $(TEST_OBJS)
 
 all: ctest
 
@@ -30,10 +33,7 @@ test: ctest
 	./ctest
 
 valid/basic.o: valid/basic.h valid/basic.c
-c/test.o: tinytest/tinytest.h tinytest/tinytest_macros.h valid/basic.h
-c/test_numbers.o: tinytest/tinytest.h tinytest/tinytest_macros.h valid/basic.h
-c/test_restricted.o: tinytest/tinytest.h tinytest/tinytest_macros.h valid/basic.h
-c/test_strings.o: tinytest/tinytest.h tinytest/tinytest_macros.h valid/basic.h
+$(TEST_OBJS) : tinytest/tinytest.h tinytest/tinytest_macros.h valid/basic.h
 tinytest/tinytest.o: tinytest/tinytest.h tinytest/tinytest_macros.h
 
 valid/basic.c valid/basic.h: valid/basic.trunnel

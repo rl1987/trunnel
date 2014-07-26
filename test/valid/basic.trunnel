@@ -118,7 +118,6 @@ struct union4 {
    };
 }
 
-
 struct extends {
    nulterm a;
    /** The rest of this thing. */
