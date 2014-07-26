@@ -25,6 +25,7 @@ struct nested {
    /** A structure in a structure */
    struct numbers num1;
    struct numbers num2;
+   struct strings strs;
    struct restricted res;
 }
 

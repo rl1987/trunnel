@@ -5,6 +5,8 @@ struct testgroup_t test_groups[] = {
   { "restricted/", restricted_tests },
   { "strings/", strings_tests },
   { "uses-eos/", eos_tests, },
+  { "extends/", extends_tests, },
+  { "nested/", nested_tests, },
   END_OF_GROUPS,
 };
 

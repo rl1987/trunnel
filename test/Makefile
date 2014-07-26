@@ -9,7 +9,9 @@ TEST_OBJS = \
     c/test_numbers.o \
     c/test_restricted.o \
     c/test_strings.o \
-    c/test_eos.o
+    c/test_eos.o \
+    c/test_extends.o \
+    c/test_nested.o
 
 OBJS=tinytest/tinytest.o \
     valid/basic.o \
