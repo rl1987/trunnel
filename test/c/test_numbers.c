@@ -13,8 +13,6 @@ test_num_truncated(void *arg)
     tt_int_op(-2, ==, numbers_parse(&out, buf, i));
     tt_ptr_op(NULL, ==, out);
   }
-  tt_int_op(-1, ==, numbers_parse(&out, buf, 16));
-  tt_ptr_op(NULL, ==, out);
 
   /* Success */
   tt_int_op(15, ==, numbers_parse(&out, buf, 15));
@@ -50,7 +48,7 @@ test_num_encdec(void *arg)
   numbers_t *out = NULL;
   (void)arg;
 
-  tt_int_op(15, ==, numbers_parse(&out, buf, 15));
+  tt_int_op(15, ==, numbers_parse(&out, buf, 16));
   tt_ptr_op(out, !=, 0);
   tt_uint_op(out->i8, ==, 0);
   tt_uint_op(out->i16, ==, 0);

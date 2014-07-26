@@ -28,6 +28,12 @@ struct nested {
    struct restricted res;
 }
 
+struct uses_eos {
+  u16 a;
+  u16 b;
+  eos;
+}
+
 struct fixed {
    /** A fixed array */
    u8  a8[4];
