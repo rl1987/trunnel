@@ -523,7 +523,13 @@ class CheckFnGenerator(IndentingGenerator):
         self.popIndent(2)
         self.w("}\n\n")
     def visitSMInteger(self, smi):
-        pass
+        if smi.constraints is not None:
+            v = "obj->%s"%smi.c_name
+            expr = intConstraintExpression(v, smi.constraints.ranges)
+
+            self.w(('if (! %s)\n'
+                    '  return "Integer out of bounds";\n')%(expr))
+
     def visitSMFixedArray(self, sfa):
         if type(sfa.basetype) == str:
             self.checkStructArray(sfa.basetype,
@@ -807,6 +813,16 @@ class EncodeFnGenerator(IndentingGenerator):
     def visitSMEos(self, eos):
         pass
 
+def intConstraintExpression(v, ranges):
+    tests = []
+    for lo,hi in ranges:
+        if lo == hi:
+            tests.append('%s == %s'%(v, lo))
+        else:
+            tests.append('(%s >= %s && %s <= %s)'%(v,lo,v,hi))
+
+    return "(%s)"%(" || ".join(tests))
+
 
 class ParseFnGenerator(IndentingGenerator):
     def __init__(self, writefn):
@@ -852,15 +868,10 @@ class ParseFnGenerator(IndentingGenerator):
         self.parseInteger(smi.inttype.width, v)
 
         if smi.constraints is not None:
-            tests = []
-            for lo,hi in smi.constraints.ranges:
-                if lo == hi:
-                    tests.append('%s == %s'%(v, lo))
-                else:
-                    tests.append('(%s >= %s && %s <= %s)'%(v,lo,v,hi))
+            expr = intConstraintExpression(v, smi.constraints.ranges)
 
-            self.w(('if (! (%s))\n'
-                    '  goto fail;\n')%(" || ".join(tests)))
+            self.w(('if (! %s)\n'
+                    '  goto fail;\n')%(expr))
 
 
     def parseInteger(self, width, element):
