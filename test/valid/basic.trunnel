@@ -17,7 +17,7 @@ struct numbers {
 struct restricted {
    /** A restricted number */
    u32 i1 IN [ 1 ];
-   u32 i2 IN [ 1..2 ];
+   u32 i2 IN [ 1..2, 5, 10 ];
    u32 i3 IN [ 1..THREE ];
 }
 

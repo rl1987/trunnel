@@ -23,7 +23,7 @@ test_num_truncated(void *arg)
   }
 
   /* Success */
-  tt_int_op(15, ==, numbers_parse(&out, buf, 15));
+  tt_int_op(15, ==, numbers_encode(buf, 15, out));
 
  end:
   numbers_free(out);
@@ -56,7 +56,6 @@ test_num_encdec(void *arg)
   tt_uint_op(out->i64, ==, 0);
   tt_int_op(15, ==, numbers_encode(buf2, 16, out));
   tt_mem_op(buf, ==, buf2, 15);
-
   numbers_free(out); out = NULL;
 
   tt_int_op(15, ==, unhex(buf, sizeof(buf),
@@ -69,6 +68,7 @@ test_num_encdec(void *arg)
   tt_assert(out->i64 == 2);
   tt_int_op(15, ==, numbers_encode(buf2, 16, out));
   tt_mem_op(buf, ==, buf2, 15);
+  numbers_free(out); out = NULL;
 
   tt_int_op(15, ==, unhex(buf, sizeof(buf),
                           "12" "3456" "789abcde" "01234567""89abcdef"));
@@ -81,6 +81,7 @@ test_num_encdec(void *arg)
   tt_uint_op((uint32_t)out->i64, ==, 0x089abcdef);
   tt_int_op(15, ==, numbers_encode(buf2, 16, out));
   tt_mem_op(buf, ==, buf2, 15);
+  numbers_free(out); out = NULL;
 
   tt_int_op(15, ==, unhex(buf, sizeof(buf),
                           "ff" "ffff" "ffffffff" "ffffffffffffffff"));
