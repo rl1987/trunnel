@@ -9,6 +9,7 @@
 
 extern struct testcase_t numbers_tests[];
 extern struct testcase_t restricted_tests[];
+extern struct testcase_t strings_tests[];
 
 ssize_t unhex(uint8_t *out, size_t outlen, const char *in);
 const uint8_t *ux(const char *in);

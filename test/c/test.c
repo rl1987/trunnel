@@ -3,6 +3,7 @@
 struct testgroup_t test_groups[] = {
   { "numbers/", numbers_tests },
   { "restricted/", restricted_tests },
+  { "strings/", strings_tests },
   END_OF_GROUPS,
 };
 

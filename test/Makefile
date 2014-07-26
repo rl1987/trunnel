@@ -9,6 +9,7 @@ OBJS=tinytest/tinytest.o \
     c/test.o \
     c/test_numbers.o \
     c/test_restricted.o \
+    c/test_strings.o \
     valid/basic.o
 
 all: ctest
@@ -32,6 +33,7 @@ valid/basic.o: valid/basic.h valid/basic.c
 c/test.o: tinytest/tinytest.h tinytest/tinytest_macros.h valid/basic.h
 c/test_numbers.o: tinytest/tinytest.h tinytest/tinytest_macros.h valid/basic.h
 c/test_restricted.o: tinytest/tinytest.h tinytest/tinytest_macros.h valid/basic.h
+c/test_strings.o: tinytest/tinytest.h tinytest/tinytest_macros.h valid/basic.h
 tinytest/tinytest.o: tinytest/tinytest.h tinytest/tinytest_macros.h
 
 valid/basic.c valid/basic.h: valid/basic.trunnel
