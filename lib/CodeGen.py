@@ -1082,7 +1082,7 @@ static uint16_t get_uint16(const void *p) {
 static uint8_t get_uint8(const void *p) {
   return *(const uint8_t*)p;
 }
-static uint16_t get_uint64(const void *p) {
+static uint64_t get_uint64(const void *p) {
   uint64_t x;
   memcpy(&x, p, 8);
   return x;
@@ -1094,11 +1094,15 @@ static void set_uint64(void *p, uint64_t v) {
 
 static uint64_t htonll(uint64_t a)
 {
-  return a; /*XXXX WRONG */
+#if BYTE_ORDER == BIG_ENDIAN
+  return a;
+#else
+  return htonl(a>>32) | (((uint64_t)htonl(a))<<32);
+#endif
 }
 static uint64_t ntohll(uint64_t a)
 {
-  return a; /*XXXX WRONG */
+  return htonll(a);
 }
 """
 
