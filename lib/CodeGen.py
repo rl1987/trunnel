@@ -597,6 +597,12 @@ class CheckFnGenerator(IndentingGenerator):
             iterateOverVarArray(self, sva, body,
                                 extraDecl='const char *msg;\n')
 
+        if str(sva.basetype) != 'char':
+            self.w(('if (TRUNNEL_DYNARRAY_LEN(&obj->%s) != obj->%s)\n'
+                    '  return "Length mismatch for %s";\n')%(
+                        sva.c_name, sva.widthfield, sva.name))
+
+
     def visitSMString(self, ss):
         self.w('if (NULL == obj->%s)\n  return "Missing %s";\n'%(ss.c_name, ss.c_name))
 
