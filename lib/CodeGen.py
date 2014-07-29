@@ -26,13 +26,13 @@ HTON_FN = {
     8 : '',
     16 : 'htons',
     32 : 'htonl',
-    64 : 'htonll'
+    64 : 'trunnel_htonll'
 }
 NTOH_FN = {
     8 : '',
     16 : 'ntohs',
     32 : 'ntohl',
-    64 : 'ntohll'
+    64 : 'trunnel_ntohll'
 }
 
 
@@ -462,7 +462,7 @@ class NewFnGenerator(ASTVisitor):
     def visitStructDecl(self, sd):
         name = sd.name
         self.w("%s_t *\n%s_new(void)\n{\n"%(name,name))
-        self.w("  return tor_malloc_zero(sizeof(%s_t));\n"%name)
+        self.w("  return trunnel_calloc(1, sizeof(%s_t));\n"%name)
         self.w("}\n\n");
 
 class FreeFnGenerator(IndentingGenerator):
@@ -481,7 +481,7 @@ class FreeFnGenerator(IndentingGenerator):
         self.pushIndent(2)
         self.w("if (obj == NULL)\n  return;\n")
         self.w("%s_clear(obj);\n"%name)
-        self.w("tor_free_(obj);\n")
+        self.w("trunnel_free_(obj);\n")
         self.popIndent(2)
         self.w("}\n\n");
     def visitSMInteger(self, smi):
@@ -491,11 +491,11 @@ class FreeFnGenerator(IndentingGenerator):
     def visitSMStruct(self, sms):
         self.w("%s_clear(&obj->%s);\n"%(sms.structname, sms.c_name))
     def visitSMVarArray(self, sva):
-        self.w("tor_free(obj->%s);\n"%(sva.c_name))
+        self.w("trunnel_free(obj->%s);\n"%(sva.c_name))
     def visitSMString(self, ss):
-        self.w("tor_free(obj->%s);\n"%(ss.c_name))
+        self.w("trunnel_free(obj->%s);\n"%(ss.c_name))
     def visitSMRemainder(self, smr):
-        self.w("tor_free(obj->%s);\n"%(smr.c_name))
+        self.w("trunnel_free(obj->%s);\n"%(smr.c_name))
     def visitSMUnion(self, smu):
         smu.visitChildren(self)
     def visitUnionMember(self, um):
@@ -644,7 +644,7 @@ class EncodeFnGenerator(IndentingGenerator):
         if self.needTruncated:
             self.w(" truncated:\n  result = -2;\n  goto fail;\n")
         self.w(" check_failed:\n  (void)msg;\n  result = -1;\n  goto fail;\n"
-               " fail:\n  tor_assert(result < 0);\n  return result;\n")
+               " fail:\n  trunnel_assert(result < 0);\n  return result;\n")
         self.w("}\n\n")
 
     def visitSMInteger(self, smi):
@@ -655,10 +655,10 @@ class EncodeFnGenerator(IndentingGenerator):
         nbytes = width // 8
         hton = HTON_FN[width]
         self.needTruncated = True
-        self.w('tor_assert(written <= avail);\n');
+        self.w('trunnel_assert(written <= avail);\n');
         self.w(('if (avail - written < %s)\n'
                '  goto truncated;\n') % nbytes)
-        self.w('set_uint%d(ptr, %s(%s));\n'%(width,hton,element))
+        self.w('trunnel_set_uint%d(ptr, %s(%s));\n'%(width,hton,element))
         self.w('written += %s; ptr += %s;\n' % (nbytes, nbytes))
 
     def visitSMStruct(self, sms):
@@ -666,7 +666,7 @@ class EncodeFnGenerator(IndentingGenerator):
         self.encodeStruct(sms.structname, "&obj->%s"%(sms.c_name))
 
     def encodeStruct(self, structtype, element_pointer):
-        self.w('tor_assert(written <= avail);\n');
+        self.w('trunnel_assert(written <= avail);\n');
         self.w(("result = %s_encode(ptr, avail - written, %s);\n"
                 "if (result < 0)\n"
                 "  goto fail;\n"
@@ -678,7 +678,7 @@ class EncodeFnGenerator(IndentingGenerator):
         if arrayIsBytes(sfa):
             self.needTruncated = True
             if str(sfa.basetype) == 'char':
-                self.w('tor_assert(written <= avail);\n')
+                self.w('trunnel_assert(written <= avail);\n')
                 self.w('if (avail - written < %s)\n  goto truncated;\n'
                        %(sfa.width))
                 self.w('{\n')
@@ -686,7 +686,7 @@ class EncodeFnGenerator(IndentingGenerator):
                 self.w('size_t len = strlen(obj->%s);\n'
                        %(sfa.c_name))
 
-                self.w('tor_assert(len <= %s);\n'%sfa.width)
+                self.w('trunnel_assert(len <= %s);\n'%sfa.width)
                 self.w('memcpy(ptr, obj->%s, len);\n'
                        %(sfa.c_name))
                 self.w('memset(ptr + len, 0, %s - len);\n'%sfa.width)
@@ -694,7 +694,7 @@ class EncodeFnGenerator(IndentingGenerator):
                 self.popIndent(2)
                 self.w('}\n')
             else:
-                self.w('tor_assert(written <= avail);\n')
+                self.w('trunnel_assert(written <= avail);\n')
                 self.w('if (avail - written < %s)\n  goto truncated;\n'
                    %(sfa.width))
                 self.w('memcpy(ptr, obj->%s, %s);\n'
@@ -716,7 +716,7 @@ class EncodeFnGenerator(IndentingGenerator):
         self.eltHeader(sva)
         if arrayIsBytes(sva):
             self.needTruncated = True
-            self.w('tor_assert(written <= avail);\n')
+            self.w('trunnel_assert(written <= avail);\n')
             self.w('if (avail - written < obj->%s) goto truncated;\n'
                    %(sva.widthfield))
             self.w('memcpy(ptr, obj->%s, obj->%s);\n'
@@ -748,7 +748,7 @@ class EncodeFnGenerator(IndentingGenerator):
     def visitSMString(self, ss):
         self.eltHeader(ss)
         self.needTruncated = True
-        self.w('tor_assert(written <= avail);\n')
+        self.w('trunnel_assert(written <= avail);\n')
         self.w('{\n')
         self.pushIndent(2)
         self.w('size_t len = strlen(obj->%s);\n'%(ss.c_name))
@@ -762,7 +762,7 @@ class EncodeFnGenerator(IndentingGenerator):
     def visitSMRemainder(self, smr):
         self.eltHeader(smr)
         self.needTruncated = True
-        self.w('tor_assert(written <= avail);\n')
+        self.w('trunnel_assert(written <= avail);\n')
         self.w(('if (obj->%s_len > avail - written)\n'
                 '  goto truncated;\n')%(smr.c_name))
         self.w(('if (obj->%s_len)\n'
@@ -773,7 +773,7 @@ class EncodeFnGenerator(IndentingGenerator):
     def visitSMUnion(self, smu):
         self.eltHeader(smu)
         if smu.lengthfield is not None:
-            self.w('tor_assert(written <= avail);\n')
+            self.w('trunnel_assert(written <= avail);\n')
             self.w('{\n')
             self.pushIndent(2)
             self.w('size_t written_at_end;\n')
@@ -798,12 +798,12 @@ class EncodeFnGenerator(IndentingGenerator):
         self.popIndent(2)
 
     def visitSMFail(self, udf):
-        self.w('tor_assert(0);\n');
+        self.w('trunnel_assert(0);\n');
     def visitSMIgnore(self, udi):
         self.comment("Allow extra data at the end")
         self.pushIndent(2)
         self.w('if (written != written_at_end) {\n'
-               '  tor_assert(written < written_at_end);\n'
+               '  trunnel_assert(written < written_at_end);\n'
                '  memset(ptr, 0, written_at_end - written);\n'
                '  ptr += (written_at_end - written);\n'
                '  written = written_at_end;\n'
@@ -879,7 +879,7 @@ class ParseFnGenerator(IndentingGenerator):
         ntoh = NTOH_FN[width]
         self.needTruncated = True
         self.w('if (remaining < %s)\n  goto truncated;\n'%nbytes)
-        self.w('%s = %s(get_uint%d(ptr));\n'%(element, ntoh, width))
+        self.w('%s = %s(trunnel_get_uint%d(ptr));\n'%(element, ntoh, width))
         self.w('remaining -= %s; ptr += %s;\n' % (nbytes, nbytes))
 
 
@@ -890,7 +890,7 @@ class ParseFnGenerator(IndentingGenerator):
     def parseStruct(self, structtype, element_pointer):
         self.w(("result = %s_parse_into(%s, ptr, remaining);\n"
                 "if (result < 0)\n   goto fail;\n"
-                "tor_assert((size_t)result <= remaining);\n"
+                "trunnel_assert((size_t)result <= remaining);\n"
                 "remaining -= result; ptr += result;\n")%(
                     structtype, element_pointer))
 
@@ -947,7 +947,7 @@ class ParseFnGenerator(IndentingGenerator):
                 divisor, sva.widthfield))
 
             self.needOverflow = True
-            self.w('if (NULL == (tor_calloc(obj->%s, %s)))\n  goto overflow;\n'%(
+            self.w('if (NULL == (trunnel_calloc(obj->%s, %s)))\n  goto overflow;\n'%(
                 sva.widthfield, bytesPerElt))
 
             self.w('memcpy(obj->%s, ptr, %sobj->%s);\n'%(sva.c_name, multiplier, sva.widthfield))
@@ -967,7 +967,7 @@ class ParseFnGenerator(IndentingGenerator):
 
         else:
             self.needOverflow = True
-            self.w(('if (NULL == (tor_calloc(obj->%s, sizeof(%s_t))))\n'
+            self.w(('if (NULL == (trunnel_calloc(obj->%s, sizeof(%s_t))))\n'
                    '  goto overflow;\n')%(
                 sva.widthfield, sva.basetype))
 
@@ -987,10 +987,10 @@ class ParseFnGenerator(IndentingGenerator):
                'size_t memlen;\n')
         self.w('if (eos == NULL)\n'
                '  goto truncated;\n')
-        self.w('tor_assert(eos >= ptr);\n')
-        self.w('tor_assert((size_t)(eos - ptr) < SIZE_MAX - 1);\n')
+        self.w('trunnel_assert(eos >= ptr);\n')
+        self.w('trunnel_assert((size_t)(eos - ptr) < SIZE_MAX - 1);\n')
         self.w('memlen = ((size_t)(eos - ptr)) + 1;\n')
-        self.w('obj->%s = tor_malloc(memlen);\n'%(ss.c_name))
+        self.w('obj->%s = trunnel_malloc(memlen);\n'%(ss.c_name))
         self.w('memcpy(obj->%s, ptr, memlen);\n'%(ss.c_name))
         self.w('remaining -= memlen; ptr += memlen;\n')
         self.popIndent(2)
@@ -999,7 +999,7 @@ class ParseFnGenerator(IndentingGenerator):
     def visitSMRemainder(self, smr):
         self.eltHeader(smr)
         self.w('obj->%s_len = remaining;\n'%smr.c_name)
-        self.w('obj->%s = tor_malloc(remaining);\n'%(smr.c_name))
+        self.w('obj->%s = trunnel_malloc(remaining);\n'%(smr.c_name))
         self.w('memcpy(obj->%s, ptr, remaining);\n'%(smr.c_name))
         self.w('ptr += remaining; remaining = 0;\n')
 
@@ -1062,48 +1062,48 @@ MODULE_BOILERPLATE = """
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <arpa/inet.h>
 #include "%(h_fname)s"
 
-#define tor_malloc(x) (malloc((x)))
-#define tor_malloc_zero(x) (calloc((x),1))
-#define tor_free_(x) (free(x))
-#define tor_free(x) (free(x))
-#define tor_calloc(a,b) (calloc(a,b))
-#define tor_assert(x) assert(x)
-static void set_uint32(void *p, uint32_t v) {
+#define trunnel_malloc(x) (malloc((x)))
+#define trunnel_free_(x) (free(x))
+#define trunnel_free(x) (free(x))
+#define trunnel_calloc(a,b) (calloc(a,b))
+#define trunnel_assert(x) assert(x)
+static void trunnel_set_uint32(void *p, uint32_t v) {
   memcpy(p, &v, 4);
 }
-static void set_uint16(void *p, uint16_t v) {
+static void trunnel_set_uint16(void *p, uint16_t v) {
   memcpy(p, &v, 2);
 }
-static void set_uint8(void *p, uint8_t v) {
+static void trunnel_set_uint8(void *p, uint8_t v) {
   memcpy(p, &v, 1);
 }
 
-static uint32_t get_uint32(const void *p) {
+static uint32_t trunnel_get_uint32(const void *p) {
   uint32_t x;
   memcpy(&x, p, 4);
   return x;
 }
-static uint16_t get_uint16(const void *p) {
+static uint16_t trunnel_get_uint16(const void *p) {
   uint16_t x;
   memcpy(&x, p, 2);
   return x;
 }
-static uint8_t get_uint8(const void *p) {
+static uint8_t trunnel_get_uint8(const void *p) {
   return *(const uint8_t*)p;
 }
-static uint64_t get_uint64(const void *p) {
+static uint64_t trunnel_get_uint64(const void *p) {
   uint64_t x;
   memcpy(&x, p, 8);
   return x;
 }
 
-static void set_uint64(void *p, uint64_t v) {
+static void trunnel_set_uint64(void *p, uint64_t v) {
   memcpy(p, &v, 8);
 }
 
-static uint64_t htonll(uint64_t a)
+static uint64_t trunnel_htonll(uint64_t a)
 {
 #if BYTE_ORDER == BIG_ENDIAN
   return a;
@@ -1111,9 +1111,9 @@ static uint64_t htonll(uint64_t a)
   return htonl(a>>32) | (((uint64_t)htonl(a))<<32);
 #endif
 }
-static uint64_t ntohll(uint64_t a)
+static uint64_t trunnel_ntohll(uint64_t a)
 {
-  return htonll(a);
+  return trunnel_htonll(a);
 }
 """
 
