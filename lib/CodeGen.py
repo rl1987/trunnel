@@ -375,7 +375,7 @@ class DeclarationGenerationVisitor(IndentingGenerator):
             self.w(sfa.annotation)
 
         if type(sfa.basetype) == str:
-            self.w("%s_t %s[%s];\n"%(sfa.basetype, sfa.c_name, sfa.width))
+            self.w("%s_t *%s[%s];\n"%(sfa.basetype, sfa.c_name, sfa.width))
         elif str(sfa.basetype) == "char":
             self.w("char %s[%s+1];\n"%(sfa.c_name, sfa.width))
         else:
@@ -385,12 +385,12 @@ class DeclarationGenerationVisitor(IndentingGenerator):
         if sva.annotation != None:
             self.w(sva.annotation)
 
-        if type(sva.basetype) == str:
-            self.w("%s_t *%s;\n"%(sva.basetype, sva.c_name))
-        elif str(sva.basetype) == "char":
+        if str(sva.basetype) == "char":
             self.w("char *%s;\n"%(sva.c_name))
+        elif type(sva.basetype) == str:
+            self.w("TRUNNEL_DYNARRAY_HEAD(, %s_t *) %s;\n"%(sva.basetype, sva.c_name))
         else:
-            self.w("uint%d_t *%s;\n"%(sva.basetype.width, sva.c_name))
+            self.w("TRUNNEL_DYNARRAY_HEAD(, uint%d_t) %s;\n"%(sva.basetype.width, sva.c_name))
 
     def visitSMString(self, ss):
         if ss.annotation != None:
@@ -487,11 +487,22 @@ class FreeFnGenerator(IndentingGenerator):
     def visitSMInteger(self, smi):
         pass
     def visitSMFixedArray(self, sfa):
-        pass
+        if type(sfa.basetype) == str:
+            body = "%s_free(obj->%s[idx]);\n"%(sfa.basetype,sfa.c_name)
+            iterateOverFixedArray(self, sfa, body)
+
     def visitSMStruct(self, sms):
         self.w("%s_clear(&obj->%s);\n"%(sms.structname, sms.c_name))
     def visitSMVarArray(self, sva):
-        self.w("trunnel_free(obj->%s);\n"%(sva.c_name))
+        if type(sva.basetype) == str:
+            body = "%s_free(TRUNNEL_DYNARRAY_GET(&obj->%s, idx));\n"%(sva.basetype,sva.c_name)
+            iterateOverVarArray(self, sva, body)
+
+        if str(sva.basetype) == 'char':
+            self.w('trunnel_free(obj->%s);\n'%sva.c_name)
+        else:
+            self.w("TRUNNEL_DYNARRAY_CLEAR(&obj->%s);\n"%(sva.c_name))
+
     def visitSMString(self, ss):
         self.w("trunnel_free(obj->%s);\n"%(ss.c_name))
     def visitSMRemainder(self, smr):
@@ -508,6 +519,35 @@ class FreeFnGenerator(IndentingGenerator):
     def visitSMIgnore(self, ignore):
         pass
 
+def iterateOverFixedArray(generator, sfa, body, extraDecl=None):
+    body = body.replace("ELEMENT", "obj->%s[idx]"%sfa.c_name)
+    generator.w("{\n")
+    generator.pushIndent(2)
+    if extraDecl:
+        generator.w(extraDecl)
+    generator.w("unsigned idx;\n")
+    generator.w("for (idx = 0; idx < %s; ++idx) {\n"%sfa.width)
+    generator.pushIndent(2)
+    generator.w(body)
+    generator.popIndent(2)
+    generator.w("}\n")
+    generator.popIndent(2)
+    generator.w("}\n")
+
+def iterateOverVarArray(generator, sva, body, extraDecl=None):
+    body = body.replace("ELEMENT", "TRUNNEL_DYNARRAY_GET(&obj->%s, idx)"%sva.c_name)
+    generator.w("{\n")
+    generator.pushIndent(2)
+    if extraDecl:
+        generator.w(extraDecl)
+    generator.w("unsigned idx;\n")
+    generator.w("for (idx = 0; idx < TRUNNEL_DYNARRAY_LEN(&obj->%s); ++idx) {\n"%sva.c_name)
+    generator.pushIndent(2)
+    generator.w(body)
+    generator.popIndent(2)
+    generator.w("}\n")
+    generator.popIndent(2)
+    generator.w("}\n")
 
 class CheckFnGenerator(IndentingGenerator):
     def __init__(self, writefn):
@@ -532,8 +572,11 @@ class CheckFnGenerator(IndentingGenerator):
 
     def visitSMFixedArray(self, sfa):
         if type(sfa.basetype) == str:
-            self.checkStructArray(sfa.basetype,
-                    "&obj->%s[idx]"%(sfa.c_name), sfa.width)
+            body = ("if (NULL != (msg = %s_check(ELEMENT)))\n"
+                    "  return msg;"%(sfa.basetype))
+            iterateOverFixedArray(self, sfa, body,
+                                  extraDecl='const char *msg;\n')
+
         elif str(sfa.basetype) == 'char':
             self.w('if (obj->%s[%s] != 0)\n'
                    '  return "String not terminated";\n'
@@ -547,22 +590,12 @@ class CheckFnGenerator(IndentingGenerator):
                 "}\n")%(
                     sms.structname, sms.c_name))
     def visitSMVarArray(self, sva):
-        self.w(('if (NULL == obj->%s)\n'
-                '  return "Missing %s";\n')
-               %(sva.c_name, sva.c_name))
         if type(sva.basetype) == str:
-            self.checkStructArray(sva.basetype, "&obj->%s[idx]"%(sva.c_name), "obj->%s"%sva.widthfield)
+            body = ("if (NULL != (msg = %s_check(ELEMENT)))\n"
+                    "  return msg;"%(sva.basetype))
 
-    def checkStructArray(self, structtype, element, num_items):
-        self.w(('{\n'
-                '  unsigned idx;\n'
-                '  const char *msg;\n'
-                '  for (idx = 0; idx < %s; ++idx) {\n'
-                '    if (NULL != (msg = %s_check(%s)))\n'
-                '      return msg;\n'
-                '  }\n'
-                '}\n') %(
-                    num_items, structtype, element))
+            iterateOverVarArray(self, sva, body,
+                                extraDecl='const char *msg;\n')
 
     def visitSMString(self, ss):
         self.w('if (NULL == obj->%s)\n  return "Missing %s";\n'%(ss.c_name, ss.c_name))
@@ -649,29 +682,31 @@ class EncodeFnGenerator(IndentingGenerator):
 
     def visitSMInteger(self, smi):
         self.eltHeader(smi)
-        self.encodeInteger(smi.inttype.width, "obj->%s"%(smi.c_name))
+        self.w(self.encodeInteger(smi.inttype.width, "obj->%s"%(smi.c_name)))
 
     def encodeInteger(self, width, element):
         nbytes = width // 8
         hton = HTON_FN[width]
         self.needTruncated = True
-        self.w('trunnel_assert(written <= avail);\n');
-        self.w(('if (avail - written < %s)\n'
-               '  goto truncated;\n') % nbytes)
-        self.w('trunnel_set_uint%d(ptr, %s(%s));\n'%(width,hton,element))
-        self.w('written += %s; ptr += %s;\n' % (nbytes, nbytes))
+        x = [
+            'trunnel_assert(written <= avail);\n',
+            ('if (avail - written < %s)\n'
+            '  goto truncated;\n') % nbytes,
+        'trunnel_set_uint%d(ptr, %s(%s));\n'%(width,hton,element),
+        'written += %s; ptr += %s;\n' % (nbytes, nbytes) ]
+        return "".join(x)
 
     def visitSMStruct(self, sms):
         self.eltHeader(sms)
-        self.encodeStruct(sms.structname, "&obj->%s"%(sms.c_name))
+        self.w(self.encodeStruct(sms.structname, "&obj->%s"%(sms.c_name)))
 
     def encodeStruct(self, structtype, element_pointer):
-        self.w('trunnel_assert(written <= avail);\n');
-        self.w(("result = %s_encode(ptr, avail - written, %s);\n"
+        return ("trunnel_assert(written <= avail);\n"
+                "result = %s_encode(ptr, avail - written, %s);\n"
                 "if (result < 0)\n"
                 "  goto fail;\n"
                 "written += result; ptr += result;\n")%(
-                    structtype, element_pointer))
+                    structtype, element_pointer)
 
     def visitSMFixedArray(self, sfa):
         self.eltHeader(sfa)
@@ -702,48 +737,33 @@ class EncodeFnGenerator(IndentingGenerator):
                 self.w('written += %s; ptr += %s;\n'%(sfa.width,sfa.width))
             return
 
-        self.w('{\n')
-        self.pushIndent(2)
-        self.w(('unsigned idx;\n'
-                'size_t len = %s;\n'
-                'for (idx = 0; idx < len; ++idx) {\n')%sfa.width)
-        self.encodeArrayBody(sfa)
-        self.w('}\n')
-        self.popIndent(2)
-        self.w('}\n')
+        if type(sfa.basetype) == str:
+            body = self.encodeStruct(sfa.basetype, "ELEMENT")
+        else:
+            body = self.encodeInteger(sfa.basetype.width, "ELEMENT")
+        iterateOverFixedArray(self, sfa, body)
 
     def visitSMVarArray(self, sva):
         self.eltHeader(sva)
         if arrayIsBytes(sva):
+            if str(sva.basetype) == 'char':
+                arry = "obj->%s"%sva.c_name
+            else:
+                arry = "obj->%s.elts_"%sva.c_name
             self.needTruncated = True
             self.w('trunnel_assert(written <= avail);\n')
             self.w('if (avail - written < obj->%s) goto truncated;\n'
                    %(sva.widthfield))
-            self.w('memcpy(ptr, obj->%s, obj->%s);\n'
-                   %(sva.c_name,sva.widthfield))
+            self.w('memcpy(ptr, %s, obj->%s);\n'
+                   %(arry,sva.widthfield))
             self.w('written += obj->%s; ptr += obj->%s;\n'
                    %(sva.widthfield,sva.widthfield))
             return
-
-        self.w('{\n')
-        self.pushIndent(2)
-        self.w(('unsigned idx;\n'
-               'size_t len = obj->%s;\n'
-               'for (idx = 0; idx < len; ++idx) {\n')%(sva.widthfield))
-        self.encodeArrayBody(sva)
-        self.w('}\n')
-        self.popIndent(2)
-        self.w('}\n')
-
-    def encodeArrayBody(self, arry):
-        self.pushIndent(2)
-        if type(arry.basetype) == str:
-            self.encodeStruct(arry.basetype, "&obj->%s[idx]"%(arry.c_name))
+        if type(sva.basetype) == str:
+            body = self.encodeStruct(sva.basetype, "ELEMENT")
         else:
-            assert type(arry.basetype) == Grammar.IntType
-            # FFFF memcpy, then byteswap ?
-            self.encodeInteger(arry.basetype.width, "obj->%s[idx]"%(arry.c_name))
-        self.popIndent(2)
+            body = self.encodeInteger(sva.basetype.width, "ELEMENT")
+        iterateOverVarArray(self, sva, body)
 
     def visitSMString(self, ss):
         self.eltHeader(ss)
@@ -839,6 +859,7 @@ class ParseFnGenerator(IndentingGenerator):
 
         self.needOverflow = False
         self.needTruncated = False
+        self.needAllocFailed = False
         sd.visitChildren(self)
 
         self.w('return len_in - remaining;\n\n')
@@ -848,6 +869,8 @@ class ParseFnGenerator(IndentingGenerator):
             self.w(' overflow:\n  result = -1;\n  goto fail;\n')
         if self.needTruncated:
             self.w(' truncated:\n  result = -2;\n  goto fail;\n')
+        if self.needAllocFailed:
+            self.w("  trunnel_alloc_failed:\n  result = -1;\n  goto fail;\n")
         self.w(' fail:\n  if (result >= 0) result = -1;\n  return result;\n')
         self.w("}\n\n")
 
@@ -885,14 +908,23 @@ class ParseFnGenerator(IndentingGenerator):
 
     def visitSMStruct(self, sms):
         self.eltHeader(sms)
-        self.parseStruct(sms.structname, "&obj->%s"%(sms.c_name))
+        self.w(self.parseStruct(sms.structname, "&obj->%s"%(sms.c_name)))
 
     def parseStruct(self, structtype, element_pointer):
-        self.w(("result = %s_parse_into(%s, ptr, remaining);\n"
-                "if (result < 0)\n   goto fail;\n"
+        return ("result = %s_parse_into(%s, ptr, remaining);\n"
+                "if (result < 0)\n"
+                "  goto fail;\n"
                 "trunnel_assert((size_t)result <= remaining);\n"
                 "remaining -= result; ptr += result;\n")%(
-                    structtype, element_pointer))
+                    structtype, element_pointer)
+
+    def parseStructInto(self, structtype, target_pointer):
+        return ("result = %s_parse(&%s, ptr, remaining);\n"
+                "if (result < 0)\n"
+                "  goto fail;\n"
+                "trunnel_assert((size_t)result <= remaining);\n"
+                "remaining -= result; ptr += result;\n")%(
+                    structtype, target_pointer)
 
     def visitSMFixedArray(self, sfa):
         self.eltHeader(sfa)
@@ -921,60 +953,66 @@ class ParseFnGenerator(IndentingGenerator):
             return
 
         else:
-            self.w(('{\n'
-                    '  unsigned idx;\n'
-                    '  for (idx = 0; idx < %s; ++idx) {\n')%sfa.width)
-            self.pushIndent(4)
-            self.parseStruct(sfa.basetype, "&obj->%s[idx]"%(sfa.c_name))
-            self.popIndent(4)
-            self.w('  }\n'
-                   '}\n')
+            iterateOverFixedArray(self, sfa,
+                                  self.parseStructInto(sfa.basetype,
+                                        "obj->%s[idx]"%(sfa.c_name)))
 
     def visitSMVarArray(self, sva):
         self.eltHeader(sva)
         # FFFF some of this is kinda cut-and-paste
-        if type(sva.basetype) != str:
+        if arrayIsBytes(sva):
+            if str(sva.basetype) == 'char':
+                self.w('if (((size_t)obj->%s) > SIZE_MAX - 1) goto overflow;'%sva.widthfield)
+                plus1 = "+ 1"
+                elt = "obj->%s"%sva.c_name
+            else:
+                elt = "obj->%s.elts_"%sva.c_name
+
             self.needTruncated = True
-            bytesPerElt = 1
-            divisor = multiplier = ""
-            if type(sva.basetype) == Grammar.IntType:
-                bytesPerElt = sva.basetype.width // 8
-                if bytesPerElt > 1:
-                    divisor = " / %s"%bytesPerElt
-                    multiplier = "((size_t)%s) * "%bytesPerElt
-
-            self.w('if (remaining%s < obj->%s)\n  goto truncated;\n'%(
-                divisor, sva.widthfield))
-
+            self.w('if (remaining < obj->%s)\n  goto truncated;\n'%(
+                sva.widthfield))
             self.needOverflow = True
-            self.w('if (NULL == (trunnel_calloc(obj->%s, %s)))\n  goto overflow;\n'%(
-                sva.widthfield, bytesPerElt))
 
-            self.w('memcpy(obj->%s, ptr, %sobj->%s);\n'%(sva.c_name, multiplier, sva.widthfield))
-            if type(sva.basetype) == Grammar.IntType:
-                self.w(('{\n'
-                        '  unsigned idx;\n'
-                        '  for (idx = 0; idx < obj->%s; ++idx)\n'
-                        '    obj->%s[idx] = %s(obj->%s[idx]);\n'
-                        '}\n')%(sva.widthfield,
-                                sva.c_name,
-                                NTOH_FN[sva.basetype.width],
-                                sva.c_name))
-            self.w(('remaining -= %sobj->%s; ptr += %sobj->%s;\n')%(
-                multiplier, sva.widthfield, multiplier, sva.widthfield))
 
+            if str(sva.basetype) == 'char':
+                self.w('if (NULL == (obj->%s = trunnel_malloc(((size_t)obj->%s) + 1)))\n  goto overflow;\n'%(
+                    sva.c_name, sva.widthfield))
+                self.w('obj->%s[obj->%s] = 0;\n'%(sva.c_name, sva.widthfield))
+            else:
+                self.w("TRUNNEL_DYNARRAY_EXPAND(uint8_t, &obj->%s, obj->%s);\n"
+                       %(sva.c_name, sva.widthfield))
+                self.w("obj->%s.n_ = obj->%s;"%(sva.c_name,sva.widthfield))
+
+            self.w('memcpy(%s, ptr, obj->%s);\n'%(elt, sva.widthfield))
+
+            self.w(('remaining -= obj->%s; ptr += obj->%s;\n')%(
+                sva.widthfield, sva.widthfield))
             return
 
         else:
             self.needOverflow = True
-            self.w(('if (NULL == (trunnel_calloc(obj->%s, sizeof(%s_t))))\n'
-                   '  goto overflow;\n')%(
-                sva.widthfield, sva.basetype))
+            self.needAllocFailed = True
 
+            if type(sva.basetype) == str:
+                elttype = "%s_t *"%sva.basetype
+            else:
+                elttype = "uint%d_t"%sva.basetype.width
+
+            self.w('TRUNNEL_DYNARRAY_EXPAND(%s, &obj->%s, obj->%s);\n'
+                   %(elttype, sva.c_name, sva.widthfield))
             self.w(('{\n'
                     '  unsigned idx;\n'
-                    '  for (idx = 0; idx < obj->%s; ++idx) {\n')%sva.widthfield)
-            self.parseStruct(sva.basetype, "&obj->%s[idx]"%(sva.c_name))
+                    '  %s elt;\n'
+                    '  for (idx = 0; idx < obj->%s; ++idx) {\n')%(elttype,sva.widthfield))
+            self.pushIndent(4)
+            if type(sva.basetype) == str:
+                self.w(self.parseStructInto(sva.basetype, "elt"))
+            else:
+                self.parseInteger(sva.basetype.width, "elt")
+
+            self.w("TRUNNEL_DYNARRAY_ADD(%s, &obj->%s, elt);"%(elttype,sva.c_name))
+
+            self.popIndent(4)
             self.w('  }\n'
                    '}\n')
 
@@ -1049,6 +1087,7 @@ HEADER_BOILERPLATE = """
 #define %(macro)s
 
 #include <stdint.h>
+#include "trunnel.h"
 
 """
 
@@ -1070,6 +1109,15 @@ MODULE_BOILERPLATE = """
 #define trunnel_free(x) (free(x))
 #define trunnel_calloc(a,b) (calloc(a,b))
 #define trunnel_assert(x) assert(x)
+#define trunnel_abort() abort()
+
+static void *trunnel_reallocarray(void *a, size_t x, size_t y)
+{
+   if (x > SIZE_MAX / y)
+     return NULL;
+   return realloc(a, x * y);
+}
+
 static void trunnel_set_uint32(void *p, uint32_t v) {
   memcpy(p, &v, 4);
 }
