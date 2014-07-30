@@ -37,34 +37,34 @@ static const char TOOSHORT4[] =
 struct item {
   const char *pre;
   const char *post;
+  unsigned badafter;
 };
 
 static void
 test_union2_truncated(void *arg)
 {
   const uint8_t *inp;
-  const char **str;
   const struct item *item;
   unsigned i;
   union2_t *out = NULL;
   uint8_t buf[128];
 
   const struct item strings[] = {
-    { CASE1, CASE1 },
-    { CASE2, CASE2 },
-    { CASE2b, CASE2 },
-    { CASE3, CASE3 },
-    { CASE4, CASE4 },
-    { NULL, NULL }
+    { CASE1, CASE1, 0},
+    { CASE2, CASE2, 0 },
+    { CASE2b, CASE2, 0 },
+    { CASE3, CASE3, 0 },
+    { CASE4, CASE4, 0 },
+    { NULL, NULL, 0 }
   };
 
-  const char *impossible_strings[] = {
-    TOOSHORT1,
-    TOOSHORT2,
-    TOOSHORT3,
-    TOOSHORT4,
-    EXTRA1,
-    NULL
+  const struct item impossible_strings[] = {
+    { TOOSHORT1, NULL, 3 },
+    { TOOSHORT2, NULL, 4 },
+    { TOOSHORT3, NULL, 8 },
+    { TOOSHORT4, NULL, 8 },
+    { EXTRA1, NULL, 5 },
+    { NULL, NULL, 0 }
   };
 
   (void) arg;
@@ -93,15 +93,17 @@ test_union2_truncated(void *arg)
     out = NULL;
   }
 
-  for (str = &impossible_strings[0]; *str; ++str) {
-    size_t outlen = strlen(*str) / 2;
-    inp = ux(*str);
-    puts(*str);
-    /* At no length can these be parsed. */
-    for (i = 0; i <= outlen; ++i) {
-      tt_int_op(-1, ==, union2_parse(&out, inp, i));
+  for (item = &impossible_strings[0]; item->pre != NULL; ++item) {
+    size_t outlen = strlen(item->pre) / 2;
+    inp = ux(item->pre);
+    /* At no length can these be parsed. They look truncated at first,
+     * and then look impossible. */
+    for (i = 0; i < outlen; ++i) {
+      int errcode = (i < item->badafter) ? -2 : -1;
+      tt_int_op(errcode, ==, union2_parse(&out, inp, i));
       tt_ptr_op(NULL, ==, out);
     }
+    tt_int_op(-1, ==, union2_parse(&out, inp, i));
   }
 
  end:
