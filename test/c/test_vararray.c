@@ -112,6 +112,7 @@ test_varlen_invalid(void *arg)
   tt_int_op(0, ==, varlen_add_a16(varlen, 5));
   tt_int_op(0, ==, varlen_add_a32(varlen, 5));
   tt_int_op(0, ==, varlen_add_a64(varlen, 5));
+  tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
 
   tt_int_op(0, ==, varlen_add_nums(varlen, NULL));
   tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
@@ -135,7 +136,7 @@ test_varlen_encdec(void *arg)
   numbers_t *nums;
   (void)arg;
 
-  /* (We already round-tripped these in truncated. */
+  /* (We already round-tripped these in truncated.) */
 
   /* MINIMAL. */
   inp = ux(MINIMAL);

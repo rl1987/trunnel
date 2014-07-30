@@ -915,10 +915,10 @@ class EncodeFnGenerator(IndentingGenerator):
             m = smu.lengthfieldmember
             width = m.inttype.width
             hton = HTON_FN[width]
-            self.w_('trunnel_assert(written >= written_before_union);\n')
+            self.w('trunnel_assert(written >= written_before_union);\n')
             self.w_('#if UINT%s_MAX < SIZE_MAX\n'%width)
             self.w(('if (written - written_before_union > UINT%s_MAX)\n'
-                    '  goto truncated;\n')%width)
+                    '  goto check_failed;\n')%width)
             self.w_('#endif\n')
             self.w('trunnel_set_uint%d(backptr_%s, %s(written - written_before_union));\n'%(width,m.c_name,hton))
             self.popIndent(2)

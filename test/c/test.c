@@ -9,6 +9,7 @@ struct testgroup_t test_groups[] = {
   { "nested/", nested_tests },
   { "fixed-array/", fixedarray_tests },
   { "var-array/", vararray_tests },
+  { "union-nolen/", union_nolen_tests },
   END_OF_GROUPS,
 };
 
