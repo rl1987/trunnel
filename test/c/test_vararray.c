@@ -108,19 +108,18 @@ test_varlen_invalid(void *arg)
 
   varlen->str = strdup("X");
 
-  TRUNNEL_DYNARRAY_ADD(uint8_t, &varlen->a8, 5);
-  TRUNNEL_DYNARRAY_ADD(uint16_t, &varlen->a16, 5);
-  TRUNNEL_DYNARRAY_ADD(uint32_t, &varlen->a32, 5);
-  TRUNNEL_DYNARRAY_ADD(uint64_t, &varlen->a64, 5);
+  tt_int_op(0, ==, varlen_add_a8(varlen, 5));
+  tt_int_op(0, ==, varlen_add_a16(varlen, 5));
+  tt_int_op(0, ==, varlen_add_a32(varlen, 5));
+  tt_int_op(0, ==, varlen_add_a64(varlen, 5));
 
-  TRUNNEL_DYNARRAY_ADD(numbers_t *, &varlen->nums, NULL);
+  tt_int_op(0, ==, varlen_add_nums(varlen, NULL));
   tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
 
   /* Now make sure it's good */
-  TRUNNEL_DYNARRAY_SET(&varlen->nums, 0, numbers_new());
+  varlen_set_nums(varlen, 0, numbers_new());
   tt_int_op(-1, !=, varlen_encode(buf, sizeof(buf), varlen));
 
- trunnel_alloc_failed:
  end:
   varlen_free(varlen);
 }

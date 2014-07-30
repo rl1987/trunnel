@@ -447,14 +447,45 @@ class PrototypeGenerationVisitor(IndentingGenerator):
         self.w("%s_t *%s_new(void);\n"%(name,name))
         self.w("void %s_free(%s_t *victim);\n"%(name, name))
         self.w("ssize_t %s_parse(%s_t **output, const uint8_t *input, const size_t len_in);\n"%(name,name))
-        self.w("ssize_t %s_encode(uint8_t *output, const size_t avail, const %s_t *input);\n\n"%(name,name))
+        self.w("ssize_t %s_encode(uint8_t *output, const size_t avail, const %s_t *input);\n"%(name,name))
 
+        self.structName = name
+        sd.visitChildren(self)
+        self.w("\n")
+
+    def visit_other(self, ast, *args):
+        pass
+
+    def visitSMUnion(self, smu):
+        smu.visitChildren(self)
+
+    def visitUnionMember(self, um):
+        um.visitChildren(self)
+
+    def visitSMVarArray(self, sva):
+        if str(sva.basetype) == 'char':
+            return
+
+        st = self.structName
+        nm = sva.c_name
+        if type(sva.basetype) == str:
+            elttype = "%s_t *"%sva.basetype
+        else:
+            elttype = "uint%d_t"%sva.basetype.width
+
+        self.w("size_t %s_get_%s_len(const %s_t *inp);\n"%(st,nm,st))
+        self.w("%s %s_get_%s(const %s_t *inp, size_t idx);\n"%(elttype,st,nm,st))
+        self.w("void %s_set_%s(%s_t *inp, size_t idx, %s elt);\n"
+               %(st,nm,st,elttype))
+        self.w("int %s_add_%s(%s_t *inp, %s elt);\n"
+               %(st,nm,st,elttype))
 
 class CodeGenerationVisitor(IndentingGenerator):
     def __init__(self, sort_order, f):
         IndentingGenerator.__init__(self, f.write)
         self.sort_order = sort_order
-        self.generators = [ NewFnGenerator, FreeFnGenerator, CheckFnGenerator,
+        self.generators = [ NewFnGenerator, FreeFnGenerator,
+                            AccessorFnGenerator, CheckFnGenerator,
                             EncodeFnGenerator, ParseFnGenerator ]
     def visitFile(self, f):
         f.visitChildrenSorted(self.sort_order, self)
@@ -526,6 +557,57 @@ class FreeFnGenerator(IndentingGenerator):
         pass
     def visitSMIgnore(self, ignore):
         pass
+
+class AccessorFnGenerator(IndentingGenerator):
+    def __init__(self, writefn):
+        IndentingGenerator.__init__(self, writefn)
+
+    def visit_other(self, ast, *args):
+        pass
+
+    def visitStructDecl(self, sd):
+        self.structName = sd.name
+        sd.visitChildren(self)
+
+    def visitSMUnion(self, smu):
+        smu.visitChildren(self)
+
+    def visitUnionMember(self, um):
+        um.visitChildren(self)
+
+    def visitSMVarArray(self, sva):
+        if str(sva.basetype) == 'char':
+            return
+
+        st = self.structName
+        nm = sva.c_name
+        if type(sva.basetype) == str:
+            elttype = "%s_t *"%sva.basetype
+        else:
+            elttype = "uint%d_t"%sva.basetype.width
+
+        self.w("size_t\n%s_get_%s_len(const %s_t *inp)\n"%(st,nm,st))
+        self.w("{\n"
+               "  return TRUNNEL_DYNARRAY_LEN(&inp->%s);\n"
+               "}\n\n"%nm)
+
+        self.w("%s\n%s_get_%s(const %s_t *inp, size_t idx)\n"%(elttype,st,nm,st))
+        self.w("{\n"
+               "  return TRUNNEL_DYNARRAY_GET(&inp->%s, idx);\n"
+               "}\n\n"%nm)
+        self.w("void\n%s_set_%s(%s_t *inp, size_t idx, %s elt)\n"
+               %(st,nm,st,elttype))
+        self.w("{\n"
+               "  TRUNNEL_DYNARRAY_SET(&inp->%s, idx, elt);\n"
+               "}\n\n"%nm)
+        self.w("int\n%s_add_%s(%s_t *inp, %s elt)\n"
+               %(st,nm,st,elttype))
+        self.w("{\n"
+               "  TRUNNEL_DYNARRAY_ADD(%s, &inp->%s, elt);\n"
+               "  return 0;\n"
+               " trunnel_alloc_failed:\n"
+               "  return -1;\n"
+               "}\n\n"%(elttype,nm))
 
 def iterateOverFixedArray(generator, sfa, body, extraDecl=None):
     body = body.replace("ELEMENT", "obj->%s[idx]"%sfa.c_name)
@@ -884,7 +966,7 @@ class ParseFnGenerator(IndentingGenerator):
         if self.needTruncated:
             self.w(' truncated:\n  result = -2;\n  goto fail;\n')
         if self.needAllocFailed:
-            self.w("  trunnel_alloc_failed:\n  result = -1;\n  goto fail;\n")
+            self.w(" trunnel_alloc_failed:\n  result = -1;\n  goto fail;\n")
         self.w(' fail:\n  if (result >= 0) result = -1;\n  return result;\n')
         self.w("}\n\n")
 
@@ -1118,6 +1200,7 @@ MODULE_BOILERPLATE = """
 #include <stdlib.h>
 #include <assert.h>
 #include <arpa/inet.h>
+#include "trunnel-impl.h"
 #include "%(h_fname)s"
 
 #define trunnel_malloc(x) (malloc((x)))
@@ -1128,7 +1211,7 @@ MODULE_BOILERPLATE = """
 #define trunnel_abort() abort()
 
 /* XXXX stick this in a file or something */
-void *trunnel_reallocarray(void *a, size_t x, size_t y)
+static void *trunnel_reallocarray(void *a, size_t x, size_t y)
 {
    if (x > SIZE_MAX / y)
      return NULL;
