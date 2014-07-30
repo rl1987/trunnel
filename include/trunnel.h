@@ -33,7 +33,7 @@ void *trunnel_reallocarray(void *a, size_t x, size_t y);
 #define TRUNNEL_DYNARRAY_EXPAND(elttype, da, howmanymore) do {       \
     size_t newsize__ = (size_t)(howmanymore) + (da)->allocated_;     \
     elttype *newarray__ = NULL;                                      \
-    if (newsize__ == 0)                                              \
+    if (newsize__ < 8)                                               \
       newsize__ = 8;                                                 \
     if (newsize__ < (da)->allocated_ * 2)                            \
       newsize__ = (da)->allocated_ * 2;                              \
@@ -48,7 +48,7 @@ void *trunnel_reallocarray(void *a, size_t x, size_t y);
 
 #define TRUNNEL_DYNARRAY_ADD(elttype, da, v) do {          \
       if ((da)->n_ == (da)->allocated_) {                  \
-        TRUNNEL_DYNARRAY_EXPAND(elttype, da, 0);           \
+        TRUNNEL_DYNARRAY_EXPAND(elttype, da, 1);           \
       }                                                    \
       (da)->elts_[(da)->n_++] = (v);                       \
     } while (0)
