@@ -67,7 +67,7 @@ struct varlen {
    u32 a32[len3];
    u64 a64[len4];
 
-   struct numbers nums[len1];
+   struct numbers nums[len2];
 }
 
 struct union1 {

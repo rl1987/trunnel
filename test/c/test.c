@@ -4,10 +4,11 @@ struct testgroup_t test_groups[] = {
   { "numbers/", numbers_tests },
   { "restricted/", restricted_tests },
   { "strings/", strings_tests },
-  { "uses-eos/", eos_tests, },
-  { "extends/", extends_tests, },
-  { "nested/", nested_tests, },
+  { "uses-eos/", eos_tests },
+  { "extends/", extends_tests },
+  { "nested/", nested_tests },
   { "fixed-array/", fixedarray_tests },
+  { "var-array/", vararray_tests },
   END_OF_GROUPS,
 };
 

@@ -1117,7 +1117,8 @@ MODULE_BOILERPLATE = """
 #define trunnel_assert(x) assert(x)
 #define trunnel_abort() abort()
 
-static void *trunnel_reallocarray(void *a, size_t x, size_t y)
+/* XXXX stick this in a file or something */
+void *trunnel_reallocarray(void *a, size_t x, size_t y)
 {
    if (x > SIZE_MAX / y)
      return NULL;

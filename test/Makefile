@@ -12,7 +12,8 @@ TEST_OBJS = \
     c/test_eos.o \
     c/test_extends.o \
     c/test_nested.o \
-    c/test_fixedarray.o
+    c/test_fixedarray.o \
+    c/test_vararray.o
 
 OBJS=tinytest/tinytest.o \
     valid/basic.o \

@@ -1,6 +1,9 @@
-
 #ifndef TRUNNEL_H_INCLUDED_
 #define TRUNNEL_H_INCLUDED_
+
+/* XXXX stick this in a file or something */
+void *trunnel_reallocarray(void *a, size_t x, size_t y);
+#define trunnel_abort() abort()
 
 #define TRUNNEL_DYNARRAY_HEAD(name, elttype)       \
   struct name {                                    \
