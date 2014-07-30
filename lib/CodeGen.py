@@ -1059,7 +1059,8 @@ class ParseFnGenerator(IndentingGenerator):
         if arrayIsBytes(sva):
             if str(sva.basetype) == 'char':
                 self.w_('#if SIZE_MAX <= UINT%d_MAX\n'%sva.widthfieldmember.inttype.width)
-                self.w('if (((size_t)obj->%s) > SIZE_MAX - 1) goto overflow;'%sva.widthfield)
+                self.w(('if (((size_t)obj->%s) > SIZE_MAX - 1)'
+                        '  goto overflow;')%sva.widthfield)
                 self.w_('#endif\n')
                 plus1 = "+ 1"
                 elt = "obj->%s"%sva.c_name
