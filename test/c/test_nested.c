@@ -43,6 +43,7 @@ test_nest_parsing(void *arg)
   }
 
   /* Success */
+  memset(buf, 0x7f, sizeof(buf));
   tt_int_op(59, ==, nested_encode(buf, sizeof(buf), out));
   tt_mem_op(buf, ==, inp, 59);
 

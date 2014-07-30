@@ -7,6 +7,7 @@ struct testgroup_t test_groups[] = {
   { "uses-eos/", eos_tests, },
   { "extends/", extends_tests, },
   { "nested/", nested_tests, },
+  { "fixed-array/", fixedarray_tests },
   END_OF_GROUPS,
 };
 
