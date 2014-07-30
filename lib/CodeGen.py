@@ -276,9 +276,12 @@ class Annotator(ASTVisitor):
         pass
 
     def visitStructDecl(self, sd):
+        self.cur_struct_obj = sd
         self.cur_struct = sd.name
+        sd.unionLengthFields = { }
         sd.visitChildren(self)
-        self.cur_truct = None
+        self.cur_struct = None
+        self.cur_struct_obj = None
 
     def annotateMember(self, member):
         member.c_name = "%s%s" % (self.prefix, member.name)
@@ -304,7 +307,9 @@ class Annotator(ASTVisitor):
         self.prefix = ""
         smu.tagfieldmember = self.memberByName[smu.tagfield]
         if smu.lengthfield is not None:
-            smu.lengthfieldmember = self.memberByName[smu.lengthfield]
+            m = self.memberByName[smu.lengthfield]
+            self.cur_struct_obj.unionLengthFields[m.c_name] = m
+            smu.lengthfieldmember = m
         else:
             smu.lengthfieldmember = None
     def visitUnionMember(self, um):
@@ -754,6 +759,7 @@ class EncodeFnGenerator(IndentingGenerator):
 
     def visitStructDecl(self, sd):
         self.structName = name = sd.name
+        self.curStruct = sd
         self.w("ssize_t\n%s_encode(uint8_t *output, const size_t avail, const %s_t *obj)\n{\n"%(name,name))
         self.pushIndent(2)
         self.w('ssize_t result = 0;\n'
@@ -761,6 +767,10 @@ class EncodeFnGenerator(IndentingGenerator):
                'uint8_t *ptr = output;\n'
                'const char *msg;\n')
         self.w('\n')
+        if sd.unionLengthFields:
+            for m in sorted(sd.unionLengthFields.values()):
+                self.w('uint8_t *backptr_%s = NULL;\n'%(m.c_name))
+            self.w('\n')
         self.w(('if (NULL != (msg = %s_check(obj)))\n'
                '  goto check_failed;\n\n')%sd.name)
         self.needTruncated = False
@@ -775,9 +785,12 @@ class EncodeFnGenerator(IndentingGenerator):
         self.w(" check_failed:\n  (void)msg;\n  result = -1;\n  goto fail;\n"
                " fail:\n  trunnel_assert(result < 0);\n  return result;\n")
         self.w("}\n\n")
+        self.curStruct = None
 
     def visitSMInteger(self, smi):
         self.eltHeader(smi)
+        if smi.c_name in self.curStruct.unionLengthFields:
+            self.w('backptr_%s = ptr;\n'%(smi.c_name));
         self.w(self.encodeInteger(smi.inttype.width, "obj->%s"%(smi.c_name)))
 
     def encodeInteger(self, width, element):
@@ -888,21 +901,28 @@ class EncodeFnGenerator(IndentingGenerator):
 
     def visitSMUnion(self, smu):
         self.eltHeader(smu)
+        self.w('trunnel_assert(written <= avail);\n')
         if smu.lengthfield is not None:
-            self.w('trunnel_assert(written <= avail);\n')
-            self.w('{\n')
+            self.w("{\n")
             self.pushIndent(2)
-            self.w('size_t written_at_end;\n')
-            self.w(('if (obj->%s > written - avail)\n'
-                    ' goto truncated;\n')%smu.lengthfield)
-            self.w('written_at_end = written + obj->%s;\n'%smu.lengthfield)
+            self.w("size_t written_before_union = written;\n")
         self.w('switch (obj->%s) {\n'%smu.tagfield)
         smu.visitChildren(self)
         self.w("}\n")
+
         if smu.lengthfield is not None:
-            self.w('if (written != written_at_end)\n  goto fail;\n')
+            self.comment('Write the length field back to %s'%smu.lengthfield)
+            m = smu.lengthfieldmember
+            width = m.inttype.width
+            hton = HTON_FN[width]
+            self.w_('trunnel_assert(written >= written_before_union);\n')
+            self.w_('#if UINT%s_MAX < SIZE_MAX\n'%width)
+            self.w(('if (written - written_before_union > UINT%s_MAX)\n'
+                    '  goto truncated;\n')%width)
+            self.w_('#endif\n')
+            self.w('trunnel_set_uint%d(backptr_%s, %s(written - written_before_union));\n'%(width,m.c_name,hton))
             self.popIndent(2)
-            self.w('}\n')
+            self.w("}\n")
 
     def visitUnionMember(self, um):
         self.pushIndent(2)
@@ -916,16 +936,7 @@ class EncodeFnGenerator(IndentingGenerator):
     def visitSMFail(self, udf):
         self.w('trunnel_assert(0);\n');
     def visitSMIgnore(self, udi):
-        self.comment("Allow extra data at the end")
-        self.pushIndent(2)
-        self.w('if (written != written_at_end) {\n'
-               '  trunnel_assert(written < written_at_end);\n'
-               '  memset(ptr, 0, written_at_end - written);\n'
-               '  ptr += (written_at_end - written);\n'
-               '  written = written_at_end;\n'
-               '}\n')
-        self.popIndent(2)
-
+        pass
     def visitSMEos(self, eos):
         pass
 

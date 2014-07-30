@@ -24,15 +24,15 @@ FOR VERSION 1
     o At-end stuff.
     o Allow more things in unions.
 
-  - Access functions
+  . Access functions
     - for unions?
-    - for array members?
+    o for array members?
 
-  - Set length fields for length-having unions automatically.
+  o Set length fields for length-having unions automatically.
 
-  - Write some tests for the C code
+  . Write some tests for the C code
   o Get complete coverage for generator
-  - Get complete coverage on generated code made by complete-coverage
+  . Get complete coverage on generated code made by complete-coverage
     generator
 
   - Document it.
@@ -42,6 +42,12 @@ FOR VERSION 1
 
 
 FOR VERSION 1.1 OR LATER
+
+  - Forbid length fields of unions to get reused as anything else.
+
+  - Allow length fields inside unions.
+
+  - Allow nested structures
 
   - Add extra structure data fields and corresponding "clear" functions to
     output.
