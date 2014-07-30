@@ -267,6 +267,7 @@ class Annotator(ASTVisitor):
     def __init__(self):
         ASTVisitor.__init__(self)
         self.prefix = ""
+        self.memberByName = {}
 
     def visitFile(self, f):
         f.visitChildren(self)
@@ -281,6 +282,7 @@ class Annotator(ASTVisitor):
 
     def annotateMember(self, member):
         member.c_name = "%s%s" % (self.prefix, member.name)
+        self.memberByName[member.name] = member
 
     def visitSMInteger(self, smi):
         self.annotateMember(smi)
@@ -290,6 +292,7 @@ class Annotator(ASTVisitor):
         self.annotateMember(sfa)
     def visitSMVarArray(self, sva):
         self.annotateMember(sva)
+        sva.widthfieldmember = self.memberByName[sva.widthfield]
     def visitSMString(self, ss):
         self.annotateMember(ss)
     def visitSMRemainder(self, smr):
@@ -299,6 +302,11 @@ class Annotator(ASTVisitor):
         self.prefix = smu.name + "_"
         smu.visitChildren(self)
         self.prefix = ""
+        smu.tagfieldmember = self.memberByName[smu.tagfield]
+        if smu.lengthfield is not None:
+            smu.lengthfieldmember = self.memberByName[smu.lengthfield]
+        else:
+            smu.lengthfieldmember = None
     def visitUnionMember(self, um):
         um.visitChildren(self)
     def visitSMFail(self, fail):
@@ -968,7 +976,9 @@ class ParseFnGenerator(IndentingGenerator):
         # FFFF some of this is kinda cut-and-paste
         if arrayIsBytes(sva):
             if str(sva.basetype) == 'char':
+                self.w_('#if SIZE_MAX <= UINT%d_MAX\n'%sva.widthfieldmember.inttype.width)
                 self.w('if (((size_t)obj->%s) > SIZE_MAX - 1) goto overflow;'%sva.widthfield)
+                self.w_('#endif\n')
                 plus1 = "+ 1"
                 elt = "obj->%s"%sva.c_name
             else:
