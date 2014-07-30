@@ -16,6 +16,7 @@ extern struct testcase_t nested_tests[];
 extern struct testcase_t fixedarray_tests[];
 extern struct testcase_t vararray_tests[];
 extern struct testcase_t union_nolen_tests[];
+extern struct testcase_t union_withlen_tests[];
 
 ssize_t unhex(uint8_t *out, size_t outlen, const char *in);
 const uint8_t *ux(const char *in);

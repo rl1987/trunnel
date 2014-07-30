@@ -10,6 +10,7 @@ struct testgroup_t test_groups[] = {
   { "fixed-array/", fixedarray_tests },
   { "var-array/", vararray_tests },
   { "union-nolen/", union_nolen_tests },
+  { "union-withlen/", union_withlen_tests },
   END_OF_GROUPS,
 };
 
