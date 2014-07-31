@@ -15,6 +15,9 @@ struct socks5_server_method {
 const CMD_CONNECT = 1;
 const CMD_BIND = 2;
 const CMD_UDP_ASSOCIATE = 3;
+// This is a tor extension
+const CMD_RESOLVE_PTR = 0xF1;
+
 const ATYPE_IPV4 = 1;
 const ATYPE_IPV6 = 4;
 const ATYPE_DOMAINNAME = 3;
@@ -26,7 +29,7 @@ struct domainname {
 
 struct socks5_client_request {
    u8 version IN [5];
-   u8 command IN [CMD_CONNECT, CMD_BIND, CMD_UDP_ASSOCIATE];
+   u8 command IN [CMD_CONNECT, CMD_BIND, CMD_UDP_ASSOCIATE, CMD_RESOLVE_PTR];
    u8 reserved IN [0];
    u8 atype;
    union dest_addr[atype] {
@@ -52,11 +55,24 @@ struct socks5_server_reply {
    u16 bind_port;
 }
 
+struct socks5_client_userpass_auth {
+   u8 version IN [1];
+   u8 username_len;
+   char username[username_len];
+   u8 passwd_len;
+   char passwd[passwd_len];
+}
+
+struct socks5_server_userpath_auth {
+   u8 version IN [1];
+   u8 status;
+}
+
 // Oh why not.  Here's socks4 and socks4a.
 
 struct socks4_client_request {
    u8 version IN [4];
-   u8 command IN [CMD_CONNECT,CMD_BIND];
+   u8 command IN [CMD_CONNECT,CMD_BIND,CMD_RESOLVE_PTR];
    u16 port;
    u32 addr;
    nulterm username;
