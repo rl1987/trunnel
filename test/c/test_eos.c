@@ -63,6 +63,8 @@ test_eos_encdec(void *arg)
   tt_int_op(4, ==, uses_eos_encode(buf, 32, out));
   tt_mem_op(buf, ==, buf, 4);
 
+  uses_eos_free(out); out = NULL;
+
  end:
   uses_eos_free(out);
 }

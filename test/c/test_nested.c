@@ -68,6 +68,8 @@ test_nest_invalid(void *arg)
   nest->strs.nt = strdup("xyz");
   tt_int_op(-1, ==, nested_encode(buf, 128, nest));
 
+  nested_free(nest); nest = NULL;
+
  end:
   nested_free(nest);
 }

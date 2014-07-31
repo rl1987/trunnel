@@ -97,6 +97,8 @@ test_fixed_encdec(void *arg)
   tt_int_op(66, ==, fixed_encode(buf, sizeof(buf), out));
   tt_mem_op(buf, ==, inp, 66);
 
+  fixed_free(out); out = NULL;
+
  end:
   fixed_free(out);
 }
