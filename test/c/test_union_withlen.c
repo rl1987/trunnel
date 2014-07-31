@@ -34,6 +34,9 @@ static const char TOOSHORT4[] =
   "41736863616e7320616e6420756e6f627461696e61626c6520646f6c6c6172732100"
   "7700";
 
+static const char BADTAG[] =
+  "99""000000";
+
 struct item {
   const char *pre;
   const char *post;
@@ -64,6 +67,7 @@ test_union2_truncated(void *arg)
     { TOOSHORT3, NULL, 8 },
     { TOOSHORT4, NULL, 8 },
     { EXTRA1, NULL, 5 },
+    { BADTAG, NULL, 3 },
     { NULL, NULL, 0 }
   };
 
@@ -84,11 +88,20 @@ test_union2_truncated(void *arg)
     for (i = 0; i < outlen2; ++i) {
       tt_int_op(-2, ==, union2_encode(buf, i, out));
     }
+    /* Successful encode. */
     memset(buf, 0x7e, sizeof(buf));
     tt_int_op(outlen2, ==, union2_encode(buf, outlen2, out));
 
     inp = ux(item->post);
     tt_mem_op(buf, ==, inp, outlen2);
+
+    /* Successful encode with length field cleared. (Make sure it gets
+       regenerated) */
+    out->length = 0xffff;
+    memset(buf, 0x7e, sizeof(buf));
+    tt_int_op(outlen2, ==, union2_encode(buf, outlen2, out));
+    tt_mem_op(buf, ==, inp, outlen2);
+
     union2_free(out);
     out = NULL;
   }
@@ -110,11 +123,9 @@ test_union2_truncated(void *arg)
   union2_free(out);
 }
 
-#if 0
 static void
 test_union2_invalid(void *arg)
 {
-  const uint8_t *inp;
   uint8_t buf[128];
   union2_t *union2=NULL;
   (void)arg;
@@ -127,17 +138,17 @@ test_union2_invalid(void *arg)
   tt_int_op(-1, ==, union2_encode(buf, sizeof(buf), union2));
 
   /* Invalid item means invalid object */
-  union2->tag = 6;
+  union2->tag = 4;
+  union2->un_remainder_len = 0;
   tt_int_op(-1, ==, union2_encode(buf, sizeof(buf), union2));
 
-  /* Success! */
-  union2->un_d = strdup("Hi there");
-  tt_int_op(10, ==, union2_encode(buf, sizeof(buf), union2));
-  union2_free(union2); union2 = NULL;
+  /* Missing item means invalid object */
+  union2->un_remainder = malloc(1);
+  tt_int_op(-1, ==, union2_encode(buf, sizeof(buf), union2));
 
-  /* Try parsing a bad tag */
-  inp = ux("FF");
-  tt_int_op(-1, ==, union2_parse(&union2, inp, 1));
+  /* Now add the last item for success */
+  union2->more = strdup("Hi");
+  tt_int_op(22, ==, union2_encode(buf, sizeof(buf), union2));
 
  end:
   union2_free(union2);
@@ -148,7 +159,6 @@ test_union2_encdec(void *arg)
 {
   const uint8_t *inp;
   union2_t *out = NULL;
-  //  uint8_t buf[128];
   size_t len;
   (void)arg;
 
@@ -158,56 +168,63 @@ test_union2_encdec(void *arg)
   inp = ux(CASE1);
   len = strlen(CASE1)/2;
   tt_int_op(len, ==, union2_parse(&out, inp, len));
-  tt_int_op(2, ==, out->tag);
-  tt_int_op(6, ==, out->un_a);
+  tt_int_op(out->tag, ==, 2);
+  tt_int_op(out->length, ==, 1);
+  tt_int_op(out->un_a, ==, 6);
+  tt_str_op(out->more, ==, "f");
   union2_free(out); out = NULL;
 
   /* CASE2 */
   inp = ux(CASE2);
   len = strlen(CASE2)/2;
   tt_int_op(len, ==, union2_parse(&out, inp, len));
-  tt_int_op(3, ==, out->tag);
-  tt_int_op(1, ==, out->un_b);
-  tt_int_op(65536, ==, out->un_b2);
+  tt_int_op(out->tag, ==, 3);
+  tt_int_op(out->length, ==, 2);
+  tt_int_op(out->un_b, ==, 1);
+  tt_str_op(out->more, ==, "");
+  union2_free(out); out = NULL;
+
+  /* CASE2b */
+  inp = ux(CASE2);
+  len = strlen(CASE2)/2;
+  tt_int_op(len, ==, union2_parse(&out, inp, len));
+  tt_int_op(out->tag, ==, 3);
+  tt_int_op(out->length, ==, 2);
+  tt_int_op(out->un_b, ==, 1);
+  tt_str_op(out->more, ==, "");
   union2_free(out); out = NULL;
 
   /* CASE3 */
   inp = ux(CASE3);
   len = strlen(CASE3)/2;
   tt_int_op(len, ==, union2_parse(&out, inp, len));
-  tt_int_op(5, ==, out->tag);
-  tt_mem_op(".pure machinery.", ==, out->un_c, 16);
+  tt_int_op(out->tag, ==, 5);
+  tt_int_op(out->length, ==, 16);
+  tt_mem_op(out->un_c, ==, ".pure machinery.", 16);
+  tt_int_op(out->un_remainder_len, ==, 0);
+  tt_ptr_op(out->un_remainder, !=, NULL);
+  tt_str_op(out->more, ==, "");
   union2_free(out); out = NULL;
 
   /* CASE4 */
   inp = ux(CASE4);
   len = strlen(CASE4)/2;
   tt_int_op(len, ==, union2_parse(&out, inp, len));
-  tt_int_op(6, ==, out->tag);
-  tt_str_op("Ashcans and unobtainable dollars!", ==, out->un_d);
-  union2_free(out); out = NULL;
-
-  /* CASE5 */
-  inp = ux(CASE5);
-  len = strlen(CASE5)/2;
-  tt_int_op(len, ==, union2_parse(&out, inp, len));
-  tt_int_op(7, ==, out->tag);
-  tt_int_op(5, ==, out->un_e.i8);
-  tt_int_op(4, ==, out->un_e.i16);
-  tt_int_op(3, ==, out->un_e.i32);
-  tt_int_op(2, ==, out->un_e.i64);
+  tt_int_op(out->tag, ==, 5);
+  tt_int_op(out->length, ==, 34);
+  tt_mem_op(out->un_c, ==, "Ashcans and unob", 16);
+  tt_int_op(out->un_remainder_len, ==, 18);
+  tt_mem_op(out->un_remainder, ==, "tainable dollars!", 18);
+  tt_str_op(out->more, ==, "w");
   union2_free(out); out = NULL;
 
  end:
   union2_free(out);
 }
-#endif
 
 struct testcase_t union_withlen_tests[] = {
   { "truncated", test_union2_truncated, 0, NULL, NULL },
-#if 0
   { "invalid", test_union2_invalid, 0, NULL, NULL },
   { "encode-decode", test_union2_encdec, 0, NULL, NULL },
-#endif
   END_OF_TESTCASES
 };
