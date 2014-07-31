@@ -93,7 +93,7 @@ struct union2 {
      TWO: u8 a;
      THREE: u16 b;
             ...;
-     FOUR, 5:
+     FOUR, 0x05:
            // A comment to get ignored.
            u8 c[16];
            u8 remainder[];

@@ -44,7 +44,7 @@ class ConstIdentifier(Token):
 class IntLiteral(Token):
     def __init__(self, value, lineno):
         Token.__init__(self, "INT", lineno)
-        self.value = int(value)
+        self.value = int(value, 0)
 
     def __str__(self):
         return str(self.value)
@@ -92,7 +92,7 @@ class Lexer(spark.GenericScanner, object):
             self.rv.append(Identifier(s, self.lineno))
 
     def t_int(self, s):
-        r"[0-9]+"
+        r"0x[0-9a-fA-F]+ | [0-9]+ "
         self.rv.append(IntLiteral(s, self.lineno))
 
     def t_space(self, s):

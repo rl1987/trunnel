@@ -48,6 +48,8 @@ FOR VERSION 1.1 OR LATER
 
   - Allow length fields inside unions.
 
+  - Allow vararrays inside unions.
+
   - Allow nested structures
 
   - Add extra structure data fields and corresponding "clear" functions to
