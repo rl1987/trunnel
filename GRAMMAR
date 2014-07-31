@@ -1,75 +1,6 @@
 
-==============================  Hand-written grammar, possibly outdated.
-
- File = Declaration*
-
- Declaration = ConstDecl | StructDecl
-
- ConstDecl = "const" CONST_NAME "=" IntLiteral ";"
-
- StructDecl = "struct" StructName "{" StructMember* StructEnding? "}" ";"
-
- StructEnding = "..." | SMRemainder
-
- SMRemainder = "u8" MemberName "[" "]" ";"
-
- Integer = IntLiteral | CONST_NAME
-
- StructMember = ( SMInteger |
-                  SMStruct |
-  		  SMString |
- 		  SMArray |
-		  SMUnion ) ";"
-
-  SMInteger = IntType MemberName ( IN IntSet ) ?
-
-  IntType = "u8" | "u16" | "u32" | "u64"
-
-  IntSet = "[" IntList  "]"
-  IntList = IntListMember | IntList "," IntListMember
-  IntListMember = Integer | Integer ".." Integer
-
-  SMStruct = "struct" StructName MemberName
-
-  SMString = "nulterm" Membername
-
-  SMArray = SMFixedArray | SMVarArray
-
-  ArrayBase = IntType | "struct" StructName | "char"
-
-  SMVarArray = ArrayBase MemberName "[" MemberName "]"
-
-  SMFixedArray = ArrayBase MemberName "[" Integer "]"
-
-  SMUnion = "union" MemberName "[" MemberName "]" UnionLength?
-                    "{" UnionMember* UMDefault? "}" ";"
-
-  UnionLength = "WITH" "LENGTH" MemberName
-
-  UnionMember = IntList ":" (SMInteger | SMFixedArray | SMString | SMStruct)
-                   ExtentSpec? ";"
-
-  ExtentSpec = "..."
-
-  UMDefault = "default" ":" ( u8 MemberName "[" "]" |
-                              "fail" |
-			      "ignore" ) ";"
-
-  MemberName = [a-z_][a-z0-9_]*
-  StructName = [a-z_][a-z0-9_]*
-  CONST_NAME = [A-Z_][A-Z0-9_]*
-
-Additional constraints:
-
-   Structure declarations form a DAG.
-
-   Field references in SMVarArray and SMUnion and SMUnionLength refer
-   only to earlier-occurring fields in the same structure.
-
-   No ExtentSpec unless the union has a UnionLength.
-
-
 =================== HERE IS OUR ACTUAL GRAMMAR, extracted from Grammar.py
+
 
          File ::= Declaration
          File ::= File Declaration
@@ -82,8 +13,10 @@ Additional constraints:
          StructDecl ::= struct ID { StructMembers StructEnding }
 
          StructEnding ::=
-         StructEnding ::= ...
-         StructEnding ::= OptAnnotation u8 ID [ ] ;
+         StructEnding ::= eos ;
+         StructEnding ::= SMRemainder ;
+
+         SMRemainder ::= OptAnnotation u8 ID [ ]
 
          StructMembers ::= OptAnnotation StructMember ;
          StructMembers ::= StructMembers OptAnnotation StructMember ;
@@ -101,22 +34,20 @@ Additional constraints:
          StructMember ::= SMUnion
 
          SMInteger ::= IntType ID OptIntConstraint
-
          IntType ::= u8
          IntType ::= u16
          IntType ::= u32
          IntType ::= u64
-
          OptIntConstraint ::=
          OptIntConstraint ::= IN [ IntList ]
 
          IntList ::= IntListMember
          IntList ::= IntList , IntListMember
-
          IntListMember ::= Integer
          IntListMember ::= Integer .. Integer
 
          SMStruct ::= struct ID ID
+
          SMString ::= nulterm ID
 
          SMArray ::= SMFixedArray
@@ -131,17 +62,19 @@ Additional constraints:
          SMFixedArray ::= ArrayBase ID [ Integer ]
 
          SMUnion ::= union ID [ ID ] OptUnionLength { UnionMembers OptUMDefault }
-
          OptUnionLength ::=
          OptUnionLength ::= WITH LENGTH ID
 
          UnionMembers ::= UnionMember ;
          UnionMembers ::= UnionMembers UnionMember ;
-
-         UnionMember ::= IntList : UnionField OptExtentSpec
+         UnionMember ::= IntList : UnionFields OptExtentSpec
 
          OptExtentSpec ::=
          OptExtentSpec ::= ...
+         OptExtentSpec ::= ; SMRemainder
+
+         UnionFields ::= UnionField
+         UnionFields ::= UnionFields ; UnionField
 
          UnionField ::= SMInteger
          UnionField ::= SMFixedArray
@@ -149,8 +82,17 @@ Additional constraints:
          UnionField ::= SMStruct
 
          OptUMDefault ::=
-         OptUMDefault ::= default : UMDefaultField ;
+         OptUMDefault ::= default : SMRemainder ;
+         OptUMDefault ::= default : fail ;
+         OptUMDefault ::= default : ignore ;
 
-         UMDefaultField ::= u8 ID [ ]
-         UMDefaultField ::= fail
-         UMDefaultField ::= ignore
+
+Additional constraints:
+
+   Structure declarations form a DAG.
+
+   Field references in SMVarArray and SMUnion and SMUnionLength refer
+   only to earlier-occurring fields in the same structure.
+
+   No ExtentSpec unless the union has a UnionLength.
+
