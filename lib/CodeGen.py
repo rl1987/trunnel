@@ -198,6 +198,7 @@ class Checker(ASTVisitor):
         self.unionTagMax = TYPE_MAXIMA[self.structIntFieldNames[smu.tagfield]]
         self.containing = "%s.%s"%(self.structName,smu.name)
         self.memberPrefix = smu.name+"_"
+        self.foundDefaults = 0
         smu.visitChildren(self)
         self.curunion = None
 
@@ -210,6 +211,13 @@ class Checker(ASTVisitor):
             assert hi >= lo
             lasthi = hi
 
+        if self.foundDefaults > 1:
+            raise CheckError("Multiple default cases in %s.%s"%
+                             (self.structName,smu.name))
+        elif self.foundDefaults == 0:
+            # If no default, the default is 'fail'
+            smu.members.append(Grammar.UnionMember(None, [ Grammar.SMFail() ]))
+
         self.memberPrefix = ""
         self.unionName = None
         self.unionMatching = None
@@ -219,6 +227,8 @@ class Checker(ASTVisitor):
     def visitUnionMember(self, um):
         if um.tagvalue is not None:
             self.checkIntegerList(um.tagvalue, self.unionTagMax, self.unionMatching)
+        else:
+            self.foundDefaults += 1
 
         # save list of int fields so that other declarations can't
         # depend on integers declared here.

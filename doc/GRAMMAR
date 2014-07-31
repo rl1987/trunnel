@@ -1,7 +1,6 @@
 
 =================== HERE IS OUR ACTUAL GRAMMAR, extracted from Grammar.py
 
-
          File ::= Declaration
          File ::= File Declaration
 
@@ -11,7 +10,6 @@
          ConstDecl ::= const CONST_ID = INT ;
 
          StructDecl ::= struct ID { StructMembers StructEnding }
-
          StructEnding ::=
          StructEnding ::= eos ;
          StructEnding ::= SMRemainder ;
@@ -38,6 +36,7 @@
          IntType ::= u16
          IntType ::= u32
          IntType ::= u64
+
          OptIntConstraint ::=
          OptIntConstraint ::= IN [ IntList ]
 
@@ -47,44 +46,37 @@
          IntListMember ::= Integer .. Integer
 
          SMStruct ::= struct ID ID
-
          SMString ::= nulterm ID
-
          SMArray ::= SMFixedArray
          SMArray ::= SMVarArray
-
          ArrayBase ::= IntType
          ArrayBase ::= struct ID
          ArrayBase ::= char
-
          SMVarArray ::= ArrayBase ID [ ID ]
-
          SMFixedArray ::= ArrayBase ID [ Integer ]
 
-         SMUnion ::= union ID [ ID ] OptUnionLength { UnionMembers OptUMDefault }
+         SMUnion ::= union ID [ ID ] OptUnionLength { UnionMembers }
          OptUnionLength ::=
          OptUnionLength ::= WITH LENGTH ID
 
-         UnionMembers ::= UnionMember ;
-         UnionMembers ::= UnionMembers UnionMember ;
-         UnionMember ::= IntList : UnionFields OptExtentSpec
-
+         UnionMembers ::= UnionMember
+         UnionMembers ::= UnionMembers UnionMember
+         UnionMember ::= UnionCase : UnionFields OptExtentSpec
+         UnionCase ::= IntList
+         UnionCase ::= default
          OptExtentSpec ::=
-         OptExtentSpec ::= ...
-         OptExtentSpec ::= ; SMRemainder
-
-         UnionFields ::= UnionField
-         UnionFields ::= UnionFields ; UnionField
-
+         OptExtentSpec ::= ... ;
+         OptExtentSpec ::= SMRemainder ;
+         UnionFields ::= ;
+         UnionFields ::= UnionField ;
+         UnionFields ::= UnionFields UnionField ;
+         UnionFields ::= fail ;
+         UnionFields ::= ignore ;
+         UnionFields ::= SMRemainder ;
          UnionField ::= SMInteger
          UnionField ::= SMFixedArray
          UnionField ::= SMString
          UnionField ::= SMStruct
-
-         OptUMDefault ::=
-         OptUMDefault ::= default : SMRemainder ;
-         OptUMDefault ::= default : fail ;
-         OptUMDefault ::= default : ignore ;
 
 
 Additional constraints:

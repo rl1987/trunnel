@@ -1,0 +1,9 @@
+
+struct x {
+  u8 tag;
+  union u[tag] {
+    1: u8 a;
+    default: u8 b;
+    default: u8 c;
+  };
+}

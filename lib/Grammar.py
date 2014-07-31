@@ -145,7 +145,7 @@ class File(AST):
     def visitChildrenSorted(self, sort_order, v, *args):
         if set(sort_order) != set(self.declarationsByName.keys()):
             raise ValueError("sort_order does not match actual list "
-                             "of declartions")
+                             "of declarations")
         for c in self.constants:
             v.visit(c, *args)
 
@@ -494,9 +494,8 @@ class Parser(spark.GenericParser, object):
         return SMFixedArray(info[0], str(info[1]), info[3])
 
     def p_SMUnion(self, info):
-        " SMUnion ::= union ID [ ID ] OptUnionLength { UnionMembers OptUMDefault } "
-        _1, unionfield, _2, tagfield, _3, optlength, _4, members, optdefault, _5, = info
-        members.append(optdefault)
+        " SMUnion ::= union ID [ ID ] OptUnionLength { UnionMembers } "
+        _1, unionfield, _2, tagfield, _3, optlength, _4, members, _5 = info
         return SMUnion(str(unionfield), str(tagfield), optlength, members)
 
     def p_OptUnionLength_1(self, info):
@@ -508,41 +507,57 @@ class Parser(spark.GenericParser, object):
         return str(info[2])
 
     def p_UnionMembers_1(self, info):
-        " UnionMembers ::= UnionMember ; "
+        " UnionMembers ::= UnionMember "
         return [ info[0] ]
 
     def p_UnionMembers_2(self, info):
-        " UnionMembers ::= UnionMembers UnionMember ; "
-        lst, item, _ = info
+        " UnionMembers ::= UnionMembers UnionMember "
+        lst, item = info
         lst.append(item)
         return lst
 
     def p_UnionMember(self, info):
-        " UnionMember ::= IntList : UnionFields OptExtentSpec "
+        " UnionMember ::= UnionCase : UnionFields OptExtentSpec "
         tagvals, _, members, extends = info
-        if extends is not None:
-            members.append(extends)
-        return UnionMember(tagvals, members)
+        return UnionMember(tagvals, members + extends)
+
+    def p_UnionCase_0(self, info):
+        " UnionCase ::= IntList "
+        return info[0]
+    def p_UnionCase_1(self, info):
+        " UnionCase ::= default "
+        return None
 
     def p_OptExtentSpec_1(self, info):
         " OptExtentSpec ::= "
-        return None
+        return [ ]
     def p_OptExtentSpec_2(self, info):
-        " OptExtentSpec ::= ... "
-        return SMIgnore()
-    def p_OptExtendSpec_3(self, info):
-        " OptExtentSpec ::= ; SMRemainder "
-        return info[1]
-
-    def p_UnionFields_1(self, info):
-        " UnionFields ::= UnionField "
+        " OptExtentSpec ::= ... ; "
+        return [ SMIgnore() ]
+    def p_OptExtentSpec_3(self, info):
+        " OptExtentSpec ::= SMRemainder ; "
         return [ info[0] ]
 
+    def p_UnionFields_0(self, info):
+        " UnionFields ::= ; "
+        return []
+    def p_UnionFields_1(self, info):
+        " UnionFields ::= UnionField ; "
+        return [ info[0] ]
     def p_UnionFields_2(self, info):
-        " UnionFields ::= UnionFields ; UnionField "
-        fields, _, field = info
+        " UnionFields ::= UnionFields UnionField ; "
+        fields, field, _ = info
         fields.append(field)
         return fields
+    def p_UnionFields_3(self, info):
+        " UnionFields ::= fail ; "
+        return [ SMFail() ]
+    def p_UnionFields_4(self, info):
+        " UnionFields ::= ignore ; "
+        return [ SMIgnore() ]
+    def p_UnionFields_5(self, info):
+        " UnionFields ::= SMRemainder ; "
+        return [ info[0] ]
 
     def p_UnionField_1(self, info):
         " UnionField ::= SMInteger "
@@ -556,22 +571,6 @@ class Parser(spark.GenericParser, object):
     def p_UnionField_4(self, info):
         " UnionField ::= SMStruct "
         return info[0]
-
-    def p_OptUMDefault_0(self, info):
-        " OptUMDefault ::= "
-        return UnionMember(None, [ SMFail() ])
-
-    def p_OptUMDefault_1(self, info):
-        " OptUMDefault ::= default : SMRemainder ; "
-        return UnionMember(None, [ info[2] ])
-
-    def p_OptUMDefault_2(self, info):
-        " OptUMDefault ::= default : fail ; "
-        return UnionMember(None, [ SMFail() ])
-
-    def p_OptUMDefault_3(self, info):
-        " OptUMDefault ::= default : ignore ; "
-        return UnionMember(None, [ SMIgnore() ])
 
 
 __license__ = """

@@ -123,7 +123,8 @@ struct union_with_len {
 
   union u[tag] WITH LENGTH unionlen {
     1: struct color c;
-    2: struct date d ...; // ... means it's okay if unionlen > sizeof(date)
+    2: struct date d; 
+       ...; // ... means it's okay if unionlen > sizeof(date)
     default: u8 unparseable[];
     // We could also say "default: ignore;" to not retain the data.
   };

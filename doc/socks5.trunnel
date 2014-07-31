@@ -52,3 +52,26 @@ struct socks5_server_reply {
    u16 bind_port;
 }
 
+// Oh why not.  Here's socks4.
+
+struct socks4_client_request {
+   u8 version IN [4];
+   u8 command IN [CMD_CONNECT,CMD_BIND];
+   u16 port;
+   u32 addr;
+   nulterm username;
+   union socks4a_addr[addr] {
+      1..255:
+               nulterm hostname;
+      default:
+               ;
+   };
+}
+
+
+struct socks4_server_reply {
+   u8 version IN [4];
+   u8 status;
+   u16 port;
+   u32 addr;
+}

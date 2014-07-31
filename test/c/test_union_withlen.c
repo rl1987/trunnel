@@ -17,6 +17,9 @@ static const char CASE4[] =
   "41736863616e7320616e6420756e6f627461696e61626c6520646f6c6c6172732100"
   "7700";
 
+static const char CASE5[] =
+  "08""0000""4000";
+
 static const char TOOSHORT1[] =
   "02""0000""06""6600";
 
@@ -58,6 +61,7 @@ test_union2_truncated(void *arg)
     { CASE2b, CASE2, 0 },
     { CASE3, CASE3, 0 },
     { CASE4, CASE4, 0 },
+    { CASE5, CASE5, 0 },
     { NULL, NULL, 0 }
   };
 
@@ -231,6 +235,16 @@ test_union2_encdec(void *arg)
   tt_mem_op(out->un_remainder, ==, "tainable dollars!", 18);
   tt_str_op(out->more, ==, "w");
   union2_free(out); out = NULL;
+
+  /* CASE5 */
+  inp = ux(CASE5);
+  len = strlen(CASE5)/2;
+  tt_int_op(len, ==, union2_parse(&out, inp, len));
+  tt_int_op(out->tag, ==, 8);
+  tt_int_op(out->length, ==, 0);
+  tt_str_op(out->more, ==, "@");
+  union2_free(out); out = NULL;
+
 
  end:
   union2_free(out);

@@ -15,6 +15,9 @@ static const char CASE4[] =
 static const char CASE5[] =
   "07""05" "0004" "00000003" "00000000""00000002";
 
+static const char CASE6[] =
+  "08";
+
 static void
 test_union1_truncated(void *arg)
 {
@@ -30,6 +33,7 @@ test_union1_truncated(void *arg)
     CASE3,
     CASE4,
     CASE5,
+    CASE6,
     NULL
   };
 

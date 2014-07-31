@@ -80,6 +80,7 @@ struct union1 {
      FIVE: u8 c[16];
      6: nulterm d;
      7: struct numbers e;
+     8: ;
    };
 
 }
@@ -90,11 +91,13 @@ struct union2 {
    /** A union with a length */
    union un[tag] WITH LENGTH length {
      TWO: u8 a;
-     THREE: u16 b ...;
+     THREE: u16 b;
+            ...;
      FOUR, 5:
            // A comment to get ignored.
            u8 c[16];
            u8 remainder[];
+     8 : ;
      default: fail;
    };
 

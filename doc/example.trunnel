@@ -62,7 +62,7 @@ struct namex {
     };
 
     union alice[tag] WITH LENGTH length {
-        5: struct yy field3 ...;
+        5: struct yy field3 ; ... ;
         default: u8 junk[];
     };
 
