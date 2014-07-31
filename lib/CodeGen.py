@@ -1,4 +1,6 @@
 
+import re
+import textwrap
 import Grammar
 
 class ASTVisitor(object):
@@ -350,6 +352,15 @@ class IndentingGenerator(ASTVisitor):
         nl = ("\n" if skipLine else "")
         self.w('%s/* %s %s */\n'%(nl, self.action, element))
 
+    def docstring(self, string):
+        string = re.sub(r'\s+', ' ', string)
+        lines = textwrap.wrap(string,
+                              initial_indent="/** ",
+                              subsequent_indent=" * ")
+        for line in lines:
+            self.w(line+"\n")
+        self.w(" */\n")
+
 class DeclarationGenerationVisitor(IndentingGenerator):
     def __init__(self, sort_order, f):
         IndentingGenerator.__init__(self, f.write)
@@ -449,9 +460,28 @@ class PrototypeGenerationVisitor(IndentingGenerator):
             self.w("static ssize_t %s_parse_into(%s_t *obj, const uint8_t *input, const size_t len_in);\n"%(name,name))
             return
 
+        self.docstring("""Return a newly allocated %s with all elements set
+                          to zero.""" % name)
         self.w("%s_t *%s_new(void);\n"%(name,name))
+        self.docstring("""Release all storage held by the %s in 'victim'.
+                          (Do nothing if 'victim' is NULL.)
+                       """
+                       %name)
         self.w("void %s_free(%s_t *victim);\n"%(name, name))
+        self.docstring("""Try to parse a %s from the buffer in 'input',
+                          using up to 'len_in' bytes from the input buffer.
+                          On success, return the number of bytes consumed and
+                          set *output to the newly allocated %s_t. On failure,
+                          return -2 if the input appears truncated, and -1
+                          if the input is otherwise invalid.
+                       """%(name, name))
         self.w("ssize_t %s_parse(%s_t **output, const uint8_t *input, const size_t len_in);\n"%(name,name))
+        self.docstring("""Try to encode the %s from 'input' into the buffer
+                          at 'output', using up to 'avail' bytes of the
+                          output buffer. On success, return the number of
+                          bytes used. On failure, return -2 if the buffer
+                          was not long enough, and -1 if the input was
+                          invalid."""%(name))
         self.w("ssize_t %s_encode(uint8_t *output, const size_t avail, const %s_t *input);\n"%(name,name))
 
         self.structName = name
@@ -478,10 +508,22 @@ class PrototypeGenerationVisitor(IndentingGenerator):
         else:
             elttype = "uint%d_t"%sva.basetype.width
 
+        self.docstring("""Return the length of the dynamic array holding the
+                          %s field of the %s_t in 'inp'."""%(nm,st))
         self.w("size_t %s_get_%s_len(const %s_t *inp);\n"%(st,nm,st))
+        self.docstring("""Return the element at position 'idx' of the
+                          dynamic array field %s of the %s_t in 'inp'."""%
+                       (nm,st))
         self.w("%s %s_get_%s(const %s_t *inp, size_t idx);\n"%(elttype,st,nm,st))
+        self.docstring("""Change the the element at position 'idx' of the
+                          dynamic array field %s of the %s_t in 'inp', so
+                          that it will hold the value 'elt'."""%
+                       (nm,st))
         self.w("void %s_set_%s(%s_t *inp, size_t idx, %s elt);\n"
                %(st,nm,st,elttype))
+        self.docstring("""Append a new element 'elt' to the dynamic array
+                          field %s the %s_t in 'inp'."""%
+                       (nm,st))
         self.w("int %s_add_%s(%s_t *inp, %s elt);\n"
                %(st,nm,st,elttype))
 
@@ -515,6 +557,8 @@ class FreeFnGenerator(IndentingGenerator):
 
     def visitStructDecl(self, sd):
         self.structName = name = sd.name
+        self.docstring("""Release all storage held inside 'obj',
+                          but do not free 'obj'.""")
         self.w("static void\n%s_clear(%s_t *obj)\n{\n"%(name,name))
         self.pushIndent(2)
         self.w("(void) obj;\n")
@@ -650,6 +694,9 @@ class CheckFnGenerator(IndentingGenerator):
 
     def visitStructDecl(self, sd):
         self.structName = name = sd.name
+        self.docstring("""Check whether the internal state of the %s in
+                          'obj' is consistent. Return NULL if it is, and a
+                          short message if it is not."""%name)
         self.w("static const char *\n%s_check(const %s_t *obj)\n{\n"%(name,name))
         self.pushIndent(2)
         self.w('if (obj == NULL)\n  return "Object was NULL";\n')
@@ -958,6 +1005,8 @@ class ParseFnGenerator(IndentingGenerator):
 
     def visitStructDecl(self, sd):
         self.structName = name = sd.name
+        self.docstring("""As %s_parse(), but do not allocate the
+                          output object."""%name)
         self.w("static ssize_t\n%s_parse_into(%s_t *obj, const uint8_t *input, const size_t len_in)\n{\n"%(name,name))
         self.pushIndent(2)
         self.w('const uint8_t *ptr = input;\n'

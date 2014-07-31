@@ -30,15 +30,16 @@ FOR VERSION 1
 
   o Set length fields for length-having unions automatically.
 
-  . Write some tests for the C code
+  o Write some tests for the C code
   o Get complete coverage for generator
-  . Get complete coverage on generated code made by complete-coverage
+  o Get complete coverage on generated code made by complete-coverage
     generator
 
   - Document it.
     - Explain that I don't care about things that need backtracking
 
   o Allow "u8 until_end[];" in eos position.
+
 
 
 FOR VERSION 1.1 OR LATER
