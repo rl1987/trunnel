@@ -114,9 +114,6 @@ struct union2 {
 
    };
 
-
-   // This means that the rest of the structure is ignored.
-   ...
 }
 
 
