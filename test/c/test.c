@@ -11,6 +11,7 @@ struct testgroup_t test_groups[] = {
   { "var-array/", vararray_tests },
   { "union-nolen/", union_nolen_tests },
   { "union-withlen/", union_withlen_tests },
+  { "union-defaults/", union_defaults_tests },
   END_OF_GROUPS,
 };
 

@@ -15,7 +15,8 @@ TEST_OBJS = \
     c/test_fixedarray.o \
     c/test_vararray.o \
     c/test_union_nolen.o \
-    c/test_union_withlen.o
+    c/test_union_withlen.o \
+    c/test_union_defaults.o
 
 OBJS=tinytest/tinytest.o \
     valid/basic.o \
