@@ -1,4 +1,12 @@
 #!/bin/sh
+#
+# run_tests.sh -- a kludgey test wrapper for the Trunnel code generator.
+#
+# This is meant to exersie the whole trunnel code generator, using the
+# input files in valid/* and failing/*.
+#
+# Copyright 2014 The Tor Project, Inc.
+# See LICENSE file for copying information.
 
 TRUNNEL=`dirname $0`/../lib/CodeGen.py
 GRAMMAR=`dirname $0`/../lib/Grammar.py

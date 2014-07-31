@@ -1,3 +1,8 @@
+# Makefile -- a clumsy makefile for the C unit tests for generated trunnel
+#   code.
+#
+# Copyright 2014 The Tor Project, Inc.
+# See LICENSE file for copying information.
 
 MORE_CFLAGS=-fno-inline --coverage
 
