@@ -517,7 +517,7 @@ class FreeFnGenerator(IndentingGenerator):
         self.structName = name = sd.name
         self.w("static void\n%s_clear(%s_t *obj)\n{\n"%(name,name))
         self.pushIndent(2)
-        self.w("if (obj == NULL)\n  return;\n")
+        self.w("(void) obj;\n")
         sd.visitChildren(self)
         self.popIndent(2)
         self.w("}\n\n")
