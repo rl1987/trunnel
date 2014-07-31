@@ -127,6 +127,7 @@ static void
 test_union2_invalid(void *arg)
 {
   uint8_t buf[128];
+  uint8_t *buf2=NULL;
   union2_t *union2=NULL;
   (void)arg;
 
@@ -149,9 +150,22 @@ test_union2_invalid(void *arg)
   /* Now add the last item for success */
   union2->more = strdup("Hi");
   tt_int_op(22, ==, union2_encode(buf, sizeof(buf), union2));
+  union2_free(union2); union2 = NULL;
+
+  /* Fail on encoding if the length would overflow the u16 length field. */
+  union2 = union2_new();
+  union2->tag = 4;
+  union2->length = 0;
+  union2->un_remainder_len = 65520;
+  union2->un_remainder = calloc(1,65520);
+  union2->more = strdup("");
+  buf2 = malloc(100000);
+  tt_int_op(-1, ==, union2_encode(buf2, 100000, union2));
 
  end:
   union2_free(union2);
+  if (buf2)
+    free(buf2);
 }
 
 static void
