@@ -171,6 +171,7 @@ static void
 test_union2_encdec(void *arg)
 {
   const uint8_t *inp;
+  uint8_t buf[100];
   union2_t *out = NULL;
   size_t len;
   (void)arg;
@@ -215,6 +216,7 @@ test_union2_encdec(void *arg)
   tt_int_op(out->length, ==, 16);
   tt_mem_op(out->un_c, ==, ".pure machinery.", 16);
   tt_int_op(union2_get_un_remainder_len(out), ==, 0);
+
   tt_str_op(out->more, ==, "");
   union2_free(out); out = NULL;
 
@@ -226,8 +228,19 @@ test_union2_encdec(void *arg)
   tt_int_op(out->length, ==, 34);
   tt_mem_op(out->un_c, ==, "Ashcans and unob", 16);
   tt_int_op(union2_get_un_remainder_len(out), ==, 18);
+  tt_int_op(union2_get_un_remainder(out, 0), ==, 't');
   tt_mem_op(out->un_remainder.elts_, ==, "tainable dollars!", 18);
   tt_str_op(out->more, ==, "w");
+
+  /* mess with un_remainder to exercise accessors. */
+  union2_set_un_remainder(out, 17, '?');
+  union2_add_un_remainder(out, '!');
+  tt_int_op(len+1, ==, union2_encode(buf, sizeof(buf), out));
+  inp = ux("05""0023"
+      "41736863616e7320616e6420756e6f627461696e61626c6520646f6c6c617273213F21"
+      "7700");
+  tt_mem_op(buf, ==, inp, len+1);
+
   union2_free(out); out = NULL;
 
   /* CASE5 */

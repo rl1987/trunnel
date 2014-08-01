@@ -203,12 +203,16 @@ test_union34_encdec(void *arg)
   tt_int_op(5, ==, union4->length);
   tt_int_op(5, ==, union3_get_un_stuff_len(union3));
   tt_mem_op("efghi", ==, union3->un_stuff.elts_, 5);
+  tt_int_op('e', ==, union3_get_un_stuff(union3, 0));
+  union3_set_un_stuff(union3, 0, (uint8_t)'f');
+  union3_add_un_stuff(union3, (uint8_t)'j');
 
   /* verify correct re-encode after 'length' trashed for union3 */
   union3->length = 9999;
   memset(buf, 0xff, sizeof(buf));
-  tt_int_op(len, ==, union3_encode(buf, sizeof(buf), union3));
-  tt_mem_op(buf, ==, inp, len);
+  tt_int_op(len+1, ==, union3_encode(buf, sizeof(buf), union3));
+  inp = ux("00100006""66666768696A");
+  tt_mem_op(buf, ==, inp, len+1);
 
   union3_free(union3); union3 = NULL;
   union4_free(union4); union4 = NULL;

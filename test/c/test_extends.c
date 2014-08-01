@@ -73,13 +73,17 @@ test_extends_encdec(void *arg)
   (void)arg;
 
   memset(buf,0,32);
-  memcpy(buf+1,"HelloWorld",10);
+  memcpy(buf+1,"HelloWorld!",11);
   tt_int_op(11, ==, extends_parse(&out, buf, 11));
   tt_ptr_op(out, !=, 0);
   tt_str_op(out->a, ==, "");
   tt_int_op(extends_get_remainder_len(out), ==, 10);
-  tt_mem_op(out->remainder.elts_, ==, "HelloWorld", 10);
-  tt_int_op(11, ==, extends_encode(buf2, 11, out));
+  tt_int_op('H', ==, extends_get_remainder(out, 0));
+  extends_set_remainder(out, 0, (uint8_t)'Z');
+  tt_mem_op(out->remainder.elts_, ==, "ZelloWorld", 10);
+  extends_set_remainder(out, 0, (uint8_t)'H');
+  extends_add_remainder(out, '!');
+  tt_int_op(12, ==, extends_encode(buf2, 12, out));
   tt_mem_op(buf, ==, buf2, 11);
   extends_free(out); out = NULL;
 
