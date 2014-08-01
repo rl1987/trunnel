@@ -10,14 +10,8 @@ class Token(object):
         self.type = type
         self.lineno = lineno
 
-    def typestring(self):
-        return self.type
-
     def __str__(self):
         return self.type
-
-    def __repr__(self):
-        return "Token(%r,%r)"%(self.type, self.lineno)
 
 class Identifier(Token):
     def __init__(self, value, lineno):
@@ -27,9 +21,6 @@ class Identifier(Token):
     def __str__(self):
         return self.value
 
-    def __repr__(self):
-        return "Identifier(%r,%r)"%(self.value, self.lineno)
-
 class ConstIdentifier(Token):
     def __init__(self, value, lineno):
         Token.__init__(self, "CONST_ID", lineno)
@@ -38,19 +29,10 @@ class ConstIdentifier(Token):
     def __str__(self):
         return self.value
 
-    def __repr__(self):
-        return "ConstIdentifier(%r,%r)"%(self.value, self.lineno)
-
 class IntLiteral(Token):
     def __init__(self, value, lineno):
         Token.__init__(self, "INT", lineno)
         self.value = int(value, 0)
-
-    def __str__(self):
-        return str(self.value)
-
-    def __repr__(self):
-        return "IntLiteral(%r,%r)"%(self.value, self.lineno)
 
 class Annotation(Token):
     def __init__(self, value, lineno):
@@ -173,10 +155,7 @@ class StructMember(AST):
         self.annotation = None
 
     def getName(self):
-        if hasattr(self, 'c_name'):
-            return self.c_name
-        else:
-            return self.name
+        return self.c_name
 
 class IntType(AST):
     def __init__(self, width):
