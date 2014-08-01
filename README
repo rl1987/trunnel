@@ -3,13 +3,13 @@ a trunnel is a primitive nail
 
 The grammar is in doc/GRAMMAR.
 
-A mostly-readable example is in doc/example2.trunnel.
+A mostly-readable example is in examples/example2.trunnel.
 
 To see what it compiles into, run
 
-      python lib/CodeGen.py doc/example2.trunnel
+      python lib/CodeGen.py examples/example2.trunnel
 
-That will create doc/example2.c and doc/example2.h .
+That will create examples/example2.c and examples/example2.h .
 
 Better documentation to follow, I hope.
 
