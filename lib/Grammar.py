@@ -239,14 +239,6 @@ class SMVarArray(StructMember):
 
         return "%s%s %s[%s]"%(struct, str(self.basetype), self.getName(), self.widthfield)
 
-class SMRemainder(StructMember):
-    def __init__(self, name):
-        StructMember.__init__(self)
-        self.name = name
-
-    def __str__(self):
-        return "u8 %s[]"%(self.getName())
-
 class SMUnion(StructMember):
     def __init__(self, name, tagfield, lengthfield, members):
         StructMember.__init__(self)
@@ -345,8 +337,8 @@ class Parser(spark.GenericParser, object):
         return info[0]
 
     def p_SMRemainder(self, info):
-        " SMRemainder ::= OptAnnotation u8 ID [ ] "
-        m = SMRemainder(str(info[2]))
+        " SMRemainder ::= OptAnnotation ArrayBase ID [ ] "
+        m = SMVarArray(info[1], info[2], None)
         if info[0]:
             m.annotation = str(info[0])
         return m
@@ -545,9 +537,12 @@ class Parser(spark.GenericParser, object):
         " UnionField ::= SMFixedArray "
         return info[0]
     def p_UnionField_3(self, info):
-        " UnionField ::= SMString"
+        " UnionField ::= SMVarArray "
         return info[0]
     def p_UnionField_4(self, info):
+        " UnionField ::= SMString"
+        return info[0]
+    def p_UnionField_5(self, info):
         " UnionField ::= SMStruct "
         return info[0]
 

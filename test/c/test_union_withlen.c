@@ -144,11 +144,6 @@ test_union2_invalid(void *arg)
 
   /* Invalid item means invalid object */
   union2->tag = 4;
-  union2->un_remainder_len = 0;
-  tt_int_op(-1, ==, union2_encode(buf, sizeof(buf), union2));
-
-  /* Missing item means invalid object */
-  union2->un_remainder = malloc(1);
   tt_int_op(-1, ==, union2_encode(buf, sizeof(buf), union2));
 
   /* Now add the last item for success */
@@ -160,8 +155,8 @@ test_union2_invalid(void *arg)
   union2 = union2_new();
   union2->tag = 4;
   union2->length = 0;
-  union2->un_remainder_len = 65520;
-  union2->un_remainder = calloc(1,65520);
+  union2->un_remainder.allocated_ = union2->un_remainder.n_ = 65520;
+  union2->un_remainder.elts_ = calloc(1,65520);
   union2->more = strdup("");
   buf2 = malloc(100000);
   tt_int_op(-1, ==, union2_encode(buf2, 100000, union2));
@@ -219,8 +214,7 @@ test_union2_encdec(void *arg)
   tt_int_op(out->tag, ==, 5);
   tt_int_op(out->length, ==, 16);
   tt_mem_op(out->un_c, ==, ".pure machinery.", 16);
-  tt_int_op(out->un_remainder_len, ==, 0);
-  tt_ptr_op(out->un_remainder, !=, NULL);
+  tt_int_op(union2_get_un_remainder_len(out), ==, 0);
   tt_str_op(out->more, ==, "");
   union2_free(out); out = NULL;
 
@@ -231,8 +225,8 @@ test_union2_encdec(void *arg)
   tt_int_op(out->tag, ==, 5);
   tt_int_op(out->length, ==, 34);
   tt_mem_op(out->un_c, ==, "Ashcans and unob", 16);
-  tt_int_op(out->un_remainder_len, ==, 18);
-  tt_mem_op(out->un_remainder, ==, "tainable dollars!", 18);
+  tt_int_op(union2_get_un_remainder_len(out), ==, 18);
+  tt_mem_op(out->un_remainder.elts_, ==, "tainable dollars!", 18);
   tt_str_op(out->more, ==, "w");
   union2_free(out); out = NULL;
 

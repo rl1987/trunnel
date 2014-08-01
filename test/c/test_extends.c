@@ -21,8 +21,8 @@ test_extends_varlength(void *arg)
     tt_int_op(i, ==, extends_parse(&out, inp, i));
     tt_ptr_op(out, !=, NULL);
     tt_str_op(out->a, ==, "testing");
-    tt_int_op(out->remainder_len, ==, i-8);
-    tt_mem_op(out->remainder, ==, inp+8, i-8);
+    tt_int_op(extends_get_remainder_len(out), ==, i-8);
+    tt_mem_op(out->remainder.elts_, ==, inp+8, i-8);
 
     memset(buf, 0xff, sizeof(buf));
     tt_int_op(i, ==, extends_encode(buf, i, out));
@@ -53,17 +53,15 @@ test_extends_invalid(void *arg)
   /* no nul-terminated string */
   memset(&extends, 0, sizeof(extends));
   tt_int_op(-1, ==, extends_encode(buf, 16, &extends));
-  /* No extended data. */
+  /* Fill things in. */
   extends.a = strdup("XYZZY");
-  tt_int_op(-1, ==, extends_encode(buf, 16, &extends));
-  /* Okay now */
-  extends.remainder = calloc(3, 1);
-  extends.remainder_len = 3;
+  extends.remainder.elts_ = calloc(3, 1);
+  extends.remainder.allocated_ = extends.remainder.n_ = 3;
   tt_int_op(9, ==, extends_encode(buf, 16, &extends));
 
  end:
   if (extends.a) free(extends.a);
-  if (extends.remainder) free(extends.remainder);
+  if (extends.remainder.elts_) free(extends.remainder.elts_);
 }
 
 static void
@@ -79,8 +77,8 @@ test_extends_encdec(void *arg)
   tt_int_op(11, ==, extends_parse(&out, buf, 11));
   tt_ptr_op(out, !=, 0);
   tt_str_op(out->a, ==, "");
-  tt_int_op(out->remainder_len, ==, 10);
-  tt_mem_op(out->remainder, ==, "HelloWorld", 10);
+  tt_int_op(extends_get_remainder_len(out), ==, 10);
+  tt_mem_op(out->remainder.elts_, ==, "HelloWorld", 10);
   tt_int_op(11, ==, extends_encode(buf2, 11, out));
   tt_mem_op(buf, ==, buf2, 11);
   extends_free(out); out = NULL;
