@@ -24,8 +24,8 @@ FOR VERSION 1
     o At-end stuff.
     o Allow more things in unions.
 
-  o Access functions
-    X for unions?
+  . Access functions
+    - for unions?
     o for array members?
 
   o Set length fields for length-having unions automatically.
@@ -37,13 +37,21 @@ FOR VERSION 1
 
   . Document it.
     o Explain that I don't care about things that need backtracking
+    - Documentation in code
+    - Document format.
 
   o Allow "u8 until_end[];" in eos position.
 
-  - Verify that it can do everything in Tor.
+  o See whether it can do everything in Tor.
+
+  - Make it do the rest of what Tor needs
+    - 'struct x until_end[];'
 
 
 FOR VERSION 1.1 OR LATER
+
+  - Things Tor needs
+    - variable-length items in unions, taking fields from unions
 
   - Correctness:
     - Forbid length fields of unions to get reused as anything else.
@@ -56,7 +64,7 @@ FOR VERSION 1.1 OR LATER
     - Allow nested structures
     - Add extra structure data fields and corresponding "clear" functions to
       output.
-    - Do we need 'struct x until_end[];' ?
+
     - Write a thing to output nail grammars. ?
 
   - Generality
