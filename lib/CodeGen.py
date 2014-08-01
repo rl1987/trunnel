@@ -422,7 +422,7 @@ class DeclarationGenerationVisitor(IndentingGenerator):
         if str(sva.basetype) == "char":
             self.w("char *%s;\n"%(sva.c_name))
             if sva.widthfield is None:
-                self.w("char *%s_len;\n"%(sva.c_name))
+                self.w("size_t %s_len;\n"%(sva.c_name))
         elif type(sva.basetype) == str:
             self.w("TRUNNEL_DYNARRAY_HEAD(, %s_t *) %s;\n"%(sva.basetype, sva.c_name))
         else:
@@ -745,7 +745,7 @@ class CheckFnGenerator(IndentingGenerator):
         if str(sva.basetype) != 'char' and sva.widthfield is not None:
             self.w(('if (TRUNNEL_DYNARRAY_LEN(&obj->%s) != obj->%s)\n'
                     '  return "Length mismatch for %s";\n')%(
-                        sva.c_name, sva.widthfield, sva.name))
+                        sva.c_name, sva.widthfieldmember.c_name, sva.name))
 
 
     def visitSMString(self, ss):
@@ -916,7 +916,7 @@ class EncodeFnGenerator(IndentingGenerator):
             self.w('size_t elt_len = %s;\n'%objlen)
             self.w('trunnel_assert(written <= avail);\n')
             if sva.widthfield is not None:
-                self.w('trunnel_assert(obj->%s == elt_len);'%sva.widthfield)
+                self.w('trunnel_assert(obj->%s == elt_len);'%sva.widthfieldmember.c_name)
             self.w('if (avail - written < elt_len)\n'
                    ' goto truncated;\n'
                    'memcpy(ptr, %s, elt_len);\n'%arry)
@@ -1131,10 +1131,12 @@ class ParseFnGenerator(IndentingGenerator):
 
             if str(sva.basetype) == 'char':
                 self.needLabels.add('overflow')
-                self.w_('#if SIZE_MAX <= UINT%d_MAX\n'%sva.widthfieldmember.inttype.width)
+                if sva.widthfield is not None:
+                    self.w_('#if SIZE_MAX <= UINT%d_MAX\n'%sva.widthfieldmember.inttype.width)
                 self.w(('if (((size_t)%s) > SIZE_MAX - 1)'
                         '  goto overflow;')%w)
-                self.w_('#endif\n')
+                if sva.widthfield is not None:
+                    self.w_('#endif\n')
                 elt = "obj->%s"%sva.c_name
             else:
                 elt = "obj->%s.elts_"%sva.c_name
@@ -1168,14 +1170,14 @@ class ParseFnGenerator(IndentingGenerator):
 
             if sva.widthfield is not None:
                 self.w('TRUNNEL_DYNARRAY_EXPAND(%s, &obj->%s, obj->%s);\n'
-                       %(elttype, sva.c_name, sva.widthfield))
+                       %(elttype, sva.c_name, sva.widthfieldmember.c_name))
 
             self.w('{\n'
                     '  %s elt;\n'%(elttype))
             if sva.widthfield is not None:
                 self.w('  unsigned idx;\n')
                 self.w('  for (idx = 0; idx < obj->%s; ++idx) {\n'
-                       %sva.widthfield)
+                       %sva.widthfieldmember.c_name)
             else:
                 self.w('  while (remaining > 0) {\n')
                 oldFail = self.structFailLabel
