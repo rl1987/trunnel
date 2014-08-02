@@ -50,8 +50,8 @@ FOR VERSION 1
 
 FOR VERSION 1.1 OR LATER
 
-  - Things Tor needs
-    - variable-length items in unions, taking fields from unions
+  o Things Tor needs
+    o variable-length items in unions, taking fields from unions
 
   - Correctness:
     - Forbid length fields of unions to get reused as anything else.
@@ -59,12 +59,11 @@ FOR VERSION 1.1 OR LATER
       constants.
     - Extend checker to simplify?  Eg ranges.  C field names.
 
-
   - Features
-    - Allow nested structures
+    . Allow nested structures.
     - Add extra structure data fields and corresponding "clear" functions to
       output.
-    - Write a thing to output nail grammars. ?
+    - Write a thing to output nail grammars?
 
   o Generality
     o Allow length fields inside unions.

@@ -1,0 +1,7 @@
+
+struct x {
+  struct y {
+    struct x the_x;
+  } the_ys[3];
+}
+

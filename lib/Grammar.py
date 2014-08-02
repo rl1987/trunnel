@@ -279,6 +279,7 @@ class SMIgnore(StructMember):
 class Parser(spark.GenericParser, object):
     def __init__(self):
         spark.GenericParser.__init__(self, "File")
+        self.lingering_structs = []
 
     def typestring(self, token):
         return token.type
@@ -287,15 +288,21 @@ class Parser(spark.GenericParser, object):
         raise SyntaxError("%s at %s" %(token, token.lineno))
 
     def p_File_0(self, info):
-        " File ::= Declaration "
+        " File ::= Declarations "
         d = info[0]
-        return File([d])
+        d.extend(self.lingering_structs)
+        return File(d)
 
-    def p_File_1(self, info):
-        " File ::= File Declaration "
-        f, d = info
-        f.add(d)
-        return f
+    def p_Declarations_1(self, info):
+        " Declarations ::= Declaration "
+        d = info[0]
+        return [d]
+
+    def p_Declarations_2(self, info):
+        " Declarations ::= Declarations Declaration "
+        ds, d = info
+        ds.append(d)
+        return ds
 
     def p_Decl_1(self, info):
         " Declaration ::= OptAnnotation ConstDecl "
@@ -430,10 +437,16 @@ class Parser(spark.GenericParser, object):
         v1, _, v2 = info
         return (v1,v2)
 
-    def p_SMStruct(self, info):
+    def p_SMStruct_1(self, info):
         " SMStruct ::= struct ID ID "
         _, structtype, mname = info
         return SMStruct(str(structtype), str(mname))
+
+    def p_SMStruct_2(self, info):
+        " SMStruct ::= StructDecl ID "
+        decl, mname = info
+        self.lingering_structs.append(decl)
+        return SMStruct(decl.name, str(mname))
 
     def p_SMString(self, info):
         " SMString ::= nulterm ID "
@@ -453,6 +466,11 @@ class Parser(spark.GenericParser, object):
         " ArrayBase ::= struct ID "
         return str(info[1])
     def p_ArrayBase_3(self, info):
+        " ArrayBase ::= StructDecl "
+        decl = info[0]
+        self.lingering_structs.append(decl)
+        return decl.name
+    def p_ArrayBase_4(self, info):
         " ArrayBase ::= char "
         return info[0]
 
