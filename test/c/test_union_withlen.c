@@ -20,6 +20,9 @@ static const char CASE4[] =
 static const char CASE5[] =
   "08""0000""4000";
 
+static const char CASE6[] =
+  "09""000B""0A""0102030405060708090A""4000";
+
 static const char TOOSHORT1[] =
   "02""0000""06""6600";
 
@@ -36,6 +39,13 @@ static const char TOOSHORT4[] =
   "05""0005"
   "41736863616e7320616e6420756e6f627461696e61626c6520646f6c6c6172732100"
   "7700";
+
+static const char TOOSHORT5[] =
+  "09""0000";
+
+static const char TOOSHORT6[] =
+  "09""000B""09""0102030405060708090A""4000";
+
 
 static const char BADTAG[] =
   "99""000000";
@@ -62,6 +72,7 @@ test_union2_truncated(void *arg)
     { CASE3, CASE3, 0 },
     { CASE4, CASE4, 0 },
     { CASE5, CASE5, 0 },
+    { CASE6, CASE6, 0 },
     { NULL, NULL, 0 }
   };
 
@@ -130,6 +141,7 @@ test_union2_truncated(void *arg)
 static void
 test_union2_invalid(void *arg)
 {
+  const uint8_t *inp;
   uint8_t buf[128];
   uint8_t *buf2=NULL;
   union2_t *union2=NULL;
@@ -149,6 +161,31 @@ test_union2_invalid(void *arg)
   /* Now add the last item for success */
   union2->more = strdup("Hi");
   tt_int_op(22, ==, union2_encode(buf, sizeof(buf), union2));
+  union2_free(union2); union2 = NULL;
+
+  /* Length mismatch. */
+  union2 = union2_new();
+  union2->more = strdup("!");
+  union2->tag = 9;
+  union2->un_x = 3;
+  tt_int_op(-1, ==, union2_encode(buf, sizeof(buf), union2));
+  tt_int_op(0, ==, union2_get_un_xs_len(union2));
+  union2_add_un_xs(union2, 1);
+  union2_add_un_xs(union2, 2);
+  tt_int_op(2, ==, union2_get_un_xs_len(union2));
+  tt_int_op(-1, ==, union2_encode(buf, sizeof(buf), union2));
+  union2_add_un_xs(union2, 3);
+  /* Success! */
+  tt_int_op(3, ==, union2_get_un_xs_len(union2));
+  tt_int_op(9, ==, union2_encode(buf, sizeof(buf), union2));
+  inp = ux("090004030102032100");
+  tt_mem_op(buf, ==, inp, 5);
+  union2_set_un_xs(union2, 0, 3);
+  union2_set_un_xs(union2, 1, 3);
+  tt_int_op(3, ==, union2_get_un_xs(union2, 2));
+  tt_int_op(9, ==, union2_encode(buf, sizeof(buf), union2));
+  inp = ux("090004030303032100");
+  tt_mem_op(buf, ==, inp, 5);
   union2_free(union2); union2 = NULL;
 
   /* Fail on encoding if the length would overflow the u16 length field. */

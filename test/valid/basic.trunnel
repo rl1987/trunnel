@@ -147,5 +147,5 @@ struct extends3 {
 struct extends4 {
    nulterm a;
    /** The rest of this thing. */
-   struct numbers nums[];
+   struct numbers remainder[];
 }

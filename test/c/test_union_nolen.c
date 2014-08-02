@@ -18,6 +18,9 @@ static const char CASE5[] =
 static const char CASE6[] =
   "08";
 
+static const char CASE7[] =
+  "09""0A""0102030405060708090A";
+
 static void
 test_union1_truncated(void *arg)
 {
@@ -34,6 +37,7 @@ test_union1_truncated(void *arg)
     CASE4,
     CASE5,
     CASE6,
+    CASE7,
     NULL
   };
 
@@ -86,6 +90,29 @@ test_union1_invalid(void *arg)
   /* Success! */
   union1->un_d = strdup("Hi there");
   tt_int_op(10, ==, union1_encode(buf, sizeof(buf), union1));
+  union1_free(union1); union1 = NULL;
+
+  /* Length mismatch. */
+  union1 = union1_new();
+  union1->tag = 9;
+  union1->un_x = 3;
+  tt_int_op(-1, ==, union1_encode(buf, sizeof(buf), union1));
+  tt_int_op(0, ==, union1_get_un_xs_len(union1));
+  union1_add_un_xs(union1, 1);
+  union1_add_un_xs(union1, 2);
+  tt_int_op(2, ==, union1_get_un_xs_len(union1));
+  tt_int_op(-1, ==, union1_encode(buf, sizeof(buf), union1));
+  union1_add_un_xs(union1, 3);
+  /* Success! */
+  tt_int_op(5, ==, union1_encode(buf, sizeof(buf), union1));
+  inp = ux("0903010203");
+  tt_mem_op(buf, ==, inp, 5);
+  union1_set_un_xs(union1, 0, 3);
+  union1_set_un_xs(union1, 1, 3);
+  tt_int_op(3, ==, union1_get_un_xs(union1, 2));
+  tt_int_op(5, ==, union1_encode(buf, sizeof(buf), union1));
+  inp = ux("0903030303");
+  tt_mem_op(buf, ==, inp, 5);
   union1_free(union1); union1 = NULL;
 
   /* Try parsing a bad tag */

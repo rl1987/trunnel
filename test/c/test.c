@@ -12,6 +12,7 @@ struct testgroup_t test_groups[] = {
   { "union-nolen/", union_nolen_tests },
   { "union-withlen/", union_withlen_tests },
   { "union-defaults/", union_defaults_tests },
+  { "repeats-to-end/", repeats_tests },
   END_OF_GROUPS,
 };
 
