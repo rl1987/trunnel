@@ -710,7 +710,7 @@ class CheckFnGenerator(IndentingGenerator):
     def visitSMInteger(self, smi):
         if smi.constraints is not None:
             v = "obj->%s"%smi.c_name
-            expr = intConstraintExpression(v, smi.constraints.ranges)
+            expr = intConstraintExpression(v, smi.constraints.ranges, smi.inttype.width)
 
             self.w(('if (! %s)\n'
                     '  return "Integer out of bounds";\n')%(expr))
@@ -989,11 +989,16 @@ class EncodeFnGenerator(IndentingGenerator):
     def visitSMEos(self, eos):
         pass
 
-def intConstraintExpression(v, ranges):
+def intConstraintExpression(v, ranges, width):
     tests = []
+    maximum = (1<<width)-1
     for lo,hi in ranges:
         if lo == hi:
             tests.append('%s == %s'%(v, lo))
+        elif lo == 0:
+            tests.append('%s <= %s'%(v, hi))
+        elif hi == maximum:
+            tests.append('%s >= %s'%(v, lo))
         else:
             tests.append('(%s >= %s && %s <= %s)'%(v,lo,v,hi))
 
@@ -1053,7 +1058,7 @@ class ParseFnGenerator(IndentingGenerator):
         self.parseInteger(smi.inttype.width, v)
 
         if smi.constraints is not None:
-            expr = intConstraintExpression(v, smi.constraints.ranges)
+            expr = intConstraintExpression(v, smi.constraints.ranges, smi.inttype.width)
 
             self.needLabels.add('fail')
             self.w(('if (! %s)\n'
