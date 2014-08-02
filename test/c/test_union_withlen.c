@@ -84,6 +84,7 @@ test_union2_truncated(void *arg)
     { TOOSHORT3, NULL, 8 },
     { TOOSHORT4, NULL, 8 },
     { TOOSHORT5, NULL, 3 },
+    { TOOSHORT6, NULL, 14 },
     { TOOSHORT7, NULL, 14 },
     { EXTRA1, NULL, 5 },
     { BADTAG, NULL, 3 },
