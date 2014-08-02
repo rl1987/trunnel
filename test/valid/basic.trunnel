@@ -10,7 +10,7 @@ struct numbers {
    /** A number */
    u8 i8;
    u16 i16;
-   u32 i32;
+   u32 i32 IN [0..0xbadbeee, 0xbadbef0..0xffffffff];
    u64 i64;
 }
 
@@ -81,6 +81,8 @@ struct union1 {
      6: nulterm d;
      7: struct numbers e;
      8: ;
+     9 : u8 x;
+         u8 xs[x];
    };
 
 }
@@ -98,6 +100,8 @@ struct union2 {
            u8 c[16];
            u8 remainder[];
      8 : ;
+     9 : u8 x;
+         u8 xs[x];
      default: fail;
    };
 
@@ -126,4 +130,22 @@ struct extends {
    nulterm a;
    /** The rest of this thing. */
    u8 remainder[];
+}
+
+struct extends2 {
+   nulterm a;
+   /** The rest of this thing. */
+   char remainder[];
+}
+
+struct extends3 {
+   nulterm a;
+   /** The rest of this thing. */
+   u32 remainder[];
+}
+
+struct extends4 {
+   nulterm a;
+   /** The rest of this thing. */
+   struct numbers remainder[];
 }

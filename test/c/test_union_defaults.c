@@ -90,13 +90,11 @@ test_union3_invalid(void *arg)
   tt_int_op(-1, ==, union3_encode(buf, sizeof(buf), NULL));
 
   union3 = union3_new();
-  /* non-2 tag requires that 'un_stuff' be set. */
   union3->tag = 6;
-  tt_int_op(-1, ==, union3_encode(buf, sizeof(buf), union3));
 
   /* Success! */
-  union3->un_stuff_len = 10;
-  union3->un_stuff = (uint8_t*) strdup("hola mundo");
+  union3->un_stuff.n_ = union3->un_stuff.allocated_ = 10;
+  union3->un_stuff.elts_ = (uint8_t*) strdup("hola mundo");
   memset(buf, 99, sizeof(buf));
   tt_int_op(14, ==, union3_encode(buf, sizeof(buf), union3));
   inp = ux("0006000A686f6c61206d756e646f");
@@ -114,8 +112,8 @@ test_union3_invalid(void *arg)
   /* Can't encode if 'un_stuff' would overflow length field. */
   union3 = union3_new();
   union3->tag = 90;
-  union3->un_stuff_len = 65536;
-  union3->un_stuff = calloc(1,65536);
+  union3->un_stuff.n_ = union3->un_stuff.allocated_ = 65536;
+  union3->un_stuff.elts_ = calloc(1,65536);
   buf2 = malloc(100000);
   tt_int_op(-1, ==, union3_encode(buf2, 100000, union3));
 
@@ -183,8 +181,7 @@ test_union34_encdec(void *arg)
   tt_int_op(9, ==, union4->tag);
   tt_int_op(0, ==, union3->length);
   tt_int_op(0, ==, union4->length);
-  tt_int_op(0, ==, union3->un_stuff_len);
-  tt_ptr_op(NULL, !=, union3->un_stuff);
+  tt_int_op(0, ==, union3_get_un_stuff_len(union3));
 
   /* verify correct re-encode after 'length' trashed for union3 */
   union3->length = 9999;
@@ -204,14 +201,18 @@ test_union34_encdec(void *arg)
   tt_int_op(16, ==, union4->tag);
   tt_int_op(5, ==, union3->length);
   tt_int_op(5, ==, union4->length);
-  tt_int_op(5, ==, union3->un_stuff_len);
-  tt_mem_op("efghi", ==, union3->un_stuff, 5);
+  tt_int_op(5, ==, union3_get_un_stuff_len(union3));
+  tt_mem_op("efghi", ==, union3->un_stuff.elts_, 5);
+  tt_int_op('e', ==, union3_get_un_stuff(union3, 0));
+  union3_set_un_stuff(union3, 0, (uint8_t)'f');
+  union3_add_un_stuff(union3, (uint8_t)'j');
 
   /* verify correct re-encode after 'length' trashed for union3 */
   union3->length = 9999;
   memset(buf, 0xff, sizeof(buf));
-  tt_int_op(len, ==, union3_encode(buf, sizeof(buf), union3));
-  tt_mem_op(buf, ==, inp, len);
+  tt_int_op(len+1, ==, union3_encode(buf, sizeof(buf), union3));
+  inp = ux("00100006""66666768696A");
+  tt_mem_op(buf, ==, inp, len+1);
 
   union3_free(union3); union3 = NULL;
   union4_free(union4); union4 = NULL;

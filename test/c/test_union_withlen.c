@@ -20,6 +20,9 @@ static const char CASE4[] =
 static const char CASE5[] =
   "08""0000""4000";
 
+static const char CASE6[] =
+  "09""000B""0A""0102030405060708090A""4000";
+
 static const char TOOSHORT1[] =
   "02""0000""06""6600";
 
@@ -36,6 +39,15 @@ static const char TOOSHORT4[] =
   "05""0005"
   "41736863616e7320616e6420756e6f627461696e61626c6520646f6c6c6172732100"
   "7700";
+
+static const char TOOSHORT5[] =
+  "09""0000";
+
+static const char TOOSHORT6[] =
+  "09""000B""09""0102030405060708090A""4000";
+
+static const char TOOSHORT7[] =
+  "09""000B""0B""0102030405060708090A""4000";
 
 static const char BADTAG[] =
   "99""000000";
@@ -62,6 +74,7 @@ test_union2_truncated(void *arg)
     { CASE3, CASE3, 0 },
     { CASE4, CASE4, 0 },
     { CASE5, CASE5, 0 },
+    { CASE6, CASE6, 0 },
     { NULL, NULL, 0 }
   };
 
@@ -70,6 +83,8 @@ test_union2_truncated(void *arg)
     { TOOSHORT2, NULL, 4 },
     { TOOSHORT3, NULL, 8 },
     { TOOSHORT4, NULL, 8 },
+    { TOOSHORT5, NULL, 3 },
+    { TOOSHORT7, NULL, 14 },
     { EXTRA1, NULL, 5 },
     { BADTAG, NULL, 3 },
     { NULL, NULL, 0 }
@@ -130,6 +145,7 @@ test_union2_truncated(void *arg)
 static void
 test_union2_invalid(void *arg)
 {
+  const uint8_t *inp;
   uint8_t buf[128];
   uint8_t *buf2=NULL;
   union2_t *union2=NULL;
@@ -144,11 +160,6 @@ test_union2_invalid(void *arg)
 
   /* Invalid item means invalid object */
   union2->tag = 4;
-  union2->un_remainder_len = 0;
-  tt_int_op(-1, ==, union2_encode(buf, sizeof(buf), union2));
-
-  /* Missing item means invalid object */
-  union2->un_remainder = malloc(1);
   tt_int_op(-1, ==, union2_encode(buf, sizeof(buf), union2));
 
   /* Now add the last item for success */
@@ -156,12 +167,37 @@ test_union2_invalid(void *arg)
   tt_int_op(22, ==, union2_encode(buf, sizeof(buf), union2));
   union2_free(union2); union2 = NULL;
 
+  /* Length mismatch. */
+  union2 = union2_new();
+  union2->more = strdup("!");
+  union2->tag = 9;
+  union2->un_x = 3;
+  tt_int_op(-1, ==, union2_encode(buf, sizeof(buf), union2));
+  tt_int_op(0, ==, union2_get_un_xs_len(union2));
+  union2_add_un_xs(union2, 1);
+  union2_add_un_xs(union2, 2);
+  tt_int_op(2, ==, union2_get_un_xs_len(union2));
+  tt_int_op(-1, ==, union2_encode(buf, sizeof(buf), union2));
+  union2_add_un_xs(union2, 3);
+  /* Success! */
+  tt_int_op(3, ==, union2_get_un_xs_len(union2));
+  tt_int_op(9, ==, union2_encode(buf, sizeof(buf), union2));
+  inp = ux("090004030102032100");
+  tt_mem_op(buf, ==, inp, 5);
+  union2_set_un_xs(union2, 0, 3);
+  union2_set_un_xs(union2, 1, 3);
+  tt_int_op(3, ==, union2_get_un_xs(union2, 2));
+  tt_int_op(9, ==, union2_encode(buf, sizeof(buf), union2));
+  inp = ux("090004030303032100");
+  tt_mem_op(buf, ==, inp, 5);
+  union2_free(union2); union2 = NULL;
+
   /* Fail on encoding if the length would overflow the u16 length field. */
   union2 = union2_new();
   union2->tag = 4;
   union2->length = 0;
-  union2->un_remainder_len = 65520;
-  union2->un_remainder = calloc(1,65520);
+  union2->un_remainder.allocated_ = union2->un_remainder.n_ = 65520;
+  union2->un_remainder.elts_ = calloc(1,65520);
   union2->more = strdup("");
   buf2 = malloc(100000);
   tt_int_op(-1, ==, union2_encode(buf2, 100000, union2));
@@ -176,6 +212,7 @@ static void
 test_union2_encdec(void *arg)
 {
   const uint8_t *inp;
+  uint8_t buf[100];
   union2_t *out = NULL;
   size_t len;
   (void)arg;
@@ -219,8 +256,8 @@ test_union2_encdec(void *arg)
   tt_int_op(out->tag, ==, 5);
   tt_int_op(out->length, ==, 16);
   tt_mem_op(out->un_c, ==, ".pure machinery.", 16);
-  tt_int_op(out->un_remainder_len, ==, 0);
-  tt_ptr_op(out->un_remainder, !=, NULL);
+  tt_int_op(union2_get_un_remainder_len(out), ==, 0);
+
   tt_str_op(out->more, ==, "");
   union2_free(out); out = NULL;
 
@@ -231,9 +268,20 @@ test_union2_encdec(void *arg)
   tt_int_op(out->tag, ==, 5);
   tt_int_op(out->length, ==, 34);
   tt_mem_op(out->un_c, ==, "Ashcans and unob", 16);
-  tt_int_op(out->un_remainder_len, ==, 18);
-  tt_mem_op(out->un_remainder, ==, "tainable dollars!", 18);
+  tt_int_op(union2_get_un_remainder_len(out), ==, 18);
+  tt_int_op(union2_get_un_remainder(out, 0), ==, 't');
+  tt_mem_op(out->un_remainder.elts_, ==, "tainable dollars!", 18);
   tt_str_op(out->more, ==, "w");
+
+  /* mess with un_remainder to exercise accessors. */
+  union2_set_un_remainder(out, 17, '?');
+  union2_add_un_remainder(out, '!');
+  tt_int_op(len+1, ==, union2_encode(buf, sizeof(buf), out));
+  inp = ux("05""0023"
+      "41736863616e7320616e6420756e6f627461696e61626c6520646f6c6c617273213F21"
+      "7700");
+  tt_mem_op(buf, ==, inp, len+1);
+
   union2_free(out); out = NULL;
 
   /* CASE5 */

@@ -165,8 +165,9 @@ class Checker(ASTVisitor):
     def visitSMVarArray(self, sva):
         self.addMemberName(sva.name)
 
-        self.checkIntField(sva.widthfield, "length", "%s.%s"%
-                           (self.structName,sva.name))
+        if sva.widthfield is not None:
+            self.checkIntField(sva.widthfield, "length", "%s.%s"%
+                               (self.structName,sva.name))
 
         if type(sva.basetype) == str:
             if sva.basetype not in self.structNames:
@@ -177,10 +178,6 @@ class Checker(ASTVisitor):
 
     def visitSMString(self, sms):
         self.addMemberName(sms.name)
-
-    def visitSMRemainder(self, smr):
-        self.addMemberName(smr.name)
-        self.addMemberName(smr.name+"_len")
 
     def visitSMUnion(self, smu):
         self.addMemberName(smu.name)
@@ -311,11 +308,10 @@ class Annotator(ASTVisitor):
         self.annotateMember(sfa)
     def visitSMVarArray(self, sva):
         self.annotateMember(sva)
-        sva.widthfieldmember = self.memberByName[sva.widthfield]
+        if sva.widthfield is not None:
+            sva.widthfieldmember = self.memberByName[sva.widthfield]
     def visitSMString(self, ss):
         self.annotateMember(ss)
-    def visitSMRemainder(self, smr):
-        self.annotateMember(smr)
     def visitSMUnion(self, smu):
         self.annotateMember(smu)
         self.prefix = smu.name + "_"
@@ -425,6 +421,8 @@ class DeclarationGenerationVisitor(IndentingGenerator):
 
         if str(sva.basetype) == "char":
             self.w("char *%s;\n"%(sva.c_name))
+            if sva.widthfield is None:
+                self.w("size_t %s_len;\n"%(sva.c_name))
         elif type(sva.basetype) == str:
             self.w("TRUNNEL_DYNARRAY_HEAD(, %s_t *) %s;\n"%(sva.basetype, sva.c_name))
         else:
@@ -435,13 +433,6 @@ class DeclarationGenerationVisitor(IndentingGenerator):
             self.w(ss.annotation)
 
         self.w("char *%s;\n"%(ss.c_name))
-
-    def visitSMRemainder(self, smr):
-        self.w("/** Length of %s */"%smr.c_name)
-        self.w("size_t %s_len;\n"%(smr.c_name))
-        if smr.annotation != None:
-            self.w(smr.annotation)
-        self.w("uint8_t *%s;\n"%(smr.c_name))
 
     def visitSMUnion(self, smu):
         if smu.annotation != None:
@@ -607,8 +598,6 @@ class FreeFnGenerator(IndentingGenerator):
 
     def visitSMString(self, ss):
         self.w("trunnel_free(obj->%s);\n"%(ss.c_name))
-    def visitSMRemainder(self, smr):
-        self.w("trunnel_free(obj->%s);\n"%(smr.c_name))
     def visitSMUnion(self, smu):
         smu.visitChildren(self)
     def visitUnionMember(self, um):
@@ -721,7 +710,7 @@ class CheckFnGenerator(IndentingGenerator):
     def visitSMInteger(self, smi):
         if smi.constraints is not None:
             v = "obj->%s"%smi.c_name
-            expr = intConstraintExpression(v, smi.constraints.ranges)
+            expr = intConstraintExpression(v, smi.constraints.ranges, smi.inttype.width)
 
             self.w(('if (! %s)\n'
                     '  return "Integer out of bounds";\n')%(expr))
@@ -753,17 +742,18 @@ class CheckFnGenerator(IndentingGenerator):
             iterateOverVarArray(self, sva, body,
                                 extraDecl='const char *msg;\n')
 
-        if str(sva.basetype) != 'char':
+        if str(sva.basetype) != 'char' and sva.widthfield is not None:
             self.w(('if (TRUNNEL_DYNARRAY_LEN(&obj->%s) != obj->%s)\n'
                     '  return "Length mismatch for %s";\n')%(
-                        sva.c_name, sva.widthfield, sva.name))
+                        sva.c_name, sva.widthfieldmember.c_name, sva.name))
+        elif str(sva.basetype) == 'char':
+            self.w(('if (NULL == obj->%s)\n'
+                    '  return "Missing %s";\n')%(
+                        sva.c_name, sva.name))
 
 
     def visitSMString(self, ss):
         self.w('if (NULL == obj->%s)\n  return "Missing %s";\n'%(ss.c_name, ss.c_name))
-
-    def visitSMRemainder(self, smr):
-        self.w('if (NULL == obj->%s)\n  return "Missing %s";\n'%(smr.c_name, smr.c_name))
 
     def visitSMUnion(self, smu):
         self.w('switch (obj->%s) {\n'%smu.tagfield)
@@ -778,7 +768,6 @@ class CheckFnGenerator(IndentingGenerator):
         self.popIndent(2)
         self.popIndent(2)
         self.w("    break;\n")
-
 
     def visitSMEos(self, eos):
         pass
@@ -918,16 +907,26 @@ class EncodeFnGenerator(IndentingGenerator):
         if arrayIsBytes(sva):
             if str(sva.basetype) == 'char':
                 arry = "obj->%s"%sva.c_name
+                if sva.widthfield is None:
+                    objlen = "obj->%s_len"%sva.c_name
+                else:
+                    objlen = "obj->%s"%sva.widthfieldmember.c_name
             else:
                 arry = "obj->%s.elts_"%sva.c_name
+                objlen = "TRUNNEL_DYNARRAY_LEN(&obj->%s)"%sva.c_name
             self.needTruncated = True
+            self.w('{\n')
+            self.pushIndent(2)
+            self.w('size_t elt_len = %s;\n'%objlen)
             self.w('trunnel_assert(written <= avail);\n')
-            self.w('if (avail - written < obj->%s) goto truncated;\n'
-                   %(sva.widthfield))
-            self.w('memcpy(ptr, %s, obj->%s);\n'
-                   %(arry,sva.widthfield))
-            self.w('written += obj->%s; ptr += obj->%s;\n'
-                   %(sva.widthfield,sva.widthfield))
+            if sva.widthfield is not None:
+                self.w('trunnel_assert(obj->%s == elt_len);'%sva.widthfieldmember.c_name)
+            self.w('if (avail - written < elt_len)\n'
+                   ' goto truncated;\n'
+                   'memcpy(ptr, %s, elt_len);\n'%arry)
+            self.w('written += elt_len; ptr += elt_len;\n')
+            self.popIndent(2)
+            self.w('}')
             return
         if type(sva.basetype) == str:
             body = self.encodeStruct(sva.basetype, "ELEMENT")
@@ -948,17 +947,6 @@ class EncodeFnGenerator(IndentingGenerator):
         self.w('ptr += len + 1; written += len + 1;\n')
         self.popIndent(2)
         self.w('}\n')
-
-    def visitSMRemainder(self, smr):
-        self.eltHeader(smr)
-        self.needTruncated = True
-        self.w('trunnel_assert(written <= avail);\n')
-        self.w(('if (obj->%s_len > avail - written)\n'
-                '  goto truncated;\n')%(smr.c_name))
-        self.w(('if (obj->%s_len)\n'
-                '  memcpy(ptr, obj->%s, obj->%s_len);\n')
-               %(smr.c_name, smr.c_name, smr.c_name))
-        self.w('ptr += obj->%s_len; written += obj->%s_len;\n'%(smr.c_name, smr.c_name))
 
     def visitSMUnion(self, smu):
         self.eltHeader(smu)
@@ -1001,11 +989,16 @@ class EncodeFnGenerator(IndentingGenerator):
     def visitSMEos(self, eos):
         pass
 
-def intConstraintExpression(v, ranges):
+def intConstraintExpression(v, ranges, width):
     tests = []
+    maximum = (1<<width)-1
     for lo,hi in ranges:
         if lo == hi:
             tests.append('%s == %s'%(v, lo))
+        elif lo == 0:
+            tests.append('%s <= %s'%(v, hi))
+        elif hi == maximum:
+            tests.append('%s >= %s'%(v, lo))
         else:
             tests.append('(%s >= %s && %s <= %s)'%(v,lo,v,hi))
 
@@ -1065,7 +1058,7 @@ class ParseFnGenerator(IndentingGenerator):
         self.parseInteger(smi.inttype.width, v)
 
         if smi.constraints is not None:
-            expr = intConstraintExpression(v, smi.constraints.ranges)
+            expr = intConstraintExpression(v, smi.constraints.ranges, smi.inttype.width)
 
             self.needLabels.add('fail')
             self.w(('if (! %s)\n'
@@ -1138,36 +1131,44 @@ class ParseFnGenerator(IndentingGenerator):
         self.eltHeader(sva)
         # FFFF some of this is kinda cut-and-paste
         if arrayIsBytes(sva):
+            if sva.widthfield != None:
+                self.w('if (remaining < obj->%s)\n  goto %s;\n'%(
+                    sva.widthfieldmember.c_name, self.truncatedLabel))
+                w = "obj->%s"%sva.widthfieldmember.c_name
+            else:
+                w = "remaining"
+
             if str(sva.basetype) == 'char':
                 self.needLabels.add('overflow')
-                self.w_('#if SIZE_MAX <= UINT%d_MAX\n'%sva.widthfieldmember.inttype.width)
-                self.w(('if (((size_t)obj->%s) > SIZE_MAX - 1)'
-                        '  goto overflow;')%sva.widthfield)
-                self.w_('#endif\n')
-                plus1 = "+ 1"
+                if sva.widthfield is not None:
+                    self.w_('#if SIZE_MAX <= UINT%d_MAX\n'%sva.widthfieldmember.inttype.width)
+                self.w(('if (((size_t)%s) > SIZE_MAX - 1)'
+                        '  goto overflow;')%w)
+                if sva.widthfield is not None:
+                    self.w_('#endif\n')
                 elt = "obj->%s"%sva.c_name
             else:
                 elt = "obj->%s.elts_"%sva.c_name
 
             self.needLabels.add(self.truncatedLabel)
-            self.w('if (remaining < obj->%s)\n  goto %s;\n'%(
-                sva.widthfield, self.truncatedLabel))
+
 
             if str(sva.basetype) == 'char':
                 self.needLabels.add('overflow')
-                self.w('if (NULL == (obj->%s = trunnel_malloc(((size_t)obj->%s) + 1)))\n  goto overflow;\n'%(
-                    sva.c_name, sva.widthfield))
-                self.w('obj->%s[obj->%s] = 0;\n'%(sva.c_name, sva.widthfield))
+                self.w('if (NULL == (obj->%s = trunnel_malloc(((size_t)%s) + 1)))\n  goto overflow;\n'%(
+                    sva.c_name, w))
+                self.w('obj->%s[%s] = 0;\n'%(sva.c_name, w))
+                if sva.widthfield is None:
+                    self.w('obj->%s_len = %s;\n'%(sva.c_name, w))
             else:
                 self.needLabels.add('trunnel_alloc_failed')
-                self.w("TRUNNEL_DYNARRAY_EXPAND(uint8_t, &obj->%s, obj->%s);\n"
-                       %(sva.c_name, sva.widthfield))
-                self.w("obj->%s.n_ = obj->%s;"%(sva.c_name,sva.widthfield))
+                self.w("TRUNNEL_DYNARRAY_EXPAND(uint8_t, &obj->%s, %s);\n"
+                       %(sva.c_name, w))
+                self.w("obj->%s.n_ = %s;"%(sva.c_name,w))
 
-            self.w('memcpy(%s, ptr, obj->%s);\n'%(elt, sva.widthfield))
+            self.w('memcpy(%s, ptr, %s);\n'%(elt, w))
 
-            self.w(('remaining -= obj->%s; ptr += obj->%s;\n')%(
-                sva.widthfield, sva.widthfield))
+            self.w(('ptr += %s; remaining -= %s;\n')%(w,w))
             return
 
         else:
@@ -1178,12 +1179,23 @@ class ParseFnGenerator(IndentingGenerator):
             else:
                 elttype = "uint%d_t"%sva.basetype.width
 
-            self.w('TRUNNEL_DYNARRAY_EXPAND(%s, &obj->%s, obj->%s);\n'
-                   %(elttype, sva.c_name, sva.widthfield))
-            self.w(('{\n'
-                    '  unsigned idx;\n'
-                    '  %s elt;\n'
-                    '  for (idx = 0; idx < obj->%s; ++idx) {\n')%(elttype,sva.widthfield))
+            if sva.widthfield is not None:
+                self.w('TRUNNEL_DYNARRAY_EXPAND(%s, &obj->%s, obj->%s);\n'
+                       %(elttype, sva.c_name, sva.widthfieldmember.c_name))
+
+            self.w('{\n'
+                    '  %s elt;\n'%(elttype))
+            if sva.widthfield is not None:
+                self.w('  unsigned idx;\n')
+                self.w('  for (idx = 0; idx < obj->%s; ++idx) {\n'
+                       %sva.widthfieldmember.c_name)
+            else:
+                self.w('  while (remaining > 0) {\n')
+                oldFail = self.structFailLabel
+                oldTrunc = self.truncatedLabel
+                self.structFailLabel = "fail"
+                self.truncatedLabel = "fail"
+
             self.pushIndent(4)
             if type(sva.basetype) == str:
                 self.w(self.parseStructInto(sva.basetype, "elt"))
@@ -1192,9 +1204,15 @@ class ParseFnGenerator(IndentingGenerator):
 
             self.w("TRUNNEL_DYNARRAY_ADD(%s, &obj->%s, elt);"%(elttype,sva.c_name))
 
-            self.popIndent(4)
-            self.w('  }\n'
-                   '}\n')
+            self.popIndent(2)
+            self.w('}\n')
+            if sva.widthfield is None:
+                self.structFailLabel = oldFail
+                self.truncatedLabel = oldTrunc
+
+            self.popIndent(2)
+            self.w('}\n')
+
 
     def visitSMString(self, ss):
         self.eltHeader(ss)
@@ -1213,13 +1231,6 @@ class ParseFnGenerator(IndentingGenerator):
         self.w('remaining -= memlen; ptr += memlen;\n')
         self.popIndent(2)
         self.w('}\n')
-
-    def visitSMRemainder(self, smr):
-        self.eltHeader(smr)
-        self.w('obj->%s_len = remaining;\n'%smr.c_name)
-        self.w('obj->%s = trunnel_malloc(remaining);\n'%(smr.c_name))
-        self.w('memcpy(obj->%s, ptr, remaining);\n'%(smr.c_name))
-        self.w('ptr += remaining; remaining = 0;\n')
 
     def visitSMUnion(self, smu):
         self.eltHeader(smu)

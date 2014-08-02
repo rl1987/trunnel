@@ -49,6 +49,10 @@ test_fixed_invalid(void *arg)
   fixed->nums[1] = numbers_new();
   tt_int_op(66, ==, fixed_encode(buf, sizeof(buf), fixed));
 
+  /* Make the check fail. */
+  fixed->nums[1]->i32 = 0xbadbeef;
+  tt_int_op(-1, ==, fixed_encode(buf, sizeof(buf), fixed));
+
  end:
   fixed_free(fixed);
 }
