@@ -18,6 +18,8 @@ test_repeats_invalid32(void *arg)
   tt_int_op(8, ==, extends3_encode(buf, sizeof(buf), extends3));
   tt_str_op((char*)buf, ==, "bedtime");
 
+  extends3_free(extends3); extends3 = NULL;
+
  end:
   extends3_free(extends3);
 }
@@ -109,6 +111,8 @@ test_repeats_invalid_struct(void *arg)
   /* Encoding with a bad struct fails. */
   extends4_add_remainder(extends4, NULL);
   tt_int_op(-1, ==, extends4_encode(buf, sizeof(buf), extends4));
+
+  extends4_free(extends4); extends4 = NULL;
 
  end:
   extends4_free(extends4);

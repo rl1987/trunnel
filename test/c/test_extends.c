@@ -54,6 +54,9 @@ test_extends_varlength(void *arg)
     tt_int_op(-2, ==, extends2_encode(buf, i, extends2));
   }
 
+  extends_free(extends1); extends1 = NULL;
+  extends2_free(extends2); extends2 = NULL;
+
  end:
   extends_free(extends1);
   extends2_free(extends2);
