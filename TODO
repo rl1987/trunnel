@@ -44,8 +44,8 @@ FOR VERSION 1
 
   o See whether it can do everything in Tor.
 
-  - Make it do the rest of what Tor needs
-    - 'struct x until_end[];'
+  o Make it do the rest of what Tor needs
+    o 'struct x until_end[];'
 
 
 FOR VERSION 1.1 OR LATER
@@ -64,12 +64,11 @@ FOR VERSION 1.1 OR LATER
     - Allow nested structures
     - Add extra structure data fields and corresponding "clear" functions to
       output.
-
     - Write a thing to output nail grammars. ?
 
-  - Generality
-    - Allow length fields inside unions.
-    - Allow vararrays inside unions.
+  o Generality
+    o Allow length fields inside unions.
+    o Allow vararrays inside unions.
 
   - Code quality:
     - Simplify huge union case statements.
