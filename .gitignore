@@ -8,10 +8,13 @@
 *.gcov
 .coverage
 tests.log
+\#*\#
+.\#*
 
 /test/valid/*.[ch]
 /test/ctest
 /doc/*.[ch]
+/examples/*.[ch]
 
 /.coverage
 
