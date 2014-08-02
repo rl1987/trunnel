@@ -746,6 +746,10 @@ class CheckFnGenerator(IndentingGenerator):
             self.w(('if (TRUNNEL_DYNARRAY_LEN(&obj->%s) != obj->%s)\n'
                     '  return "Length mismatch for %s";\n')%(
                         sva.c_name, sva.widthfieldmember.c_name, sva.name))
+        elif str(sva.basetype) == 'char':
+            self.w(('if (NULL == obj->%s)\n'
+                    '  return "Missing %s";\n')%(
+                        sva.c_name, sva.name))
 
 
     def visitSMString(self, ss):
@@ -1149,6 +1153,8 @@ class ParseFnGenerator(IndentingGenerator):
                 self.w('if (NULL == (obj->%s = trunnel_malloc(((size_t)%s) + 1)))\n  goto overflow;\n'%(
                     sva.c_name, w))
                 self.w('obj->%s[%s] = 0;\n'%(sva.c_name, w))
+                if sva.widthfield is None:
+                    self.w('obj->%s_len = %s;\n'%(sva.c_name, w))
             else:
                 self.needLabels.add('trunnel_alloc_failed')
                 self.w("TRUNNEL_DYNARRAY_EXPAND(uint8_t, &obj->%s, %s);\n"
