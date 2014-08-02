@@ -165,6 +165,9 @@ class File(AST):
             v.visit(d, *args)
 
     def visitChildrenSorted(self, sort_order, v, *args):
+        """As visitChildren, but visit the constants first, and then
+           the structures in the order given by sort_order."""
+
         if set(sort_order) != set(self.declarationsByName.keys()):
             raise ValueError("sort_order does not match actual list "
                              "of declarations")
