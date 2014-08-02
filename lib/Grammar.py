@@ -3,9 +3,26 @@
 # Copyright 2014, The Tor Project, Inc.
 # See license at the end of this file for copying information.
 
+"""
+   Parser and AST for trunnel.
+
+
+
+"""
+
 import spark
 
+######
+#
+#  These are our token types. They represent a single lexeme.  They're
+#  generated below by the 'Lexer' class.
+#
+#####
+
 class Token(object):
+    """Base class for tokens. The 'type' is a string that represents the
+       type of the string; the token appears on 'lineno'.
+    """
     def __init__(self, type, lineno):
         self.type = type
         self.lineno = lineno
@@ -14,6 +31,7 @@ class Token(object):
         return self.type
 
 class Identifier(Token):
+    """A non-const C identifier"""
     def __init__(self, value, lineno):
         Token.__init__(self, "ID", lineno)
         self.value = value
@@ -22,6 +40,7 @@ class Identifier(Token):
         return self.value
 
 class ConstIdentifier(Token):
+    """A const C identifier"""
     def __init__(self, value, lineno):
         Token.__init__(self, "CONST_ID", lineno)
         self.value = value
@@ -30,11 +49,13 @@ class ConstIdentifier(Token):
         return self.value
 
 class IntLiteral(Token):
+    """An integer literal"""
     def __init__(self, value, lineno):
         Token.__init__(self, "INT", lineno)
         self.value = int(value, 0)
 
 class Annotation(Token):
+    """A doxygen-style comment."""
     def __init__(self, value, lineno):
         Token.__init__(self, "ANNOTATION", lineno)
         self.value = value
@@ -42,6 +63,7 @@ class Annotation(Token):
     def __str__(self):
         return self.value + "\n"
 
+# Set of reserved keywords.
 KEYWORDS = set("""
   union struct
   u8 u16 u32 u64 char
@@ -49,6 +71,13 @@ KEYWORDS = set("""
 """.split())
 
 class Lexer(spark.GenericScanner, object):
+    """Scanner class based on spark.GenericScanner.  Its job is to turn
+       a string into a list of Token.
+
+       Note that spark does most of the work for us here: under the hood,
+       it builds a big regex out of all the docstrings for the t_* methods,
+       and uses that to do the scanning and decide which function to invoke.
+    """
     def tokenize(self, input):
         self.rv = []
         self.lineno = 1
@@ -93,17 +122,28 @@ class Lexer(spark.GenericScanner, object):
         r"\n"
         self.lineno += 1
 
-
     def t_default(self, s):
         r"."
         raise ValueError("unmatched input: %r on line %r" % (s,self.lineno))
 
-
 class AST(object):
+    """Abstract type. Base type for our abstract syntax tree structure.
+    """
     def visitChildren(self, visitor, *args):
+        """Invokes a visitor recursively on every sub-element of this AST
+           node.
+        """
         raise NotImplemented()
 
 class File(AST):
+    """Top-level entry for our AST, representing a whole file.  Contains
+       constants and struct declarations.
+    """
+    ####
+    # constsnts -- a list of ConstDecl.
+    # declarations -- a list of StructDecl
+    # declarationsByName -- a map from name to StructDecl.
+
     def __init__(self, members):
         self.constants = []
         self.declarations = []
@@ -135,6 +175,17 @@ class File(AST):
             v.visit(self.declarationsByName[name], *args)
 
 class StructDecl(AST):
+    """The declaration for a single structure."""
+    ####
+    # name -- the declared name of this structure
+    # members -- a list of StructMember.
+    # annotation -- None, or a string holding a doxygen comment describing
+    #   this structure.
+    #
+    # Set elsewhere (in CodeGen.Annotator):
+    #   unionLengthFields -- a map from c_name of a field to the field itself
+    #     for every field that is used as the length of a union.
+
     def __init__(self, name, members):
         self.name = name
         self.members = members
@@ -145,19 +196,38 @@ class StructDecl(AST):
             v.visit(m, *args)
 
 class ConstDecl(AST):
+    """The declaration for a single structure."""
+    ####
+    # name -- the declared name of this constant.
+    # value -- the integer value of this constant.
+    # annotation -- None, or a string holding a doxygen comment describing
+    #   this constant.
     def __init__(self, name, value):
         self.name = name
         self.value = value
         self.annotation = None
 
 class StructMember(AST):
-    def __init__(self):
+    """Abstract type. Base type for things that can be a member of a struct."""
+    ####
+    # annotation -- None, or a string holding a doxygen comment describing
+    #   this member.
+    # Set elsewhere:
+    #    name -- the member id of this object.
+    #    c_name -- the member id of this object, as mangled for the generated
+    #       C.
+    def __init__(self, name=None):
         self.annotation = None
+        self.name = name
 
     def getName(self):
+        """Return the name of this item as it will appear in C."""
         return self.c_name
 
 class IntType(AST):
+    """A fixed-width unsigned integer type."""
+    ####
+    # width -- the width of this type in bits. Must be 8, 16, 32, or 64.
     def __init__(self, width):
         self.width = width
 
@@ -165,6 +235,10 @@ class IntType(AST):
         return "u%s"%self.width
 
 class IntConstraint(AST):
+    """A constraint placed on an integer value."""
+    ####
+    # ranges -- a list of (lo,hi) tuples such that any integer conforming to
+    #   this constraint has lo <= i <= hi for some tuple in the list.
     def __init__(self, ranges):
         self.ranges = ranges
 
@@ -178,10 +252,12 @@ class IntConstraint(AST):
             return "%s..%s"%(lo,hi)
 
 class SMInteger(StructMember):
+    """An unsigned integer member of a structure"""
+    ####
+    # constraints -- an IntConstraints, or None
     def __init__(self, inttype, name, constraints):
-        StructMember.__init__(self)
+        StructMember.__init__(self, name)
         self.inttype = inttype
-        self.name = name
         self.constraints = constraints
 
     def visitChildren(self, v, *args):
@@ -195,27 +271,34 @@ class SMInteger(StructMember):
         return "%s %s%s"%(self.inttype, self.getName(), cstr)
 
 class SMStruct(StructMember):
+    """A structure member of a structure"""
+    ####
+    # structname -- the name of the structure type for this structure.
     def __init__(self, structname, name):
-        StructMember.__init__(self)
+        StructMember.__init__(self, name)
         self.structname = structname
-        self.name = name
 
     def __str__(self):
         return "struct %s %s"%(self.structname, self.getName())
 
 class SMString(StructMember):
+    """A nul-terminated string member of a structure"""
     def __init__(self, name):
-        StructMember.__init__(self)
-        self.name = name
+        StructMember.__init__(self, name)
 
     def __str__(self):
         return "nulterm %s"%self.getName()
 
 class SMFixedArray(StructMember):
+    """A fixed-width array member of a structure"""
+    ####
+    # basetype -- The base type of this array.  One of IntType, Token("char"),
+    #    or a string holding a struct name.
+    # width -- the number of elements in this array.  Either an integer or a
+    #    string representing a constant name.
     def __init__(self, basetype, name, width):
-        StructMember.__init__(self)
+        StructMember.__init__(self, name)
         self.basetype = basetype
-        self.name = name
         self.width = width
 
     def __str__(self):
@@ -226,10 +309,20 @@ class SMFixedArray(StructMember):
         return "%s%s %s[%s]"%(struct, str(self.basetype), self.getName(), self.width)
 
 class SMVarArray(StructMember):
+    """A variable-width array member of a structure."""
+    ####
+    # basetype -- The base type of this array.  One of IntType, Token("char"),
+    #    or a string holding a struct name.
+    # widthfield -- A string holding the name of the field that will set
+    #    the number of elements in this array, or None if this array should
+    #    extend to the end of the containing structure or union.
+    #
+    # Set elsewhere (in CodeGen.Annotator):
+    #   widthfieldmember -- The StructMember corresponding to the named
+    #     widthfield, or None if lengthfield is None
     def __init__(self, basetype, name, widthfield):
-        StructMember.__init__(self)
+        StructMember.__init__(self, name)
         self.basetype = basetype
-        self.name = name
         self.widthfield = widthfield
 
     def __str__(self):
@@ -240,9 +333,20 @@ class SMVarArray(StructMember):
         return "%s%s %s[%s]"%(struct, str(self.basetype), self.getName(), self.widthfield)
 
 class SMUnion(StructMember):
+    """A tagged-union member of a structure"""
+    ####
+    # tagfield -- the name of the field holding the tag for this union (str)
+    # lengthfield -- the name of the field holding the length for this
+    #    union, or None if this union doesn't have a length field. (str/None)
+    # members -- a list of UnionMember.
+    #
+    # Set elsewhere (in CodeGen.Annotator):
+    #   lengthfieldmember -- The StructMember corresponding to the named
+    #     lengthfield, or None if lengthfield is None
+    #   tagfieldmember -- The StructMember corresponding to the named
+    #     tagfield.
     def __init__(self, name, tagfield, lengthfield, members):
-        StructMember.__init__(self)
-        self.name = name
+        StructMember.__init__(self, name)
         self.tagfield = tagfield
         self.lengthfield = lengthfield
         self.members = members
@@ -258,6 +362,12 @@ class SMUnion(StructMember):
             v.visit(m, *args)
 
 class UnionMember(AST):
+    """A tagged member of a union."""
+    ####
+    # tagvalue -- an IntConstraints saying which tag values correspond to this
+    #    member, or None if this is a default case.
+    # decls -- an array of StructMember.
+    # is_default -- true iff this is a defautl case.
     def __init__(self, tagvalue, decls):
         self.tagvalue = tagvalue
         self.decls = decls
@@ -268,15 +378,36 @@ class UnionMember(AST):
             v.visit(d, *args)
 
 class SMFail(StructMember):
+    """A struct member: denotes that parsing should never succeed on a given
+       union tag.
+    """
     pass
 
 class SMEos(StructMember):
+    """A struct member: denotes that additional data is not allowed."""
     pass
 
 class SMIgnore(StructMember):
+    """A struct member: denotes that additional data should be consumed and
+       ignored."""
     pass
 
 class Parser(spark.GenericParser, object):
+    """A parser for trunnel's grammar.  Uses spark.GenericParser for the
+       heavy lifting.
+
+       (spark.GenericParser is an Earley parse, with O(n^3) worst-case
+       performance, but we don't care.)
+
+       Each p_* method represents a single grammar rule in its docstring;
+       it gets invoked in order to reduce the items listed to the
+       lhs of the rule.
+    """
+    ####
+    # lingering_structs -- a list of StructDecl for structs declared
+    #    inside of other structs.  These are lifted out of their
+    #    corresponding structs and treated as top-level when we
+    #    build the File object.
     def __init__(self):
         spark.GenericParser.__init__(self, "File")
         self.lingering_structs = []

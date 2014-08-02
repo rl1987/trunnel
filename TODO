@@ -37,7 +37,7 @@ FOR VERSION 1
 
   . Document it.
     o Explain that I don't care about things that need backtracking
-    - Documentation in code
+    . Documentation in code
     - Document format.
 
   o Allow "u8 until_end[];" in eos position.
@@ -60,7 +60,7 @@ FOR VERSION 1.1 OR LATER
     - Extend checker to simplify?  Eg ranges.  C field names.
 
   - Features
-    . Allow nested structures.
+    o Allow nested structures.
     - Add extra structure data fields and corresponding "clear" functions to
       output.
     - Write a thing to output nail grammars?
