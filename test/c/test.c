@@ -18,7 +18,9 @@ struct testgroup_t test_groups[] = {
 
 int main(int argc, const char **argv)
 {
-  return tinytest_main(argc,argv,test_groups);
+  int r = tinytest_main(argc,argv,test_groups);
+  ux(NULL); /* free buffer */
+  return r;
 }
 
 ssize_t
@@ -46,10 +48,18 @@ unhex(uint8_t *out, size_t outlen, const char *in)
 const uint8_t *
 ux(const char *in)
 {
-  static uint8_t buf[1024];
+  static uint8_t *buf = NULL;
   ssize_t sz;
 
-  sz = unhex(buf, sizeof(buf), in);
+  if (buf)
+    free(buf);
+
+  if (! in)
+    return NULL;
+
+  sz = strlen(in)+1; /* overkill */
+  buf = malloc(sz);
+  sz = unhex(buf, sz, in);
   assert(sz >= 0);
   return buf;
 }
