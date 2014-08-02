@@ -46,6 +46,8 @@ static const char TOOSHORT5[] =
 static const char TOOSHORT6[] =
   "09""000B""09""0102030405060708090A""4000";
 
+static const char TOOSHORT7[] =
+  "09""000B""0B""0102030405060708090A""4000";
 
 static const char BADTAG[] =
   "99""000000";
@@ -81,6 +83,8 @@ test_union2_truncated(void *arg)
     { TOOSHORT2, NULL, 4 },
     { TOOSHORT3, NULL, 8 },
     { TOOSHORT4, NULL, 8 },
+    { TOOSHORT5, NULL, 3 },
+    { TOOSHORT7, NULL, 14 },
     { EXTRA1, NULL, 5 },
     { BADTAG, NULL, 3 },
     { NULL, NULL, 0 }

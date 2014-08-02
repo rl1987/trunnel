@@ -85,8 +85,12 @@ test_varlen_invalid(void *arg)
   /* NULL can't be encoded */
   tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), NULL));
 
-  /* The array lengths need to really match. */
+  /* The string needs to be present */
   varlen = varlen_new();
+  tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
+
+  /* The array lengths need to really match. */
+  varlen->str = strdup("X");
   varlen->len1 = 1;
   tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
   varlen->len1 = 0;
@@ -105,8 +109,6 @@ test_varlen_invalid(void *arg)
   varlen->len2 = 1;
   varlen->len3 = 1;
   varlen->len4 = 1;
-
-  varlen->str = strdup("X");
 
   tt_int_op(0, ==, varlen_add_a8(varlen, 5));
   tt_int_op(0, ==, varlen_add_a16(varlen, 5));

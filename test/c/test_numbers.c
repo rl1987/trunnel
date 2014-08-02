@@ -32,12 +32,25 @@ test_num_truncated(void *arg)
 static void
 test_num_invalid(void *arg)
 {
+  const uint8_t *inp;
   uint8_t buf[16];
+  numbers_t *numbers = NULL;
   (void)arg;
 
   tt_int_op(-1, ==, numbers_encode(buf, 16, NULL));
+
+  numbers = numbers_new();
+  numbers->i32 = 0xbadbeef;
+  tt_int_op(-1, ==, numbers_encode(buf, 16, numbers));
+  numbers->i32 = 0x0;
+  tt_int_op(15, ==, numbers_encode(buf, 16, numbers));
+  numbers_free(numbers); numbers = NULL;
+
+  inp = ux("05" "0004" "0badbeef" "00000000""00000002");
+  tt_int_op(-1, ==, numbers_parse(&numbers, inp, 15));
+
  end:
-  ;
+  numbers_free(numbers);
 }
 
 static void

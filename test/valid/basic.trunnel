@@ -10,7 +10,7 @@ struct numbers {
    /** A number */
    u8 i8;
    u16 i16;
-   u32 i32;
+   u32 i32 IN [0..0xbadbeee, 0xbadbef0..0xffffffff];
    u64 i64;
 }
 

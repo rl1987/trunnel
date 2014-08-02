@@ -61,6 +61,14 @@ test_nest_invalid(void *arg)
   /* NULL fails */
   tt_int_op(-1, ==, nested_encode(buf, 128, NULL));
 
+  /* Number failures. */
+  nest->num1.i32 = 0xbadbeef;
+  tt_int_op(-1, ==, nested_encode(buf, 128, nest));
+  nest->num1.i32 = 0;
+  nest->num2.i32 = 0xbadbeef;
+  tt_int_op(-1, ==, nested_encode(buf, 128, nest));
+  nest->num2.i32 = 0;
+
   /* Strings fails */
   tt_int_op(-1, ==, nested_encode(buf, 128, nest));
 

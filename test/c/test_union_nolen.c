@@ -113,12 +113,17 @@ test_union1_invalid(void *arg)
   tt_int_op(5, ==, union1_encode(buf, sizeof(buf), union1));
   inp = ux("0903030303");
   tt_mem_op(buf, ==, inp, 5);
+
+  /* Check for a bad struct */
+  union1->tag = 7;
+  union1->un_e.i32 = 0xbadbeef;
+  tt_int_op(-1, ==, union1_encode(buf, sizeof(buf), union1));
+
   union1_free(union1); union1 = NULL;
 
   /* Try parsing a bad tag */
   inp = ux("FF");
   tt_int_op(-1, ==, union1_parse(&union1, inp, 1));
-
  end:
   union1_free(union1);
 }

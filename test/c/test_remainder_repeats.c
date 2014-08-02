@@ -106,6 +106,10 @@ test_repeats_invalid_struct(void *arg)
   tt_int_op(8, ==, extends4_encode(buf, sizeof(buf), extends4));
   tt_str_op((char*)buf, ==, "bedtime");
 
+  /* Encoding with a bad struct fails. */
+  extends4_add_remainder(extends4, NULL);
+  tt_int_op(-1, ==, extends4_encode(buf, sizeof(buf), extends4));
+
  end:
   extends4_free(extends4);
 }
@@ -127,9 +131,10 @@ test_repeats_encdec_struct(void *arg)
 
   /* Try the truncated cases */
   for (i=0;i<31;++i) {
+    int errcode = (i == 0) ? -2 : -1;
     if ((i-1) % 15 == 0)
       continue; /* Not truncated. */
-    tt_int_op(-2, ==, extends4_parse(&extends4, inp, 0));
+    tt_int_op(errcode, ==, extends4_parse(&extends4, inp, i));
   }
 
   /* Now try the full cases. */
