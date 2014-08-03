@@ -37,7 +37,7 @@ FOR VERSION 1
 
   . Document it.
     o Explain that I don't care about things that need backtracking
-    . Documentation in code
+    o Documentation in code
     - Document format.
 
   o Allow "u8 until_end[];" in eos position.
@@ -54,7 +54,7 @@ FOR VERSION 1.1 OR LATER
     o variable-length items in unions, taking fields from unions
 
   - Correctness:
-    - Forbid length fields of unions to get reused as anything else.
+    o Forbid length fields of unions to get reused as anything else.
     - Allow union case statements to contain ranges that involve named
       constants.
     - Extend checker to simplify?  Eg ranges.  C field names.

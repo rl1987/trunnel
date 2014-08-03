@@ -141,7 +141,11 @@ class Checker(ASTVisitor):
     # structFieldNames -- if currently analyzing a structure, a set
     #     of all names used as member identifiers.  Otherwise None.
     # structIntFieldNames -- if currently analyzing a structure, a map of
-    #     of all integer-typed fields to their SMInteger node. Otherwise None.
+    #     of all integer-typed fields to their width. Otherwise None.
+    # structIntFieldUsage --  if currently analyzing a structure, a map of
+    #     of all integer-typed fields to "TL" for the ones that have been
+    #     usage as tag or array length, or "CL" for ones that have been used
+    #     for SMLenConstrained length.
     # structUses -- a map from each structure's name to a set of all the other
     #     structures that structure uses.
     # memberPrefix -- a prefix to be appended to each member's name when
@@ -170,6 +174,7 @@ class Checker(ASTVisitor):
         self.constValues = {}
         self.structFieldNames = None
         self.structIntFieldNames = None
+        self.structIntFieldUsage = None
         self.structUses = {}
         self.memberPrefix = ""
         self.sortedStructs = None
@@ -234,11 +239,13 @@ class Checker(ASTVisitor):
     def visitStructDecl(self, sd):
         self.structFieldNames = set()
         self.structIntFieldNames = { }
+        self.structIntFieldUsage = { }
         self.structName = sd.name
         self.structUses[sd.name] = set()
         sd.visitChildren(self)
         self.structFieldNames = None
         self.structIntFieldNames = None
+        self.structIntFieldUsage = None
 
     def addMemberName_(self, m):
         """Add m as a name of a member of the current structure, checking for
@@ -294,7 +301,7 @@ class Checker(ASTVisitor):
         self.addMemberName(sva.name)
 
         if sva.widthfield is not None:
-            self.checkIntField(sva.widthfield, "length", "%s.%s"%
+            self.checkIntField(sva.widthfield, "array length", "%s.%s"%
                                (self.structName,sva.name))
 
         if type(sva.basetype) == str:
@@ -308,7 +315,7 @@ class Checker(ASTVisitor):
         self.addMemberName(sms.name)
 
     def visitSMLenConstrained(self, sml):
-        self.checkIntField(sml.lengthfield, "length", self.structName)
+        self.checkIntField(sml.lengthfield, "union length", self.structName)
         self.lenFieldDepth += 1
         sml.visitChildren(self)
         self.lenFieldDepth -= 1
@@ -408,6 +415,15 @@ class Checker(ASTVisitor):
         if fieldname not in self.structIntFieldNames:
             raise CheckError("Non-integer %s field %s for %s"%(
                 ftype,fieldname,inside))
+
+        note = { 'tag' : 'TL', 'array length' : 'TL',
+                 'union length' : 'CL' }[ftype]
+        try:
+            curUsage = self.structIntFieldUsage[fieldname]
+            if curUsage != note:
+                raise CheckError("Invalid mixed usage for field %s"%fieldname)
+        except KeyError:
+            self.structIntFieldUsage[fieldname] = note
 
 class Annotator(ASTVisitor):
     """Annotating visitor for a Trunnel AST.  This visitor's job is to

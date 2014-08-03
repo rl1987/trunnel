@@ -1,0 +1,9 @@
+
+struct x {
+  u8 f;
+  u8 g;
+  u8 a[f];
+  union b[g] WITH LENGTH f {
+    1 : u8 z;
+  };
+}
