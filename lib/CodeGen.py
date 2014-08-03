@@ -1578,9 +1578,10 @@ class ParseFnGenerator(IndentingGenerator):
         #
         # To parse a fixed array of struct, we write a for loop to
         # call the appropriate typename_parse() function repeatedly.
-
-        # XXXX It is the user's reponsibility to make sure that size_t isn't
-        # overflowed with these.
+        #
+        # (We assume that the compiler will catch it if we make any
+        # fixed array too big to fit into a size_t.  Also, don't do that;
+        # what kind of protocol are you implementing?)
 
         self.eltHeader(sfa)
         if type(sfa.basetype) != str:

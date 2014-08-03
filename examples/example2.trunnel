@@ -101,16 +101,15 @@ struct union2 {
      8: u64 a64[3];
      9: struct color c;
      10,11,12: struct color ca[2];
-     20: char str[8];
 
-     // can't do this in a union
-   //  13: u8 v8[len];
-   //  14: u8 v8[len];
-   //  15: u16 v16[len];
-   //  16: u32 v32[len];
-   //  17: u64 v64[len];
-   //  18: struct color[len];
-   //  20: char str2[len];
+     14: u8 v8[len];
+     15: u16 v16[len];
+     16: u32 v32[len];
+     17: u64 v64[len];
+     18: struct color va2[len];
+     20: char str2[len];
+     21: char str[8];
+
 
    };
 
@@ -123,7 +122,7 @@ struct union_with_len {
 
   union u[tag] WITH LENGTH unionlen {
     1: struct color c;
-    2: struct date d; 
+    2: struct date d;
        ...; // ... means it's okay if unionlen > sizeof(date)
     default: u8 unparseable[];
     // We could also say "default: ignore;" to not retain the data.

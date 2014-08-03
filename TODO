@@ -58,7 +58,7 @@ FOR VERSION 1.1 OR LATER
     - Allow union case statements to contain ranges that involve named
       constants.
     - Extend checker to simplify?  Eg ranges.  C field names.
-    - verify that fixed arrays don't overflow size_t
+    X verify that fixed arrays don't overflow size_t
 
   - Features
     o Allow nested structures.
