@@ -1047,7 +1047,7 @@ class CheckFnGenerator(IndentingGenerator):
         self.w('if (NULL == obj->%s)\n  return "Missing %s";\n'%(ss.c_name, ss.c_name))
 
     def visitSMLenConstrained(self, sml):
-        #DOCDOC
+        # To check a SMlenConstrained, check its children.
         sml.visitChildren(self)
 
     def visitSMUnion(self, smu):
@@ -1319,7 +1319,7 @@ class EncodeFnGenerator(IndentingGenerator):
         self.w('}\n')
 
     def visitSMLenConstrained(self, sml):
-        # To implement a length-constained field of a structure,
+        # To encode a length-constained field of a structure,
         # remember the position at which we began writing to the union.
         # Once we're done encoding the union members, we check to make
         # sure that the number of bytes written will fit in the length
@@ -1350,7 +1350,6 @@ class EncodeFnGenerator(IndentingGenerator):
     def visitSMUnion(self, smu):
         # To encode a union without a length field, we switch on the value
         # of its tag field, and handle each case appropriately.
-        #
 
         self.eltHeader(smu)
         self.w('trunnel_assert(written <= avail);\n')
@@ -1418,10 +1417,11 @@ class ParseFnGenerator(IndentingGenerator):
 
        The generated function works by maintaining a count of the number of
        bytes remaining to parse in 'remaining', and a pointer to the next
-       parseable byte in 'ptr'.
+       parseable byte in 'ptr'.  When parsing a length-constrained area,
+       we temporarily reduce 'remaining'.
 
        INVARIANTS:
-             ptr + remaining == input + len_in
+             ptr + remaining <= input + len_in
              ptr >= input
              remaining <= len_in
 
@@ -1739,6 +1739,14 @@ class ParseFnGenerator(IndentingGenerator):
         self.w('}\n')
 
     def visitSMLenConstrained(self, sml):
+        # To parse a length-constrained region, make sure that at
+        # least that many bytes remain in the structure.  Then,
+        # temporarily set "remaining" to the value of the length
+        # field, and "remaining_after" to the value that 'remaining'
+        # will have after we're done parsing this region.  Then we parse
+        # the region.  Finally, we check that 'remaining' is now 0.  If it
+        # is, we restore it to remaining_after.  If not, we fail.
+
         self.w('{\n')
         self.pushIndent(2)
         self.w('size_t remaining_after;\n')
@@ -1765,6 +1773,8 @@ class ParseFnGenerator(IndentingGenerator):
         self.w('}\n')
 
     def visitSMUnion(self, smu):
+        # To parse a union, we switch depending on the value of the already-
+        # parsed tag field.
         self.eltHeader(smu)
 
         self.w('switch (obj->%s) {\n'%smu.tagfield)
@@ -1784,12 +1794,15 @@ class ParseFnGenerator(IndentingGenerator):
         self.popIndent(2)
 
     def visitSMEos(self, eos):
+        # To parse an EOS assertion, we fail if "remaining" is nonzero.
         self.needLabels.add('fail')
         self.w('if (remaining)\n  goto fail;\n')
     def visitSMFail(self, udf):
+        # To parse a 'fail' assertion, we fail.
         self.needLabels.add('fail')
         self.w('goto fail;\n')
     def visitSMIgnore(self, udi):
+        # To parse an 'ignore' assertion, we skip to the end of 'remaining'.
         self.w('/* Skip to end of union */\n')
         self.w('ptr += remaining; remaining = 0;\n')
 
@@ -1879,8 +1892,8 @@ static uint64_t trunnel_ntohll(uint64_t a)
 }
 """
 
-
 if __name__ == '__main__':
+    # Implements the command-line interface for trunnel.
     import sys
     import os
 

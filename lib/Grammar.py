@@ -70,6 +70,14 @@ KEYWORDS = set("""
   IN const nulterm WITH LENGTH default fail ignore eos
 """.split())
 
+
+######
+#
+# Lexer
+#
+#####
+
+
 class Lexer(spark.GenericScanner, object):
     """Scanner class based on spark.GenericScanner.  Its job is to turn
        a string into a list of Token.
@@ -125,6 +133,12 @@ class Lexer(spark.GenericScanner, object):
     def t_default(self, s):
         r"."
         raise ValueError("unmatched input: %r on line %r" % (s,self.lineno))
+
+######
+#
+# AST types
+#
+#####
 
 class AST(object):
     """Abstract type. Base type for our abstract syntax tree structure.
@@ -336,7 +350,10 @@ class SMVarArray(StructMember):
         return "%s%s %s[%s]"%(struct, str(self.basetype), self.getName(), self.widthfield)
 
 class SMLenConstrained(StructMember):
-    """ DOCDOC """
+    """A length-constrained part of a structure.  Earlier in the structure,
+       there hase been an integer field; the value of that field determines
+       the total length of this section.  If this section extends beyond
+       that length or falls short of it, this structure is invalid."""
 
     ####
     # lengthfield -- the name of the field holding the length for this
@@ -406,6 +423,12 @@ class SMIgnore(StructMember):
     """A struct member: denotes that additional data should be consumed and
        ignored."""
     pass
+
+######
+#
+# Parser
+#
+#####
 
 class Parser(spark.GenericParser, object):
     """A parser for trunnel's grammar.  Uses spark.GenericParser for the
