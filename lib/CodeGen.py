@@ -1747,12 +1747,15 @@ class ParseFnGenerator(IndentingGenerator):
         # the region.  Finally, we check that 'remaining' is now 0.  If it
         # is, we restore it to remaining_after.  If not, we fail.
 
+        field = sml.lengthfieldmember.c_name
+
         self.w('{\n')
         self.pushIndent(2)
         self.w('size_t remaining_after;\n')
-        self.w('if (obj->%s > remaining)\n   goto %s;\n'%(sml.lengthfield, self.truncatedLabel))
-        self.w('remaining_after = remaining - obj->%s;\n'%sml.lengthfield)
-        self.w('remaining = obj->%s;\n'%sml.lengthfield)
+        self.w('if (obj->%s > remaining)\n   goto %s;\n'
+               %(field, self.truncatedLabel))
+        self.w('remaining_after = remaining - obj->%s;\n'%field)
+        self.w('remaining = obj->%s;\n'%field)
         self.needLabels.add(self.truncatedLabel)
 
         oldFail = self.structFailLabel
