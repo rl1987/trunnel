@@ -155,7 +155,8 @@ class Checker(ASTVisitor):
     #     analyzing now.
     #
     # curunion -- the SMUnion member we're analyzing right now.
-    # unionHasLength -- true iff the current SMUnion has a length field.
+    # lenFieldDepth -- count of the SMLenConstraineds containing
+    #     us right now.
     # unionName -- the name of the SMUnion we're analyzing right now.
     # unionTagMax -- the integer maximum value for the tag field of
     #     the SMUnion we're analyzing right now.
@@ -172,6 +173,7 @@ class Checker(ASTVisitor):
         self.structUses = {}
         self.memberPrefix = ""
         self.sortedStructs = None
+        self.lenFieldDepth = 0
 
     def visitFile(self, f):
         # Build up the sets of all constant and structure names.
@@ -305,17 +307,19 @@ class Checker(ASTVisitor):
     def visitSMString(self, sms):
         self.addMemberName(sms.name)
 
+    def visitSMLenConstrained(self, sml):
+        self.checkIntField(sml.lengthfield, "length", self.structName)
+        self.lenFieldDepth += 1
+        sml.visitChildren(self)
+        self.lenFieldDepth -= 1
+
     def visitSMUnion(self, smu):
         self.addMemberName(smu.name)
 
         self.checkIntField(smu.tagfield, "tag", "%s.%s"%
                            (self.structName,smu.name))
-        if smu.lengthfield is not None:
-            self.checkIntField(smu.lengthfield, "length", "%s.%s"%
-                               (self.structName,smu.name))
 
         self.curunion = smu
-        self.unionHasLength = smu.lengthfield is not None
         self.unionName = smu.name
         self.unionMatching = []
         self.unionTagMax = TYPE_MAXIMA[self.structIntFieldNames[smu.tagfield]]
@@ -364,9 +368,8 @@ class Checker(ASTVisitor):
     def visitSMFail(self, fail):
         pass
     def visitSMIgnore(self, ignore):
-        if self.curunion is not None and not self.unionHasLength:
-            raise CheckError("'...' found in union %s without a length field"%
-                             self.containing)
+        if self.lenFieldDepth == 0:
+            raise CheckError("'...' found outside of a length-constrained element")
 
     def checkIntegerList(self, lst, maximum, expandInto=None):
         """Given a list of (lo,hi) integer ranges, check it for correctness."""
@@ -431,7 +434,7 @@ class Annotator(ASTVisitor):
         self.cur_struct_obj = sd
         self.cur_struct = sd.name
         self.memberByName = {}
-        sd.unionLengthFields = { }
+        sd.lengthFields = { }
         sd.visitChildren(self)
         self.cur_struct = None
         self.cur_struct_obj = None
@@ -455,18 +458,17 @@ class Annotator(ASTVisitor):
             sva.widthfieldmember = self.memberByName[sva.widthfield]
     def visitSMString(self, ss):
         self.annotateMember(ss)
+    def visitSMLenConstrained(self, sml):
+        m = self.memberByName[sml.lengthfield]
+        self.cur_struct_obj.lengthFields[m.c_name] = m
+        sml.lengthfieldmember = m
+        sml.visitChildren(self)
     def visitSMUnion(self, smu):
         self.annotateMember(smu)
         self.prefix = smu.name + "_"
         smu.visitChildren(self)
         self.prefix = ""
         smu.tagfieldmember = self.memberByName[smu.tagfield]
-        if smu.lengthfield is not None:
-            m = self.memberByName[smu.lengthfield]
-            self.cur_struct_obj.unionLengthFields[m.c_name] = m
-            smu.lengthfieldmember = m
-        else:
-            smu.lengthfieldmember = None
     def visitUnionMember(self, um):
         um.visitChildren(self)
     def visitSMFail(self, fail):
@@ -601,6 +603,9 @@ class DeclarationGenerationVisitor(IndentingGenerator):
 
         self.w("char *%s;\n"%(ss.c_name))
 
+    def visitSMLenConstrained(self, sml):
+        sml.visitChildren(self)
+
     def visitSMUnion(self, smu):
         if smu.annotation != None:
             self.w(smu.annotation)
@@ -668,6 +673,9 @@ class PrototypeGenerationVisitor(IndentingGenerator):
 
     def visit_other(self, ast, *args):
         pass
+
+    def visitSMLenConstrained(self, sml):
+        sml.visitChildren(self)
 
     def visitSMUnion(self, smu):
         smu.visitChildren(self)
@@ -813,6 +821,8 @@ class FreeFnGenerator(IndentingGenerator):
         # To clear a string, we call trunnel_free() on it.  (We require that
         # trunnel_free must handle NULL.)
         self.w("trunnel_free(obj->%s);\n"%(ss.c_name))
+    def visitSMLenConstrained(self, sml):
+        sml.visitChildren(self)
     def visitSMUnion(self, smu):
         smu.visitChildren(self)
     def visitUnionMember(self, um):
@@ -848,6 +858,9 @@ class AccessorFnGenerator(IndentingGenerator):
     def visitStructDecl(self, sd):
         self.structName = sd.name
         sd.visitChildren(self)
+
+    def visitSMLenConstrained(self, sml):
+        sml.visitChildren(self)
 
     def visitSMUnion(self, smu):
         smu.visitChildren(self)
@@ -1033,6 +1046,10 @@ class CheckFnGenerator(IndentingGenerator):
         # To check a nul-terminated string: make sure it isn't NULL.
         self.w('if (NULL == obj->%s)\n  return "Missing %s";\n'%(ss.c_name, ss.c_name))
 
+    def visitSMLenConstrained(self, sml):
+        #DOCDOC
+        sml.visitChildren(self)
+
     def visitSMUnion(self, smu):
         # To check a union, look at the union's tag value, and handle all
         # the tag values separately.
@@ -1130,8 +1147,8 @@ class EncodeFnGenerator(IndentingGenerator):
                'uint8_t *ptr = output;\n'
                'const char *msg;\n')
         self.w('\n')
-        if sd.unionLengthFields:
-            for m in sorted(sd.unionLengthFields.values()):
+        if sd.lengthFields:
+            for m in sorted(sd.lengthFields.values()):
                 self.w('uint8_t *backptr_%s = NULL;\n'%(m.c_name))
             self.w('\n')
         self.w(('if (NULL != (msg = %s_check(obj)))\n'
@@ -1156,7 +1173,7 @@ class EncodeFnGenerator(IndentingGenerator):
         # If the field is the length of a union, we remember the
         # current position in the output buffer.
         self.eltHeader(smi)
-        if smi.c_name in self.curStruct.unionLengthFields:
+        if smi.c_name in self.curStruct.lengthFields:
             self.w('backptr_%s = ptr;\n'%(smi.c_name));
         self.w(self.encodeInteger(smi.inttype.width, "obj->%s"%(smi.c_name)))
 
@@ -1301,43 +1318,45 @@ class EncodeFnGenerator(IndentingGenerator):
         self.popIndent(2)
         self.w('}\n')
 
-    def visitSMUnion(self, smu):
-        # To encode a union without a length field, we switch on the value
-        # of its tag field, and handle each case appropriately.
-        #
-        # If the union has an associated length field, we must first
+    def visitSMLenConstrained(self, sml):
+        # To implement a length-constained field of a structure,
         # remember the position at which we began writing to the union.
         # Once we're done encoding the union members, we check to make
         # sure that the number of bytes written will fit in the length
         # field, and then use the appropriate backptr value to encode the
         # actual length.
+        self.w("{\n")
+        self.pushIndent(2)
+        self.w("size_t written_before_union = written;\n")
+
+        sml.visitChildren(self)
+
+        self.comment('Write the length field back to %s'%sml.lengthfield)
+        m = sml.lengthfieldmember
+        width = m.inttype.width
+        hton = HTON_FN[width]
+        self.w('trunnel_assert(written >= written_before_union);\n')
+        # We do this CPP check so that we don't generate any code
+        # to check whether a size_t fits inside a uint64_t: compilers
+        # don't like that.
+        self.w_('#if UINT%s_MAX < SIZE_MAX\n'%width)
+        self.w(('if (written - written_before_union > UINT%s_MAX)\n'
+                '  goto check_failed;\n')%width)
+        self.w_('#endif\n')
+        self.w('trunnel_set_uint%d(backptr_%s, %s(written - written_before_union));\n'%(width,m.c_name,hton))
+        self.popIndent(2)
+        self.w("}\n")
+
+    def visitSMUnion(self, smu):
+        # To encode a union without a length field, we switch on the value
+        # of its tag field, and handle each case appropriately.
+        #
 
         self.eltHeader(smu)
         self.w('trunnel_assert(written <= avail);\n')
-        if smu.lengthfield is not None:
-            self.w("{\n")
-            self.pushIndent(2)
-            self.w("size_t written_before_union = written;\n")
         self.w('switch (obj->%s) {\n'%smu.tagfield)
         smu.visitChildren(self)
         self.w("}\n")
-
-        if smu.lengthfield is not None:
-            self.comment('Write the length field back to %s'%smu.lengthfield)
-            m = smu.lengthfieldmember
-            width = m.inttype.width
-            hton = HTON_FN[width]
-            self.w('trunnel_assert(written >= written_before_union);\n')
-            # We do this CPP check so that we don't generate any code
-            # to check whether a size_t fits inside a uint64_t: compilers
-            # don't like that.
-            self.w_('#if UINT%s_MAX < SIZE_MAX\n'%width)
-            self.w(('if (written - written_before_union > UINT%s_MAX)\n'
-                    '  goto check_failed;\n')%width)
-            self.w_('#endif\n')
-            self.w('trunnel_set_uint%d(backptr_%s, %s(written - written_before_union));\n'%(width,m.c_name,hton))
-            self.popIndent(2)
-            self.w("}\n")
 
     def visitUnionMember(self, um):
         self.pushIndent(2)
@@ -1719,21 +1738,34 @@ class ParseFnGenerator(IndentingGenerator):
         self.popIndent(2)
         self.w('}\n')
 
+    def visitSMLenConstrained(self, sml):
+        self.w('{\n')
+        self.pushIndent(2)
+        self.w('size_t remaining_after;\n')
+        self.w('if (obj->%s > remaining)\n   goto %s;\n'%(sml.lengthfield, self.truncatedLabel))
+        self.w('remaining_after = remaining - obj->%s;\n'%sml.lengthfield)
+        self.w('remaining = obj->%s;\n'%sml.lengthfield)
+        self.needLabels.add(self.truncatedLabel)
+
+        oldFail = self.structFailLabel
+        oldTrunc = self.truncatedLabel
+        self.structFailLabel = "fail"
+        self.truncatedLabel = "fail"
+
+        sml.visitChildren(self)
+
+        self.structFailLabel = oldFail
+        self.truncatedLabel = oldTrunc
+
+        self.needLabels.add('fail')
+        self.w('if (remaining != 0)\n'
+               '  goto fail;\n')
+        self.w('remaining = remaining_after;\n')
+        self.popIndent(2)
+        self.w('}\n')
+
     def visitSMUnion(self, smu):
         self.eltHeader(smu)
-        if smu.lengthfield is not None:
-            self.w('{\n')
-            self.pushIndent(2)
-            self.w('size_t remaining_after;\n')
-            self.w('if (obj->%s > remaining)\n   goto %s;\n'%(smu.lengthfield, self.truncatedLabel))
-            self.w('remaining_after = remaining - obj->%s;\n'%smu.lengthfield)
-            self.w('remaining = obj->%s;\n'%smu.lengthfield)
-            self.needLabels.add(self.truncatedLabel)
-
-            oldFail = self.structFailLabel
-            oldTrunc = self.truncatedLabel
-            self.structFailLabel = "fail"
-            self.truncatedLabel = "fail"
 
         self.w('switch (obj->%s) {\n'%smu.tagfield)
         self.curunion = smu
@@ -1741,17 +1773,6 @@ class ParseFnGenerator(IndentingGenerator):
         smu.visitChildren(self)
 
         self.w("}\n")
-        if smu.lengthfield is not None:
-            self.structFailLabel = oldFail
-            self.truncatedLabel = oldTrunc
-
-            self.needLabels.add('fail')
-            self.w('if (remaining != 0)\n'
-                   '  goto fail;\n')
-            self.w('remaining = remaining_after;\n')
-            self.popIndent(2)
-            self.w('}\n')
-
 
     def visitUnionMember(self, um):
         self.pushIndent(2)

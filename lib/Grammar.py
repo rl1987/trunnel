@@ -186,8 +186,8 @@ class StructDecl(AST):
     #   this structure.
     #
     # Set elsewhere (in CodeGen.Annotator):
-    #   unionLengthFields -- a map from c_name of a field to the field itself
-    #     for every field that is used as the length of a union.
+    #   lengthFields -- a map from c_name of a field to the field itself
+    #     for every field that is used as the length of a SMLenConstrained
 
     def __init__(self, name, members):
         self.name = name
@@ -335,30 +335,42 @@ class SMVarArray(StructMember):
 
         return "%s%s %s[%s]"%(struct, str(self.basetype), self.getName(), self.widthfield)
 
-class SMUnion(StructMember):
-    """A tagged-union member of a structure"""
+class SMLenConstrained(StructMember):
+    """ DOCDOC """
+
     ####
-    # tagfield -- the name of the field holding the tag for this union (str)
     # lengthfield -- the name of the field holding the length for this
-    #    union, or None if this union doesn't have a length field. (str/None)
-    # members -- a list of UnionMember.
+    #    extent.
     #
     # Set elsewhere (in CodeGen.Annotator):
     #   lengthfieldmember -- The StructMember corresponding to the named
     #     lengthfield, or None if lengthfield is None
-    #   tagfieldmember -- The StructMember corresponding to the named
-    #     tagfield.
-    def __init__(self, name, tagfield, lengthfield, members):
-        StructMember.__init__(self, name)
-        self.tagfield = tagfield
+
+    def __init__(self, lengthfield, members):
+        StructMember.__init__(self)
         self.lengthfield = lengthfield
         self.members = members
 
+    def visitChildren(self, v, *args):
+        for m in self.members:
+            v.visit(m, *args)
+
+class SMUnion(StructMember):
+    """A tagged-union member of a structure"""
+    ####
+    # tagfield -- the name of the field holding the tag for this union (str)
+    # members -- a list of UnionMember.
+    #
+    # Set elsewhere (in CodeGen.Annotator):
+    #   tagfieldmember -- The StructMember corresponding to the named
+    #     tagfield.
+    def __init__(self, name, tagfield, members):
+        StructMember.__init__(self, name)
+        self.tagfield = tagfield
+        self.members = members
+
     def __str__(self):
-        lenf = ""
-        if self.lengthfield:
-            lenf = " WITH LENGTH %s"%self.lengthfield
-        return "union %s[%s]%s"%(self.getName(), self.tagfield, lenf)
+        return "union %s[%s]"%(self.getName(), self.tagfield)
 
     def visitChildren(self, v, *args):
         for m in self.members:
@@ -619,7 +631,10 @@ class Parser(spark.GenericParser, object):
     def p_SMUnion(self, info):
         " SMUnion ::= union ID [ ID ] OptUnionLength { UnionMembers } "
         _1, unionfield, _2, tagfield, _3, optlength, _4, members, _5 = info
-        return SMUnion(str(unionfield), str(tagfield), optlength, members)
+        union = SMUnion(str(unionfield), str(tagfield), members)
+        if optlength is not None:
+            union = SMLenConstrained(optlength, [ union ])
+        return union
 
     def p_OptUnionLength_1(self, info):
         " OptUnionLength ::= "
