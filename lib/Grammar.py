@@ -520,11 +520,8 @@ class Parser(spark.GenericParser, object):
         return m
 
     def p_StructMembers_1(self, info):
-        " StructMembers ::= OptAnnotation StructMember ; "
-        a, m, _ = info
-        if a:
-            m.annotation = str(a)
-        return [ m ]
+        " StructMembers ::= "
+        return [ ]
 
     def p_structMembers_2(self, info):
         " StructMembers ::= StructMembers OptAnnotation StructMember ; "
