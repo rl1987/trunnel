@@ -686,6 +686,11 @@ class PrototypeGenerationVisitor(IndentingGenerator):
                           invalid."""%(name))
         self.w("ssize_t %s_encode(uint8_t *output, const size_t avail, const %s_t *input);\n"%(name,name))
 
+        self.docstring("""Clear any errors that were set on the object 'obj'
+                          by its setter functions.  Return true iff errors
+                          were cleared.""")
+        self.w("int\n%s_clear_errors(%s_t *obj);\n"%(name,name))
+
         AccessorFnGenerator(self.w_, True).visit(sd)
 
 class CodeGenerationVisitor(IndentingGenerator):
@@ -869,8 +874,8 @@ class AccessorFnGenerator(IndentingGenerator):
                    "   return -1;\n"
                    "}\n"%expr)
 
-        self.w("  inp->%s = val;\n"%smi.c_name)
-        self.w("  return 0;")
+        self.w("inp->%s = val;\n"%smi.c_name)
+        self.w("return 0;")
         self.popIndent(2)
         self.w("}\n")
 
@@ -893,16 +898,90 @@ class AccessorFnGenerator(IndentingGenerator):
         self.declaration("int", "%s_set_%s(%s_t *inp, %sval)"%(st,nm,st,tp))
         self.w("{\n")
         self.pushIndent(2)
-        self.w("  %s_free(inp->%s);\n"%(sms.structname, sms.c_name))
+        self.w("  if (inp->%s && inp->%s != val)\n"%(sms.c_name,sms.c_name))
+        self.w("    %s_free(inp->%s);\n"%(sms.structname, sms.c_name))
+        self.w("  return %s_set0_%s(inp, val);\n"%(st,nm))
+        self.popIndent(2)
+        self.w("}\n")
+
+        self.docstring("As %s_set_%s, but does not free the previous value."
+                       %(st,nm))
+        self.declaration("int", "%s_set0_%s(%s_t *inp, %sval)"%(st,nm,st,tp))
+        self.w("{\n")
+        self.pushIndent(2)
         self.w("  inp->%s = val;\n"%sms.c_name)
         self.w("  return 0;")
         self.popIndent(2)
         self.w("}\n")
 
+    def visitSMFixedArray(self, sfa):
+        st = self.structName
+        nm = sfa.c_fn_name
+        if str(sfa.basetype) == 'char':
+            elttype = 'char'
+        elif type(sfa.basetype) == str:
+            elttype = "%s_t *"%sfa.basetype
+        else:
+            elttype = "uint%d_t"%sfa.basetype.width
+
+        # XXXX need whole-array set/get functions?
+
+        self.docstring("""Return the (constant) length of the array holding the
+                          %s field of the %s_t in 'inp'."""%(nm,st))
+        self.declaration("size_t", "%s_get_%s_len(const %s_t *inp)"%(st,nm,st))
+        self.w("{\n"
+               "  (void)inp;"
+               "  return %s;\n"
+               "}\n\n"%sfa.width)
+
+        self.docstring("""Return the element at position 'idx' of the
+                          fixed array field %s of the %s_t in 'inp'."""%
+                       (nm,st))
+        self.declaration(elttype, '%s_get_%s(const %s_t *inp, size_t idx)'
+               %(st,nm,st))
+        self.w("{\n"
+               "  trunnel_assert(idx < %s);\n"
+               "  return inp->%s[idx];\n"
+               "}\n\n"%(sfa.width, sfa.c_name))
+
+
+        freestr = ""
+        if type(sfa.basetype) == str:
+            freestr = "  Free the previous value, if any."
+        self.docstring("""Change the the element at position 'idx' of the
+                          fixed array field %s of the %s_t in 'inp', so
+                          that it will hold the value 'elt'.%s"""%
+                       (nm,st,freestr))
+        self.declaration("int", "%s_set_%s(%s_t *inp, size_t idx, %s elt)"
+               %(st,nm,st,elttype))
+        self.w("{\n"
+               "  trunnel_assert(idx < %s);\n"%sfa.width)
+
+        if type(sfa.basetype) == str:
+            self.w(("  if (inp->%s[idx] && inp->%s[idx] != elt)\n"
+                    "    %s_free(inp->%s[idx]);\n")%(sfa.c_name, sfa.c_name,
+                                                   sfa.basetype,sfa.c_name))
+            self.w("  return %s_set0_%s(inp, idx, elt);\n"%(st,nm))
+            self.w("}\n")
+
+            self.docstring("As %s_set_%s, but does not free the previous value."
+                           %(st,nm))
+            self.declaration("int", "%s_set0_%s(%s_t *inp, size_t idx, %s elt)"
+                             %(st,nm,st,elttype))
+            self.w("{\n"
+                   "  trunnel_assert(idx < %s);\n"%sfa.width)
+
+        self.w(("  inp->%s[idx] = elt;\n"
+                "  return 0;\n"
+                "}\n\n")%(sfa.c_name))
+
+
+
     def visitSMLenConstrained(self, sml):
         sml.visitChildren(self)
 
     def visitSMUnion(self, smu):
+        # XXXX accessors for items that check about the tag?
         smu.visitChildren(self)
 
     def visitUnionMember(self, um):
@@ -910,6 +989,7 @@ class AccessorFnGenerator(IndentingGenerator):
 
     def visitSMVarArray(self, sva):
         if str(sva.basetype) == 'char':
+            # XXXX don't special-case this.
             return
 
         st = self.structName
@@ -918,6 +998,8 @@ class AccessorFnGenerator(IndentingGenerator):
             elttype = "%s_t *"%sva.basetype
         else:
             elttype = "uint%d_t"%sva.basetype.width
+
+        # XXXX need whole-array set/get functions
 
         self.docstring("""Return the length of the dynamic array holding the
                           %s field of the %s_t in 'inp'."""%(nm,st))
@@ -935,15 +1017,33 @@ class AccessorFnGenerator(IndentingGenerator):
                "  return TRUNNEL_DYNARRAY_GET(&inp->%s, idx);\n"
                "}\n\n"%nm)
 
+        freestr = ""
+        if type(sva.basetype) == str:
+            freestr = "  Free the previous value, if any."
         self.docstring("""Change the the element at position 'idx' of the
                           dynamic array field %s of the %s_t in 'inp', so
-                          that it will hold the value 'elt'."""%
-                       (nm,st))
-        self.declaration("void", "%s_set_%s(%s_t *inp, size_t idx, %s elt)"
+                          that it will hold the value 'elt'.%s"""%
+                       (nm,st,freestr))
+        self.declaration("int", "%s_set_%s(%s_t *inp, size_t idx, %s elt)"
                %(st,nm,st,elttype))
-        self.w("{\n"
-               "  TRUNNEL_DYNARRAY_SET(&inp->%s, idx, elt);\n"
-               "}\n\n"%nm)
+        self.w("{\n")
+        if type(sva.basetype) == str:
+            self.w(("  %s_t *oldval = TRUNNEL_DYNARRAY_GET(&inp->%s, idx);\n"
+                    "  if (oldval && oldval != elt)\n"
+                    "    %s_free(oldval);\n")%(sva.basetype,
+                                               sva.c_name, sva.basetype))
+            self.w("  return %s_set0_%s(inp, idx, elt);\n"%(st,nm))
+            self.w("}\n")
+
+            self.docstring("As %s_set_%s, but does not free the previous value."
+                           %(st,nm))
+            self.declaration("int", "%s_set0_%s(%s_t *inp, size_t idx, %s elt)"
+                             %(st,nm,st,elttype))
+            self.w("{\n")
+
+        self.w("  TRUNNEL_DYNARRAY_SET(&inp->%s, idx, elt);\n"%nm)
+        self.w("  return 0;\n")
+        self.w("}\n")
 
         self.docstring("""Append a new element 'elt' to the dynamic array
                           field %s of the the %s_t in 'inp'."""%
@@ -956,6 +1056,34 @@ class AccessorFnGenerator(IndentingGenerator):
                " trunnel_alloc_failed:\n"
                "  return -1;\n"
                "}\n\n"%(elttype,nm))
+
+
+    def visitSMString(self, sms):
+        st = self.structName
+        nm = sms.c_fn_name
+
+        self.docstring("Return the value of the %s field of the %s_t in 'inp'"%(nm,st))
+        self.declaration("const char *", "%s_get_%s(%s_t *inp)"%(st,nm,st))
+        self.w("{\n"
+               "  return inp->%s;\n"
+               "}\n"%sms.c_name)
+
+        self.docstring("Set the value of the %s field of the %s_t in 'inp' to "
+                       "'val'.  Free the old value if any. Does not steal "
+                       " the reference to 'val'."
+                       "Return 0 on success; return -1 and set the "
+                       "error code on 'inp' on failure."%(nm,st))
+        self.declaration("int", "%s_set_%s(%s_t *inp, const char *val)"%(st,nm,st))
+        self.w("{\n")
+        self.pushIndent(2)
+        self.w("trunnel_free(inp->%s);\n"%(sms.c_name))
+        self.w("if (NULL == (inp->%s = strdup(val))) {\n"%sms.c_name)
+        self.w("  TRUNNEL_SET_ERROR_CODE(inp);");
+        self.w("  return -1;")
+        self.w("}")
+        self.w("return 0;")
+        self.popIndent(2)
+        self.w("}\n")
 
 def iterateOverFixedArray(generator, sfa, body, extraDecl=None):
     """Helper: write the code needed to iterate over every element of a
@@ -1025,7 +1153,10 @@ class CheckFnGenerator(IndentingGenerator):
                           short message if it is not."""%name)
         self.w("static const char *\n%s_check(const %s_t *obj)\n{\n"%(name,name))
         self.pushIndent(2)
-        self.w('if (obj == NULL)\n  return "Object was NULL";\n')
+        self.w('if (obj == NULL)\n'
+               '  return "Object was NULL";\n'
+               'if (obj->trunnel_error_code_)\n'
+               '  return "A set function failed on this object";\n')
         sd.visitChildren(self)
         self.w("return NULL;\n")
         self.popIndent(2)
@@ -1194,6 +1325,14 @@ class EncodeFnGenerator(IndentingGenerator):
     def visitStructDecl(self, sd):
         self.structName = name = sd.name
         self.curStruct = sd
+
+        self.w("int\n%s_clear_errors(%s_t *obj)\n"%(name,name))
+        self.w("{\n"
+               "  int r = obj->trunnel_error_code_;\n"
+               "  obj->trunnel_error_code_ = 0;\n"
+               "  return r;\n"
+               "}")
+
         self.w("ssize_t\n%s_encode(uint8_t *output, const size_t avail, const %s_t *obj)\n{\n"%(name,name))
         self.pushIndent(2)
         self.w('ssize_t result = 0;\n'
@@ -1939,6 +2078,7 @@ static uint64_t trunnel_ntohll(uint64_t a)
   do {                              \
     (obj)->trunnel_error_code_ = 1; \
   } while (0)
+
 """
 
 if __name__ == '__main__':

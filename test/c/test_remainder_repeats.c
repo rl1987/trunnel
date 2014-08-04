@@ -193,8 +193,8 @@ test_repeats_encdec_struct(void *arg)
   tt_mem_op(buf, ==, inp, 31);
 
   /* Try other accessors */
-  extends4_set_remainder(extends4, 0, n2);
-  extends4_set_remainder(extends4, 1, n);
+  extends4_set0_remainder(extends4, 0, n2);
+  extends4_set0_remainder(extends4, 1, n);
   n = numbers_new();
   --n->i64;
   extends4_add_remainder(extends4, n);
