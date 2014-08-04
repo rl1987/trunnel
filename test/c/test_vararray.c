@@ -85,12 +85,10 @@ test_varlen_invalid(void *arg)
   /* NULL can't be encoded */
   tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), NULL));
 
-  /* The string needs to be present */
   varlen = varlen_new();
-  tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
 
   /* The array lengths need to really match. */
-  varlen->str = strdup("X");
+  varlen_setstr_str(varlen, "X");
   varlen->len1 = 1;
   tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
   varlen->len1 = 0;
@@ -148,8 +146,7 @@ test_varlen_encdec(void *arg)
   tt_int_op(0, ==, out->len2);
   tt_int_op(0, ==, out->len3);
   tt_int_op(0, ==, out->len4);
-  tt_assert(out->str);
-  tt_str_op("", ==, out->str);
+  tt_str_op("", ==, varlen_getstr_str(out));
   tt_int_op(0, ==, varlen_get_a8_len(out));
   tt_int_op(0, ==, varlen_get_a16_len(out));
   tt_int_op(0, ==, varlen_get_a32_len(out));
@@ -165,7 +162,7 @@ test_varlen_encdec(void *arg)
   tt_int_op(0, ==, out->len2);
   tt_int_op(0, ==, out->len3);
   tt_int_op(0, ==, out->len4);
-  tt_str_op("Uf", ==, out->str);
+  tt_str_op("Uf", ==, varlen_getstr_str(out));
   tt_int_op(2, ==, varlen_get_a8_len(out));
   tt_int_op(0, ==, varlen_get_a16_len(out));
   tt_int_op(0, ==, varlen_get_a32_len(out));
@@ -183,7 +180,7 @@ test_varlen_encdec(void *arg)
   tt_int_op(2, ==, out->len2);
   tt_int_op(0, ==, out->len3);
   tt_int_op(0, ==, out->len4);
-  tt_str_op("Uf", ==, out->str);
+  tt_str_op("Uf", ==, varlen_getstr_str(out));
   tt_int_op(2, ==, varlen_get_a8_len(out));
   tt_int_op(2, ==, varlen_get_a16_len(out));
   tt_int_op(0, ==, varlen_get_a32_len(out));
@@ -211,7 +208,7 @@ test_varlen_encdec(void *arg)
   tt_int_op(0, ==, out->len2);
   tt_int_op(4, ==, out->len3);
   tt_int_op(0, ==, out->len4);
-  tt_str_op("", ==, out->str);
+  tt_str_op("", ==, varlen_getstr_str(out));
   tt_int_op(0, ==, varlen_get_a8_len(out));
   tt_int_op(0, ==, varlen_get_a16_len(out));
   tt_int_op(4, ==, varlen_get_a32_len(out));
@@ -231,7 +228,7 @@ test_varlen_encdec(void *arg)
   tt_int_op(0, ==, out->len2);
   tt_int_op(0, ==, out->len3);
   tt_int_op(2, ==, out->len4);
-  tt_str_op("", ==, out->str);
+  tt_str_op("", ==, varlen_getstr_str(out));
   tt_int_op(0, ==, varlen_get_a8_len(out));
   tt_int_op(0, ==, varlen_get_a16_len(out));
   tt_int_op(0, ==, varlen_get_a32_len(out));
@@ -251,7 +248,7 @@ test_varlen_encdec(void *arg)
   out->len2 = 1;
   out->len3 = 1;
   out->len4 = 1;
-  out->str = strdup("Y");
+  varlen_setstr_str(out, "Y");
   varlen_add_a8(out, 0);
   varlen_add_a16(out, 0);
   varlen_add_a32(out, 0);

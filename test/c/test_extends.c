@@ -30,9 +30,9 @@ test_extends_varlength(void *arg)
     tt_int_op(i, ==, extends2_parse(&extends2, inp, i));
     tt_ptr_op(extends2, !=, NULL);
     tt_str_op(extends2->a, ==, "testing");
-    tt_int_op(extends2->remainder_len, ==, i-8);
-    tt_mem_op(extends2->remainder, ==, "\x01\x02\x03", i-8);
-    tt_int_op(extends2->remainder[extends2->remainder_len], ==, 0);
+    tt_int_op(extends2_get_remainder_len(extends2), ==, i-8);
+    tt_mem_op(extends2->remainder.elts_, ==, "\x01\x02\x03", i-8);
+    tt_int_op(extends2->remainder.elts_[extends2->remainder.n_], ==, 0);
 
     memset(buf, 0xff, sizeof(buf));
     tt_int_op(i, ==, extends_encode(buf, i, extends1));
@@ -66,47 +66,44 @@ static void
 test_extends_invalid(void *arg)
 {
   uint8_t buf[16];
-  extends_t extends;
+  extends_t *extends = NULL;
   (void)arg;
 
   tt_int_op(-1, ==, extends_encode(buf, 16, NULL));
 
   /* no nul-terminated string */
-  memset(&extends, 0, sizeof(extends));
-  tt_int_op(-1, ==, extends_encode(buf, 16, &extends));
+  extends = extends_new();
+  tt_int_op(-1, ==, extends_encode(buf, 16, extends));
   /* Fill things in. */
-  extends.a = strdup("XYZZY");
-  extends.remainder.elts_ = calloc(3, 1);
-  extends.remainder.allocated_ = extends.remainder.n_ = 3;
-  tt_int_op(9, ==, extends_encode(buf, 16, &extends));
+  extends->a = strdup("XYZZY");
+  extends->remainder.elts_ = calloc(3, 1);
+  extends->remainder.allocated_ = extends->remainder.n_ = 3;
+  tt_int_op(9, ==, extends_encode(buf, 16, extends));
 
  end:
-  if (extends.a) free(extends.a);
-  if (extends.remainder.elts_) free(extends.remainder.elts_);
+  extends_free(extends);
 }
 
 static void
 test_extends2_invalid(void *arg)
 {
   uint8_t buf[16];
-  extends2_t extends;
+  extends2_t *extends = NULL;
   (void)arg;
 
   tt_int_op(-1, ==, extends2_encode(buf, 16, NULL));
 
   /* no nul-terminated string */
-  memset(&extends, 0, sizeof(extends));
-  tt_int_op(-1, ==, extends2_encode(buf, 16, &extends));
-  /* Fill things in. */
-  extends.a = strdup("XYZZY");
-  extends.remainder_len = 3;
-  tt_int_op(-1, ==, extends2_encode(buf, 16, &extends));
-  extends.remainder = calloc(3, 1);
-  tt_int_op(9, ==, extends2_encode(buf, 16, &extends));
+  extends = extends2_new();
+  tt_int_op(-1, ==, extends2_encode(buf, 16, extends));
+  extends2_set_a(extends, "XYZZY");
 
+  extends2_add_remainder(extends, 'a');
+  extends2_add_remainder(extends, 'b');
+  extends2_add_remainder(extends, 'c');
+  tt_int_op(9, ==, extends2_encode(buf, 16, extends));
  end:
-  if (extends.a) free(extends.a);
-  if (extends.remainder) free(extends.remainder);
+  extends2_free(extends);
 }
 
 static void
