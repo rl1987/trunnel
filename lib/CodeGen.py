@@ -506,6 +506,7 @@ class IndentingGenerator(ASTVisitor):
     #   we're about to do to a struct member
     def __init__(self, writefn):
         self.w_ = writefn
+        self.w_real = self.w
         self.indent = ""
         self.action = "Handle"
 
@@ -546,8 +547,8 @@ class IndentingGenerator(ASTVisitor):
                               initial_indent="/** ",
                               subsequent_indent=" * ")
         for line in lines:
-            self.w(line+"\n")
-        self.w(" */\n")
+            self.w_real(line+"\n")
+        self.w_real(" */\n")
 
 class DeclarationGenerationVisitor(IndentingGenerator):
     """Code generating visitor: emit a structure declaration for all of the
@@ -683,54 +684,7 @@ class PrototypeGenerationVisitor(IndentingGenerator):
                           invalid."""%(name))
         self.w("ssize_t %s_encode(uint8_t *output, const size_t avail, const %s_t *input);\n"%(name,name))
 
-        self.structName = name
-        sd.visitChildren(self)
-        self.w("\n")
-
-    def visit_other(self, ast, *args):
-        pass
-
-    def visitSMLenConstrained(self, sml):
-        sml.visitChildren(self)
-
-    def visitSMUnion(self, smu):
-        smu.visitChildren(self)
-
-    def visitUnionMember(self, um):
-        um.visitChildren(self)
-
-    def visitSMVarArray(self, sva):
-        if str(sva.basetype) == 'char':
-            return
-
-        st = self.structName
-        nm = sva.c_name
-        if type(sva.basetype) == str:
-            elttype = "%s_t *"%sva.basetype
-        else:
-            elttype = "uint%d_t"%sva.basetype.width
-
-        self.docstring("""Return the length of the dynamic array holding the
-                          %s field of the %s_t in 'inp'."""%(nm,st))
-        self.w("size_t %s_get_%s_len(const %s_t *inp);\n"%(st,nm,st))
-
-        self.docstring("""Return the element at position 'idx' of the
-                          dynamic array field %s of the %s_t in 'inp'."""%
-                       (nm,st))
-        self.w("%s %s_get_%s(const %s_t *inp, size_t idx);\n"%(elttype,st,nm,st))
-
-        self.docstring("""Change the the element at position 'idx' of the
-                          dynamic array field %s of the %s_t in 'inp', so
-                          that it will hold the value 'elt'."""%
-                       (nm,st))
-        self.w("void %s_set_%s(%s_t *inp, size_t idx, %s elt);\n"
-               %(st,nm,st,elttype))
-
-        self.docstring("""Append a new element 'elt' to the dynamic array
-                          field %s the %s_t in 'inp'."""%
-                       (nm,st))
-        self.w("int %s_add_%s(%s_t *inp, %s elt);\n"
-               %(st,nm,st,elttype))
+        AccessorFnGenerator(self.w_, True).visit(sd)
 
 class CodeGenerationVisitor(IndentingGenerator):
     """Code-generating visitor to produce all the code for a file.
@@ -865,8 +819,19 @@ class AccessorFnGenerator(IndentingGenerator):
        These functions are implemented simply as wrappers around the
        TRUNNEL_DYNARRAY_* macros.
     """
-    def __init__(self, writefn):
+    def __init__(self, writefn, prototypes_only=False):
         IndentingGenerator.__init__(self, writefn)
+        self.prototypes_only = prototypes_only
+        if self.prototypes_only:
+            self.w = lambda *args: None
+        else:
+            self.docstring = lambda *args: None
+
+    def declaration(self, rv, decl):
+        if self.prototypes_only:
+            self.w_real('%s %s;\n'%(rv, decl))
+        else:
+            self.w_real('%s\n%s\n'%(rv, decl))
 
     def visit_other(self, ast, *args):
         pass
@@ -895,22 +860,36 @@ class AccessorFnGenerator(IndentingGenerator):
         else:
             elttype = "uint%d_t"%sva.basetype.width
 
-        self.w("size_t\n%s_get_%s_len(const %s_t *inp)\n"%(st,nm,st))
+        self.docstring("""Return the length of the dynamic array holding the
+                          %s field of the %s_t in 'inp'."""%(nm,st))
+        self.declaration("size_t", "%s_get_%s_len(const %s_t *inp)"%(st,nm,st))
         self.w("{\n"
                "  return TRUNNEL_DYNARRAY_LEN(&inp->%s);\n"
                "}\n\n"%nm)
 
-        self.w("%s\n%s_get_%s(const %s_t *inp, size_t idx)\n"
-               %(elttype,st,nm,st))
+        self.docstring("""Return the element at position 'idx' of the
+                          dynamic array field %s of the %s_t in 'inp'."""%
+                       (nm,st))
+        self.declaration(elttype, '%s_get_%s(const %s_t *inp, size_t idx)'
+               %(st,nm,st))
         self.w("{\n"
                "  return TRUNNEL_DYNARRAY_GET(&inp->%s, idx);\n"
                "}\n\n"%nm)
-        self.w("void\n%s_set_%s(%s_t *inp, size_t idx, %s elt)\n"
+
+        self.docstring("""Change the the element at position 'idx' of the
+                          dynamic array field %s of the %s_t in 'inp', so
+                          that it will hold the value 'elt'."""%
+                       (nm,st))
+        self.declaration("void", "%s_set_%s(%s_t *inp, size_t idx, %s elt)"
                %(st,nm,st,elttype))
         self.w("{\n"
                "  TRUNNEL_DYNARRAY_SET(&inp->%s, idx, elt);\n"
                "}\n\n"%nm)
-        self.w("int\n%s_add_%s(%s_t *inp, %s elt)\n"
+
+        self.docstring("""Append a new element 'elt' to the dynamic array
+                          field %s of the the %s_t in 'inp'."""%
+                       (nm,st))
+        self.declaration("int", "%s_add_%s(%s_t *inp, %s elt)"
                %(st,nm,st,elttype))
         self.w("{\n"
                "  TRUNNEL_DYNARRAY_ADD(%s, &inp->%s, elt);\n"
