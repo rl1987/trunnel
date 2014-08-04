@@ -14,8 +14,7 @@
 
    Integer types are represented as uint8_t, uint16_t, uint32_t, or uint64_t.
 
-   Structures nested directly inside structures are stored inline, not
-   as pointers.
+   Structures nested directly inside structures are stored as pointers.
 
    "nulterm" strings are represented as char *, pointing to a
    nul-terminated string.
@@ -78,6 +77,7 @@
       void typename_set_member(typename_t *, int idx, elt value)
       int typename_add_member(typename_t *, elt value)
 
+      DOCDOC there are so many more accessors now.
 """
 
 import re
@@ -460,6 +460,7 @@ class Annotator(ASTVisitor):
         """Set the c_name field of a StructMember, and add it to
            self.memberByName"""
         member.c_name = "%s%s" % (self.prefix, member.name)
+        member.c_fn_name = member.c_name
         self.memberByName[member.name] = member
 
     def visitSMInteger(self, smi):
@@ -577,6 +578,7 @@ class DeclarationGenerationVisitor(IndentingGenerator):
         self.pushIndent(2)
         sd.visitChildren(self)
         self.popIndent(2)
+        self.w("  uint8_t trunnel_error_code_;")
         self.w("} %s_t;\n\n"%sd.name);
 
     def visitSMInteger(self, smi):
@@ -588,7 +590,7 @@ class DeclarationGenerationVisitor(IndentingGenerator):
         if sms.annotation != None:
             self.w(sms.annotation)
 
-        self.w("%s_t %s;\n"%(sms.structname,sms.c_name))
+        self.w("%s_t *%s;\n"%(sms.structname,sms.c_name))
 
     def visitSMFixedArray(self, sfa):
         if sfa.annotation != None:
@@ -769,7 +771,9 @@ class FreeFnGenerator(IndentingGenerator):
     def visitSMStruct(self, sms):
         # To clear a structure in a structure, we invoke the clear
         # function for that structure recursively.
-        self.w("%s_clear(&obj->%s);\n"%(sms.structname, sms.c_name))
+        self.w("%s_free(obj->%s);\n"%(sms.structname, sms.c_name))
+        self.w("obj->%s = NULL;\n"%sms.c_name)
+
     def visitSMVarArray(self, sva):
         # To free a variable-length array, if it is an array of structures,
         # we must call typename_free() on every element of the array.
@@ -833,12 +837,67 @@ class AccessorFnGenerator(IndentingGenerator):
         else:
             self.w_real('%s\n%s\n'%(rv, decl))
 
-    def visit_other(self, ast, *args):
-        pass
-
     def visitStructDecl(self, sd):
         self.structName = sd.name
         sd.visitChildren(self)
+
+    def visit_other(self, ast):
+        pass
+
+    def visitSMInteger(self, smi):
+        st = self.structName
+        nm = smi.c_fn_name
+        tp = "uint%d_t"%smi.inttype.width
+
+        self.docstring("Return the value of the %s field of the %s_t in 'inp'"%(nm,st))
+        self.declaration(tp, "%s_get_%s(%s_t *inp)"%(st,nm,st))
+        self.w("{\n"
+               "  return inp->%s;\n"
+               "}\n"%smi.c_name)
+
+        self.docstring("Set the value of the %s field of the %s_t in 'inp' to "
+                       "'val'.  Return 0 on success; return -1 and set the "
+                       "error code on 'inp' on failure."%(nm,st))
+        self.declaration("int", "%s_set_%s(%s_t *inp, %s val)"%(st,nm,st,tp))
+        self.w("{\n")
+        self.pushIndent(2)
+        if smi.constraints is not None:
+            v = 'inp->%s'%smi.c_name
+            expr = intConstraintExpression(v, smi.constraints.ranges, smi.inttype.width)
+            self.w("if (! (%s)) {\n"
+                   "   TRUNNEL_SET_ERROR_CODE(inp);\n"
+                   "   return -1;\n"
+                   "}\n"%expr)
+
+        self.w("  inp->%s = val;\n"%smi.c_name)
+        self.w("  return 0;")
+        self.popIndent(2)
+        self.w("}\n")
+
+    def visitSMStruct(self, sms):
+        st = self.structName
+        nm = sms.c_fn_name
+        tp = "%s_t *"%sms.structname
+
+        self.docstring("Return the value of the %s field of the %s_t in 'inp'"%(nm,st))
+        self.declaration(tp, "%s_get_%s(%s_t *inp)"%(st,nm,st))
+        self.w("{\n"
+               "  return inp->%s;\n"
+               "}\n"%sms.c_name)
+
+        self.docstring("Set the value of the %s field of the %s_t in 'inp' to "
+                       "'val'.  Free the old value if any.  Steals the reference"
+                       "to 'val'."
+                       "Return 0 on success; return -1 and set the "
+                       "error code on 'inp' on failure."%(nm,st))
+        self.declaration("int", "%s_set_%s(%s_t *inp, %sval)"%(st,nm,st,tp))
+        self.w("{\n")
+        self.pushIndent(2)
+        self.w("  %s_free(inp->%s);\n"%(sms.structname, sms.c_name))
+        self.w("  inp->%s = val;\n"%sms.c_name)
+        self.w("  return 0;")
+        self.popIndent(2)
+        self.w("}\n")
 
     def visitSMLenConstrained(self, sml):
         sml.visitChildren(self)
@@ -854,7 +913,7 @@ class AccessorFnGenerator(IndentingGenerator):
             return
 
         st = self.structName
-        nm = sva.c_name
+        nm = sva.c_fn_name
         if type(sva.basetype) == str:
             elttype = "%s_t *"%sva.basetype
         else:
@@ -1006,7 +1065,7 @@ class CheckFnGenerator(IndentingGenerator):
         # function.
         self.w(("{\n"
                 "  const char *msg;\n"
-                "  if (NULL != (msg = %s_check(&obj->%s)))\n"
+                "  if (NULL != (msg = %s_check(obj->%s)))\n"
                 "    return msg;\n"
                 "}\n")%(
                     sms.structname, sms.c_name))
@@ -1191,7 +1250,7 @@ class EncodeFnGenerator(IndentingGenerator):
     def visitSMStruct(self, sms):
         # To encode an structure field, we delegate to encodeStruct
         self.eltHeader(sms)
-        self.w(self.encodeStruct(sms.structname, "&obj->%s"%(sms.c_name)))
+        self.w(self.encodeStruct(sms.structname, "obj->%s"%(sms.c_name)))
 
     def encodeStruct(self, structtype, element_pointer):
         # To encode a struct, we delegate to that structure's typename_encode()
@@ -1513,23 +1572,7 @@ class ParseFnGenerator(IndentingGenerator):
     def visitSMStruct(self, sms):
         # To generate code to parse a struture, delegate to parseStruct
         self.eltHeader(sms)
-        self.w(self.parseStruct(sms.structname, "&obj->%s"%(sms.c_name)))
-
-    def parseStruct(self, structtype, element_pointer):
-        """Generate code to parse a structure from the input into an
-           already-allocated structure
-        """
-        # Recursively call the appropriate parse_into() function, and
-        # see whether it gave us an error.  If not, adjust 'remaining'
-        # and 'ptr' appropriately.
-
-        self.needLabels.add(self.structFailLabel)
-        return ("result = %s_parse_into(%s, ptr, remaining);\n"
-                "if (result < 0)\n"
-                "  goto %s;\n"
-                "trunnel_assert((size_t)result <= remaining);\n"
-                "remaining -= result; ptr += result;\n")%(
-                    structtype, element_pointer, self.structFailLabel)
+        self.w(self.parseStructInto(sms.structname, "obj->%s"%(sms.c_name)))
 
     def parseStructInto(self, structtype, target_pointer):
         """Generate code to parse a structure from the input into
@@ -1891,6 +1934,11 @@ static uint64_t trunnel_ntohll(uint64_t a)
 {
   return trunnel_htonll(a);
 }
+
+#define TRUNNEL_SET_ERROR_CODE(obj) \
+  do {                              \
+    (obj)->trunnel_error_code_ = 1; \
+  } while (0)
 """
 
 if __name__ == '__main__':

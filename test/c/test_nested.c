@@ -23,19 +23,19 @@ test_nest_parsing(void *arg)
 
   /* Success */
   tt_int_op(59, ==, nested_parse(&out, inp, 59));
-  tt_int_op(out->num1.i8, ==, 5);
-  tt_int_op(out->num1.i16, ==, 4);
-  tt_int_op(out->num1.i32, ==, 3);
-  tt_int_op(out->num1.i64, ==, 2);
-  tt_int_op(out->num2.i8, ==, 9);
-  tt_int_op(out->num2.i16, ==, 8);
-  tt_int_op(out->num2.i32, ==, 7);
-  tt_int_op(out->num2.i64, ==, 6);
-  tt_str_op(out->strs.f, ==, "picapica");
-  tt_str_op(out->strs.nt, ==, "magpie");
-  tt_int_op(out->res.i1, ==, 1);
-  tt_int_op(out->res.i2, ==, 10);
-  tt_int_op(out->res.i3, ==, 2);
+  tt_int_op(out->num1->i8, ==, 5);
+  tt_int_op(out->num1->i16, ==, 4);
+  tt_int_op(out->num1->i32, ==, 3);
+  tt_int_op(out->num1->i64, ==, 2);
+  tt_int_op(out->num2->i8, ==, 9);
+  tt_int_op(out->num2->i16, ==, 8);
+  tt_int_op(out->num2->i32, ==, 7);
+  tt_int_op(out->num2->i64, ==, 6);
+  tt_str_op(out->strs->f, ==, "picapica");
+  tt_str_op(out->strs->nt, ==, "magpie");
+  tt_int_op(out->res->i1, ==, 1);
+  tt_int_op(out->res->i2, ==, 10);
+  tt_int_op(out->res->i3, ==, 2);
 
   /* Truncated on encode */
   for (i = 0; i < 59; ++i) {
@@ -61,19 +61,24 @@ test_nest_invalid(void *arg)
   /* NULL fails */
   tt_int_op(-1, ==, nested_encode(buf, 128, NULL));
 
+  nest->num1 = numbers_new();
+  nest->num2 = numbers_new();
+  nest->strs = strings_new();
+  nest->res = restricted_new();
+
   /* Number failures. */
-  nest->num1.i32 = 0xbadbeef;
+  nest->num1->i32 = 0xbadbeef;
   tt_int_op(-1, ==, nested_encode(buf, 128, nest));
-  nest->num1.i32 = 0;
-  nest->num2.i32 = 0xbadbeef;
+  nest->num1->i32 = 0;
+  nest->num2->i32 = 0xbadbeef;
   tt_int_op(-1, ==, nested_encode(buf, 128, nest));
-  nest->num2.i32 = 0;
+  nest->num2->i32 = 0;
 
   /* Strings fails */
   tt_int_op(-1, ==, nested_encode(buf, 128, nest));
 
   /* Restricted fails */
-  nest->strs.nt = strdup("xyz");
+  nest->strs->nt = strdup("xyz");
   tt_int_op(-1, ==, nested_encode(buf, 128, nest));
 
   nested_free(nest); nest = NULL;

@@ -233,6 +233,8 @@ class StructMember(AST):
     #    name -- the member id of this object.
     #    c_name -- the member id of this object, as mangled for the generated
     #       C.
+    #    c_name -- the member id of this object, as mangled for function names
+    #       in the generated C.
     def __init__(self, name=None):
         self.annotation = None
         self.name = name

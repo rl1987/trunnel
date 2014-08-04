@@ -116,7 +116,8 @@ test_union1_invalid(void *arg)
 
   /* Check for a bad struct */
   union1->tag = 7;
-  union1->un_e.i32 = 0xbadbeef;
+  union1->un_e = numbers_new();
+  union1->un_e->i32 = 0xbadbeef;
   tt_int_op(-1, ==, union1_encode(buf, sizeof(buf), union1));
 
   union1_free(union1); union1 = NULL;
@@ -177,10 +178,10 @@ test_union1_encdec(void *arg)
   len = strlen(CASE5)/2;
   tt_int_op(len, ==, union1_parse(&out, inp, len));
   tt_int_op(7, ==, out->tag);
-  tt_int_op(5, ==, out->un_e.i8);
-  tt_int_op(4, ==, out->un_e.i16);
-  tt_int_op(3, ==, out->un_e.i32);
-  tt_int_op(2, ==, out->un_e.i64);
+  tt_int_op(5, ==, out->un_e->i8);
+  tt_int_op(4, ==, out->un_e->i16);
+  tt_int_op(3, ==, out->un_e->i32);
+  tt_int_op(2, ==, out->un_e->i64);
   union1_free(out); out = NULL;
 
  end:
