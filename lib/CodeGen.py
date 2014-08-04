@@ -1491,6 +1491,8 @@ class ParseFnGenerator(IndentingGenerator):
         self.w("ssize_t\n%s_parse(%s_t **output, const uint8_t *input, const size_t len_in)\n{\n"%(name,name))
         self.w('  ssize_t result;\n')
         self.w('  *output = %s_new();\n'%name)
+        self.w('  if (NULL == *output)\n'
+               '    return -1;\n')
         self.w('  result = %s_parse_into(*output, input, len_in);'%name)
         self.w('  if (result < 0) {\n'
                '    %s_free(*output);\n'
