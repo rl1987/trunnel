@@ -1072,7 +1072,7 @@ class AccessorFnGenerator(IndentingGenerator):
                     "  inp->%s.elts_[inp->%s.n_] = 0;\n"
                     "  return inp->%s.elts_;\n"
                     " trunnel_alloc_failed:\n"
-                    "  return NULL;"
+                    "  return NULL;\n"
                     "}\n") %(nm, nm, nm, nm, nm, nm, nm, nm))
 
             self.docstring("""Set the value of the %s field of a %s_t to
@@ -1157,7 +1157,8 @@ class AccessorFnGenerator(IndentingGenerator):
             self.w("}\n")
         self.w("if (inp->%s.allocated_ < newlen%s) {\n" %(sva.c_name,plus1))
         self.pushIndent(2)
-        self.w("TRUNNEL_DYNARRAY_EXPAND(%s, &inp->%s, newlen%s - inp->%s.n_);\n"
+        self.w("TRUNNEL_DYNARRAY_EXPAND(%s, &inp->%s,\n"
+               "                        newlen%s - inp->%s.allocated_);\n"
                %(elttype, sva.c_name, plus1, sva.c_name))
         self.popIndent(2)
         self.w("}\n")
@@ -1174,7 +1175,7 @@ class AccessorFnGenerator(IndentingGenerator):
         self.popIndent(2)
         self.w(" trunnel_alloc_failed:\n")
         self.w("  TRUNNEL_SET_ERROR_CODE(inp);\n")
-        self.w("return -1;\n")
+        self.w("  return -1;\n")
         self.w("}\n")
 
     def visitSMString(self, sms):
@@ -2163,9 +2164,9 @@ static uint64_t trunnel_ntohll(uint64_t a)
   return trunnel_htonll(a);
 }
 
-#define TRUNNEL_SET_ERROR_CODE(obj) \
-  do {                              \
-    (obj)->trunnel_error_code_ = 1; \
+#define TRUNNEL_SET_ERROR_CODE(obj) \\
+  do {                              \\
+    (obj)->trunnel_error_code_ = 1; \\
   } while (0)
 
 """
