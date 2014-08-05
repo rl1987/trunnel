@@ -680,7 +680,7 @@ class PrototypeGenerationVisitor(IndentingGenerator):
         self.docstring("""Clear any errors that were set on the object 'obj'
                           by its setter functions.  Return true iff errors
                           were cleared.""")
-        self.w("int\n%s_clear_errors(%s_t *obj);\n"%(name,name))
+        self.w("int %s_clear_errors(%s_t *obj);\n"%(name,name))
 
         AccessorFnGenerator(self.w_, True).visit(sd)
 
@@ -853,8 +853,7 @@ class AccessorFnGenerator(IndentingGenerator):
         self.w("{\n")
         self.pushIndent(2)
         if smi.constraints is not None:
-            v = 'inp->%s'%smi.c_name
-            expr = intConstraintExpression(v, smi.constraints.ranges, smi.inttype.width)
+            expr = intConstraintExpression("val", smi.constraints.ranges, smi.inttype.width)
             self.w("if (! (%s)) {\n"
                    "   TRUNNEL_SET_ERROR_CODE(inp);\n"
                    "   return -1;\n"
@@ -912,7 +911,7 @@ class AccessorFnGenerator(IndentingGenerator):
 
         self.docstring("""Return the (constant) length of the array holding the
                           %s field of the %s_t in 'inp'."""%(nm,st))
-        self.declaration("size_t", "%s_get_%s_len(const %s_t *inp)"%(st,nm,st))
+        self.declaration("size_t", "%s_getlen_%s(const %s_t *inp)"%(st,nm,st))
         self.w("{\n"
                "  (void)inp;"
                "  return %s;\n"

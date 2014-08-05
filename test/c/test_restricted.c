@@ -97,10 +97,59 @@ test_rst_encdec(void *arg)
   restricted_free(out);
 }
 
+static void
+test_rst_accessors(void *arg)
+{
+  restricted_t *rst = NULL, *rst2 = NULL;
+  uint8_t buf[12];
+  const uint8_t *inp;
+  (void)arg;
+
+  rst = restricted_new();
+  tt_uint_op(0, ==, restricted_get_i1(rst));
+  tt_uint_op(0, ==, restricted_get_i2(rst));
+  tt_uint_op(0, ==, restricted_get_i3(rst));
+
+  tt_int_op(0, ==, restricted_set_i1(rst,1));
+  tt_int_op(0, ==, restricted_set_i2(rst,5));
+  tt_int_op(0, ==, restricted_set_i3(rst,3));
+
+  tt_uint_op(1, ==, restricted_get_i1(rst));
+  tt_uint_op(5, ==, restricted_get_i2(rst));
+  tt_uint_op(3, ==, restricted_get_i3(rst));
+
+  tt_int_op(12, ==, restricted_encode(buf, sizeof(buf), rst));
+  inp = ux("00000001" "00000005" "00000003");
+  tt_mem_op(inp, ==, buf, 12);
+
+  tt_int_op(12, ==, restricted_parse(&rst2, buf, sizeof(buf)));
+  tt_uint_op(1, ==, restricted_get_i1(rst2));
+  tt_uint_op(5, ==, restricted_get_i2(rst2));
+  tt_uint_op(3, ==, restricted_get_i3(rst2));
+
+  tt_int_op(-1, ==, restricted_set_i1(rst,10));
+  tt_int_op(-1, ==, restricted_set_i2(rst,50));
+  tt_int_op(-1, ==, restricted_set_i3(rst,30));
+
+  tt_int_op(-1, ==, restricted_encode(buf, sizeof(buf), rst));
+  tt_int_op(0, ==, restricted_set_i1(rst,1));
+  tt_int_op(0, ==, restricted_set_i2(rst,5));
+  tt_int_op(0, ==, restricted_set_i3(rst,3));
+
+  tt_int_op(-1, ==, restricted_encode(buf, sizeof(buf), rst));
+  tt_int_op(1, ==, restricted_clear_errors(rst));
+  tt_int_op(12, ==, restricted_encode(buf, sizeof(buf), rst));
+  tt_mem_op(inp, ==, buf, 12);
+
+ end:
+  restricted_free(rst);
+  restricted_free(rst2);
+}
 
 struct testcase_t restricted_tests[] = {
   { "truncated", test_rst_truncated, 0, NULL, NULL },
   { "invalid", test_rst_invalid, 0, NULL, NULL },
   { "encode-decode", test_rst_encdec, 0, NULL, NULL },
+  { "accessors", test_rst_accessors, 0, NULL, NULL },
   END_OF_TESTCASES
 };
