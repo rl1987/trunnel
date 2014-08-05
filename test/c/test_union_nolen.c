@@ -97,10 +97,10 @@ test_union1_invalid(void *arg)
   union1->tag = 9;
   union1->un_x = 3;
   tt_int_op(-1, ==, union1_encode(buf, sizeof(buf), union1));
-  tt_int_op(0, ==, union1_get_un_xs_len(union1));
+  tt_int_op(0, ==, union1_getlen_un_xs(union1));
   union1_add_un_xs(union1, 1);
   union1_add_un_xs(union1, 2);
-  tt_int_op(2, ==, union1_get_un_xs_len(union1));
+  tt_int_op(2, ==, union1_getlen_un_xs(union1));
   tt_int_op(-1, ==, union1_encode(buf, sizeof(buf), union1));
   union1_add_un_xs(union1, 3);
   /* Success! */

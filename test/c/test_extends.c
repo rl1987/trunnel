@@ -24,13 +24,13 @@ test_extends_varlength(void *arg)
     tt_int_op(i, ==, extends_parse(&extends1, inp, i));
     tt_ptr_op(extends1, !=, NULL);
     tt_str_op(extends1->a, ==, "testing");
-    tt_int_op(extends_get_remainder_len(extends1), ==, i-8);
+    tt_int_op(extends_getlen_remainder(extends1), ==, i-8);
     tt_mem_op(extends1->remainder.elts_, ==, inp+8, i-8);
 
     tt_int_op(i, ==, extends2_parse(&extends2, inp, i));
     tt_ptr_op(extends2, !=, NULL);
     tt_str_op(extends2->a, ==, "testing");
-    tt_int_op(extends2_get_remainder_len(extends2), ==, i-8);
+    tt_int_op(extends2_getlen_remainder(extends2), ==, i-8);
     tt_mem_op(extends2->remainder.elts_, ==, "\x01\x02\x03", i-8);
     tt_int_op(extends2->remainder.elts_[extends2->remainder.n_], ==, 0);
 
@@ -119,7 +119,7 @@ test_extends_encdec(void *arg)
   tt_int_op(11, ==, extends_parse(&extends1, buf, 11));
   tt_ptr_op(extends1, !=, 0);
   tt_str_op(extends1->a, ==, "");
-  tt_int_op(extends_get_remainder_len(extends1), ==, 10);
+  tt_int_op(extends_getlen_remainder(extends1), ==, 10);
   tt_int_op('H', ==, extends_get_remainder(extends1, 0));
   extends_set_remainder(extends1, 0, (uint8_t)'Z');
   tt_mem_op(extends1->remainder.elts_, ==, "ZelloWorld", 10);

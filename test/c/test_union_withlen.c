@@ -174,14 +174,14 @@ test_union2_invalid(void *arg)
   union2->tag = 9;
   union2->un_x = 3;
   tt_int_op(-1, ==, union2_encode(buf, sizeof(buf), union2));
-  tt_int_op(0, ==, union2_get_un_xs_len(union2));
+  tt_int_op(0, ==, union2_getlen_un_xs(union2));
   union2_add_un_xs(union2, 1);
   union2_add_un_xs(union2, 2);
-  tt_int_op(2, ==, union2_get_un_xs_len(union2));
+  tt_int_op(2, ==, union2_getlen_un_xs(union2));
   tt_int_op(-1, ==, union2_encode(buf, sizeof(buf), union2));
   union2_add_un_xs(union2, 3);
   /* Success! */
-  tt_int_op(3, ==, union2_get_un_xs_len(union2));
+  tt_int_op(3, ==, union2_getlen_un_xs(union2));
   tt_int_op(9, ==, union2_encode(buf, sizeof(buf), union2));
   inp = ux("090004030102032100");
   tt_mem_op(buf, ==, inp, 5);
@@ -257,7 +257,7 @@ test_union2_encdec(void *arg)
   tt_int_op(out->tag, ==, 5);
   tt_int_op(out->length, ==, 16);
   tt_mem_op(out->un_c, ==, ".pure machinery.", 16);
-  tt_int_op(union2_get_un_remainder_len(out), ==, 0);
+  tt_int_op(union2_getlen_un_remainder(out), ==, 0);
 
   tt_str_op(out->more, ==, "");
   union2_free(out); out = NULL;
@@ -269,7 +269,7 @@ test_union2_encdec(void *arg)
   tt_int_op(out->tag, ==, 5);
   tt_int_op(out->length, ==, 34);
   tt_mem_op(out->un_c, ==, "Ashcans and unob", 16);
-  tt_int_op(union2_get_un_remainder_len(out), ==, 18);
+  tt_int_op(union2_getlen_un_remainder(out), ==, 18);
   tt_int_op(union2_get_un_remainder(out, 0), ==, 't');
   tt_mem_op(out->un_remainder.elts_, ==, "tainable dollars!", 18);
   tt_str_op(out->more, ==, "w");

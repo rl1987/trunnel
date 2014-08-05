@@ -39,7 +39,7 @@ test_repeats_encdec32(void *arg)
   tt_int_op(-2, ==, extends3_parse(&extends3, inp, 0));
   tt_int_op(1, ==, extends3_parse(&extends3, inp, 1));
   tt_str_op("", ==, extends3->a);
-  tt_int_op(0, ==, extends3_get_remainder_len(extends3));
+  tt_int_op(0, ==, extends3_getlen_remainder(extends3));
 
   tt_int_op(-2, ==, extends3_encode(buf, 0, extends3));
   memset(buf, 0xff, sizeof(buf));
@@ -53,7 +53,7 @@ test_repeats_encdec32(void *arg)
 
   tt_int_op(5, ==, extends3_parse(&extends3, inp, 5));
   tt_str_op("", ==, extends3->a);
-  tt_int_op(1, ==, extends3_get_remainder_len(extends3));
+  tt_int_op(1, ==, extends3_getlen_remainder(extends3));
   tt_int_op(257, ==, extends3_get_remainder(extends3, 0));
 
   memset(buf, 0xff, sizeof(buf));
@@ -68,7 +68,7 @@ test_repeats_encdec32(void *arg)
 
   tt_int_op(9, ==, extends3_parse(&extends3, inp, 9));
   tt_str_op("", ==, extends3->a);
-  tt_int_op(2, ==, extends3_get_remainder_len(extends3));
+  tt_int_op(2, ==, extends3_getlen_remainder(extends3));
   tt_int_op(257, ==, extends3_get_remainder(extends3, 0));
   tt_int_op(65536, ==, extends3_get_remainder(extends3, 1));
 
@@ -145,7 +145,7 @@ test_repeats_encdec_struct(void *arg)
   /* First, parse no structs */
   tt_int_op(1, ==, extends4_parse(&extends4, inp, 1));
   tt_str_op("", ==, extends4->a);
-  tt_int_op(0, ==, extends4_get_remainder_len(extends4));
+  tt_int_op(0, ==, extends4_getlen_remainder(extends4));
 
   memset(buf, 0xff, sizeof(buf));
   tt_int_op(1, ==, extends4_encode(buf, 1, extends4));
@@ -155,7 +155,7 @@ test_repeats_encdec_struct(void *arg)
   /* Parse one of the structs. */
   tt_int_op(16, ==, extends4_parse(&extends4, inp, 16));
   tt_str_op("", ==, extends4->a);
-  tt_int_op(1, ==, extends4_get_remainder_len(extends4));
+  tt_int_op(1, ==, extends4_getlen_remainder(extends4));
   n = extends4_get_remainder(extends4, 0);
   tt_assert(n);
   tt_int_op(n->i8, ==, 5);
@@ -173,7 +173,7 @@ test_repeats_encdec_struct(void *arg)
   /* Parse both structs. */
   tt_int_op(31, ==, extends4_parse(&extends4, inp, 31));
   tt_str_op("", ==, extends4->a);
-  tt_int_op(2, ==, extends4_get_remainder_len(extends4));
+  tt_int_op(2, ==, extends4_getlen_remainder(extends4));
   n = extends4_get_remainder(extends4, 0);
   tt_assert(n);
   tt_int_op(n->i8, ==, 5);

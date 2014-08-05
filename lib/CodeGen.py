@@ -910,8 +910,6 @@ class AccessorFnGenerator(IndentingGenerator):
         else:
             elttype = "uint%d_t"%sfa.basetype.width
 
-        # XXXX need whole-array set/get functions?
-
         self.docstring("""Return the (constant) length of the array holding the
                           %s field of the %s_t in 'inp'."""%(nm,st))
         self.declaration("size_t", "%s_get_%s_len(const %s_t *inp)"%(st,nm,st))
@@ -961,6 +959,13 @@ class AccessorFnGenerator(IndentingGenerator):
                 "  return 0;\n"
                 "}\n\n")%(sfa.c_name))
 
+        self.docstring("""Return a pointer to the %s-element array field %s of
+                          'inp'."""%(sfa.width,nm))
+        self.declaration("%s *"%elttype,
+                         "%s_getarray_%s(%s_t *inp)"%(st,nm,st))
+        self.w(("{\n"
+                "  return inp->%s;\n"
+                "}\n")%(sfa.c_name))
 
 
     def visitSMLenConstrained(self, sml):
@@ -973,8 +978,11 @@ class AccessorFnGenerator(IndentingGenerator):
     def visitUnionMember(self, um):
         um.visitChildren(self)
 
-    def visitSMVarArray(self, sva):
+    def w_no_indent(self, s):
+        if not self.prototypes_only:
+            self.w_(s)
 
+    def visitSMVarArray(self, sva):
         st = self.structName
         nm = sva.c_fn_name
         if type(sva.basetype) == str:
@@ -984,11 +992,15 @@ class AccessorFnGenerator(IndentingGenerator):
         else:
             elttype = "uint%d_t"%sva.basetype.width
 
-        # XXXX need whole-array set/get functions
+        maxlen = None
+        if sva.widthfield is not None:
+            maxlen = "UINT%s_MAX"%sva.widthfieldmember.inttype.width
+            if_overflow_possible = "#if %s < SIZE_MAX\n"%maxlen
+            endif_overflow_possible = "#endif"
 
         self.docstring("""Return the length of the dynamic array holding the
                           %s field of the %s_t in 'inp'."""%(nm,st))
-        self.declaration("size_t", "%s_get_%s_len(const %s_t *inp)"%(st,nm,st))
+        self.declaration("size_t", "%s_getlen_%s(const %s_t *inp)"%(st,nm,st))
         self.w("{\n"
                "  return TRUNNEL_DYNARRAY_LEN(&inp->%s);\n"
                "}\n\n"%nm)
@@ -996,7 +1008,7 @@ class AccessorFnGenerator(IndentingGenerator):
         self.docstring("""Return the element at position 'idx' of the
                           dynamic array field %s of the %s_t in 'inp'."""%
                        (nm,st))
-        self.declaration(elttype, '%s_get_%s(const %s_t *inp, size_t idx)'
+        self.declaration(elttype, '%s_get_%s(%s_t *inp, size_t idx)'
                %(st,nm,st))
         self.w("{\n"
                "  return TRUNNEL_DYNARRAY_GET(&inp->%s, idx);\n"
@@ -1035,10 +1047,15 @@ class AccessorFnGenerator(IndentingGenerator):
                        (nm,st))
         self.declaration("int", "%s_add_%s(%s_t *inp, %s elt)"
                %(st,nm,st,elttype))
-        self.w("{\n"
-               "  TRUNNEL_DYNARRAY_ADD(%s, &inp->%s, elt);\n"
+        self.w("{\n")
+        if maxlen is not None:
+            self.w("  if (inp->%s.n_ == (%s))\n"
+                   "    goto trunnel_alloc_failed;\n"%(sva.c_name,maxlen))
+
+        self.w("  TRUNNEL_DYNARRAY_ADD(%s, &inp->%s, elt);\n"
                "  return 0;\n"
                " trunnel_alloc_failed:\n"
+               "  TRUNNEL_SET_ERROR_CODE(inp);\n"
                "  return -1;\n"
                "}\n\n"%(elttype,nm))
 
@@ -1062,12 +1079,17 @@ class AccessorFnGenerator(IndentingGenerator):
                               a given string of length  'len'. Return 0 on
                               success; return -1 and set the error code
                               on 'inp' on failure."""%(nm,st))
-            self.declaration("int ",
+            self.declaration("int",
                              "%s_setstr0_%s(%s_t *inp, const char *val, size_t len)"%(st,nm,st))
             # XXXX too much duplicated code with above function.
-            self.w(("{\n"
-                    "  if (len == SIZE_MAX) goto trunnel_alloc_failed;\n"
-                    "  if (inp->%s.allocated_ <= len) {\n"
+            self.w("{\n"
+                    "  if (len == SIZE_MAX) goto trunnel_alloc_failed;\n")
+            if maxlen is not None:
+                self.w_no_indent(if_overflow_possible)
+                self.w("  if (len > %s)\n"
+                       "    goto trunnel_alloc_failed;\n"%maxlen)
+                self.w_no_indent(endif_overflow_possible)
+            self.w(("  if (inp->%s.allocated_ <= len) {\n"
                     "    TRUNNEL_DYNARRAY_EXPAND(char, &inp->%s,\n"
                     "                            len + 1 - inp->%s.allocated_);\n"
                     "  }\n"
@@ -1077,18 +1099,83 @@ class AccessorFnGenerator(IndentingGenerator):
                     "  return 0;\n"
                     " trunnel_alloc_failed:\n"
                     "  TRUNNEL_SET_ERROR_CODE(inp);\n"
-                    "  return -1;"
+                    "  return -1;\n"
                     "}\n")%(nm,nm,nm,nm,nm,nm))
 
             self.docstring("""Set the value of the %s field of a %s_t to
                               a given NUL-terminated string. Return 0 on
                               success; return -1 and set the error code
                               on 'inp' on failure."""%(nm,st))
-            self.declaration("int ",
+            self.declaration("int",
                              "%s_setstr_%s(%s_t *inp, const char *val)"%(st,nm,st))
             self.w(("{\n"
                     "  return %s_setstr0_%s(inp, val, strlen(val));\n"
                     "}\n")%(st, nm))
+
+        self.docstring("""Return a pointer to the variable-length
+                          array field %s of 'inp'.""")
+        self.declaration("%s *"%elttype,
+                         "%s_getarray_%s(%s_t *inp)"%(st,nm,st))
+        self.w(("{\n"
+                "  return inp->%s.elts_;\n"
+                "}\n")%(sva.c_name))
+
+        if type(sva.basetype) == str:
+            fill = "Fill extra elements with NULL; free removed elements."
+        else:
+            fill = "Fill extra elements with 0."
+
+        self.docstring("""Change the length of the variable-length
+                          array field %s of 'inp' to 'newlen'.%s
+                          Return 0 on
+                          success; return -1 and set the error code
+                          on 'inp' on failure."""%(nm,fill))
+        self.declaration("int",
+                         "%s_setlen_%s(%s_t *inp, size_t newlen)"%(st,nm,st))
+        self.w("{\n")
+        self.pushIndent(2)
+        if str(sva.basetype) == 'char':
+            self.w("if (newlen > SIZE_MAX-1)\n"
+                   "  goto trunnel_alloc_failed;\n")
+            plus1 = " + 1"
+        else:
+            plus1 = ""
+        if maxlen is not None:
+            self.w_no_indent(if_overflow_possible)
+            self.w("if (newlen > %s)\n"
+                   "  goto trunnel_alloc_failed;\n"%maxlen)
+            self.w_no_indent(endif_overflow_possible)
+        if type(sva.basetype) == str:
+            self.w("if (inp->%s.n_ >= newlen) {\n" %sva.c_name)
+            self.pushIndent(2)
+            self.w(("size_t i;\n"
+                    "for (i = newlen; i < inp->%s.n_; ++i) {\n"
+                    "  %s_free(inp->%s.elts_[i]);\n"
+                    "}\n"
+                    %(sva.c_name,sva.basetype,sva.c_name)))
+            self.popIndent(2)
+            self.w("}\n")
+        self.w("if (inp->%s.allocated_ < newlen%s) {\n" %(sva.c_name,plus1))
+        self.pushIndent(2)
+        self.w("TRUNNEL_DYNARRAY_EXPAND(%s, &inp->%s, newlen%s - inp->%s.n_);\n"
+               %(elttype, sva.c_name, plus1, sva.c_name))
+        self.popIndent(2)
+        self.w("}\n")
+
+        self.w("if (inp->%s.n_ < newlen) {\n"%sva.c_name)
+        self.w("  memset(& (inp->%s.elts_[inp->%s.n_]), 0,\n"
+               "         (newlen - inp->%s.n_) * sizeof(&inp->%s.elts_[0]));\n"
+               %(sva.c_name, sva.c_name, sva.c_name, sva.c_name))
+        self.w("}\n")
+        self.w("inp->%s.n_ = newlen;\n"%sva.c_name)
+        if str(sva.basetype) == 'char':
+            self.w("inp->%s.elts_[inp->%s.n_] = 0;\n"%(sva.c_name,sva.c_name))
+        self.w("return 0;\n")
+        self.popIndent(2)
+        self.w(" trunnel_alloc_failed:\n")
+        self.w("  TRUNNEL_SET_ERROR_CODE(inp);\n")
+        self.w("return -1;\n")
+        self.w("}\n")
 
     def visitSMString(self, sms):
         st = self.structName
@@ -1737,7 +1824,6 @@ class ParseFnGenerator(IndentingGenerator):
         # see whether it gave us an error.  If not, adjust 'remaining'
         # and 'ptr' appropriately.
 
-        # XXXX This is somewhat duplicated code.
         self.needLabels.add(self.structFailLabel)
         return ("result = %s_parse(&%s, ptr, remaining);\n"
                 "if (result < 0)\n"
