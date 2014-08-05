@@ -272,9 +272,91 @@ test_varlen_encdec(void *arg)
   varlen_free(out);
 }
 
+static void
+test_varlen_accessors(void *arg)
+{
+  varlen_t *var = NULL, *var2 = NULL;
+  uint8_t buf[128] = { 0 };
+  const uint8_t *inp = NULL;
+  char *s = NULL;
+  int i;
+  (void)arg;
+
+  var = varlen_new();
+  tt_int_op(0, ==, varlen_get_len1(var));
+  tt_int_op(0, ==, varlen_get_len2(var));
+  tt_int_op(0, ==, varlen_get_len3(var));
+  tt_int_op(0, ==, varlen_get_len4(var));
+
+  tt_int_op(0, ==, varlen_set_len1(var, 5));
+  tt_int_op(0, ==, varlen_set_len2(var, 2));
+  tt_int_op(0, ==, varlen_set_len3(var, 1));
+  tt_int_op(0, ==, varlen_set_len4(var, 1));
+
+  tt_int_op(0, ==, varlen_add_str(var, 'a'));
+  tt_int_op(0, ==, varlen_add_str(var, 'b'));
+  tt_int_op(0, ==, varlen_add_str(var, 'c'));
+  tt_int_op('c', ==, varlen_get_str(var, 2));
+  tt_str_op("abc", ==, varlen_getstr_str(var));
+  tt_int_op(0, ==, varlen_set_str(var, 2, 'd'));
+  tt_str_op("abd", ==, varlen_getstr_str(var));
+  tt_int_op(3, ==, varlen_getlen_str(var));
+  tt_int_op(0, ==, varlen_setstr_str(var, "Plugh"));
+  tt_int_op(5, ==, varlen_getlen_str(var));
+  tt_str_op("Plugh", ==, varlen_getstr_str(var));
+  tt_mem_op("Plugh", ==, varlen_getarray_str(var), 6);
+
+  tt_int_op(0, ==, varlen_setstr_str(var, "abcdefgh"));
+  for (i = 0; i < 30; ++i)
+    tt_int_op(0, ==, varlen_add_str(var, 'x'));
+
+  tt_str_op("abcdefghxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", ==,
+            varlen_getstr_str(var));
+
+  /* Adding a 256th character to the string should fail. */
+  while (0 == varlen_add_str(var, 'x'))
+    ;
+  tt_int_op(255, ==, varlen_getlen_str(var));
+  tt_str_op("abcdefghxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", ==,
+            varlen_getstr_str(var));
+  tt_int_op(1, ==, varlen_clear_errors(var));
+
+  /* Setting the string to a 256-character thing should fail. */
+  s = calloc(1,256);
+  tt_int_op(-1, ==, varlen_setstr0_str(var, s, 256));
+  tt_int_op(1, ==, varlen_clear_errors(var));
+  tt_int_op(0, ==, varlen_setstr0_str(var, s, 255));
+  tt_int_op(0, ==, varlen_clear_errors(var));
+
+  /* Be tricky: getstr when there is no room for a NUL. */
+  /* (we need to set up the array by hand to make sure this happens) */
+  var->str.allocated_ = 8;
+  var->str.n_ = 8;
+  free(var->str.elts_);
+  var->str.elts_ = malloc(8);
+  memcpy(var->str.elts_, "abcdefgh", 8);
+  tt_str_op("abcdefgh", ==, varlen_getstr_str(var));
+
+  
+
+
+  (void)buf; (void)inp;
+
+ end:
+  if (s)
+    free(s);
+  varlen_free(var);
+  varlen_free(var2);
+}
+
 struct testcase_t vararray_tests[] = {
   { "truncated", test_varlen_truncated, 0, NULL, NULL },
   { "invalid", test_varlen_invalid, 0, NULL, NULL },
   { "encode-decode", test_varlen_encdec, 0, NULL, NULL },
+  { "accessors", test_varlen_accessors, 0, NULL, NULL },
   END_OF_TESTCASES
 };

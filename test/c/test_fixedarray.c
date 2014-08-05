@@ -107,9 +107,86 @@ test_fixed_encdec(void *arg)
   fixed_free(out);
 }
 
+static void
+test_fixed_accessors(void *arg)
+{
+  fixed_t *fixed = NULL, *fixed2 = NULL;
+  uint8_t buf[128] = { 0 };
+  const uint8_t *inp;
+  numbers_t *nums;
+  (void) arg;
+
+  fixed = fixed_new();
+
+  // XXXX Fix after rebase.
+  tt_int_op(4, ==, fixed_getlen_a8(fixed));
+  tt_int_op(6, ==, fixed_getlen_a16(fixed));
+  tt_int_op(3, ==, fixed_getlen_a32(fixed));
+  tt_int_op(1, ==, fixed_getlen_a64(fixed));
+  tt_int_op(2, ==, fixed_getlen_nums(fixed));
+
+  tt_int_op(0, ==, fixed_get_a8(fixed, 0));
+  tt_int_op(0, ==, fixed_get_a16(fixed, 1));
+  tt_int_op(0, ==, fixed_get_a32(fixed, 2));
+  tt_int_op(0, ==, fixed_get_a64(fixed, 0));
+  tt_ptr_op(NULL, ==, fixed_get_nums(fixed, 0));
+
+  tt_int_op(0, ==, fixed_set_a8(fixed, 0, 8));
+  tt_int_op(0, ==, fixed_set_a16(fixed, 1, 128));
+  tt_int_op(0, ==, fixed_set_a32(fixed, 2, 65536));
+  tt_int_op(0, ==, fixed_set_a64(fixed, 0, ((uint64_t)1) << 32));
+  tt_int_op(0, ==, fixed_set_nums(fixed, 0, numbers_new()));
+  tt_int_op(0, ==, fixed_set_nums(fixed, 1, numbers_new()));
+
+  tt_int_op(66, ==, fixed_encode(buf, sizeof(buf), fixed));
+  inp = ux("08" "00" "00" "00"
+           "0000" "0080" "0000" "0000" "0000" "0000"
+           "00000000" "00000000" "00010000"
+           "0000000100000000"
+           "00" "0000" "00000000" "00000000""00000000"
+           "00" "0000" "00000000" "00000000""00000000");
+  tt_mem_op(buf, ==, inp, 66);
+
+  tt_int_op(66, ==, fixed_parse(&fixed2, buf, sizeof(buf)));
+
+  nums = numbers_new();
+  tt_int_op(0, ==, numbers_set_i8(nums, 64));
+  tt_int_op(0, ==, numbers_set_i16(nums, 64));
+  tt_int_op(0, ==, fixed_set_nums(fixed, 0, nums));
+  tt_ptr_op(nums, ==, fixed_getarray_nums(fixed)[0]);
+  nums = NULL;
+
+  fixed_getarray_a8(fixed)[1] = 9;
+  fixed_getarray_a16(fixed)[2] = 10;
+  fixed_getarray_a32(fixed)[0] = 11;
+  fixed_getarray_a64(fixed)[0] = 12;
+
+  tt_int_op(66, ==, fixed_encode(buf, sizeof(buf), fixed));
+  inp = ux("08" "09" "00" "00"
+           "0000" "0080" "000A" "0000" "0000" "0000"
+           "0000000B" "00000000" "00010000"
+           "000000000000000C"
+           "40" "0040" "00000000" "00000000""00000000"
+           "00" "0000" "00000000" "00000000""00000000");
+  tt_mem_op(buf, ==, inp, 66);
+
+  /* Don't have a natural way to set this */
+  fixed->trunnel_error_code_ = 3;
+  tt_int_op(-1, ==, fixed_encode(buf, sizeof(buf), fixed));
+  fixed_clear_errors(fixed);
+
+  tt_int_op(66, ==, fixed_encode(buf, sizeof(buf), fixed));
+  tt_mem_op(buf, ==, inp, 66);
+
+ end:
+  fixed_free(fixed);
+  fixed_free(fixed2);
+}
+
 struct testcase_t fixedarray_tests[] = {
   { "truncated", test_fixed_truncated, 0, NULL, NULL },
   { "invalid", test_fixed_invalid, 0, NULL, NULL },
   { "encode-decode", test_fixed_encdec, 0, NULL, NULL },
+  { "accessors", test_fixed_accessors, 0, NULL, NULL },
   END_OF_TESTCASES
 };
