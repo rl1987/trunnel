@@ -1921,7 +1921,7 @@ class ParseFnGenerator(IndentingGenerator):
             if str(sva.basetype) == 'char':
                 tp = "char"
                 self.needLabels.add('fail')
-                self.w(("if (%s_setstr0_%s(obj, (const char*)ptr, %s))"
+                self.w(("if (%s_setstr0_%s(obj, (const char*)ptr, %s))\n"
                         "  goto fail;")%(self.structName,sva.c_fn_name,w))
 
             else:
