@@ -27,6 +27,7 @@ TEST_OBJS = \
 
 OBJS=tinytest/tinytest.o \
     valid/basic.o \
+    ../c/trunnel.o \
     $(TEST_OBJS)
 
 all: ctest

@@ -2105,7 +2105,7 @@ MODULE_BOILERPLATE = """
 #include "%(h_fname)s"
 
 #ifdef TRUNNEL_DEBUG_FAILING_ALLOC
-int trunnel_provoke_alloc_failure = 0;
+extern int trunnel_provoke_alloc_failure;
 
 static void *
 trunnel_malloc(size_t n)
@@ -2145,20 +2145,6 @@ trunnel_strdup(const char *s)
 
 #define trunnel_assert(x) assert(x)
 #define trunnel_abort() abort()
-
-/* XXXX stick this in a file or something */
-static void *trunnel_reallocarray(void *a, size_t x, size_t y)
-{
-#ifdef TRUNNEL_DEBUG_FAILING_ALLOC
-   if (trunnel_provoke_alloc_failure) {
-     if (--trunnel_provoke_alloc_failure == 0)
-       return NULL;
-   }
-#endif
-   if (x > SIZE_MAX / y)
-     return NULL;
-   return realloc(a, x * y);
-}
 
 static void trunnel_set_uint32(void *p, uint32_t v) {
   memcpy(p, &v, 4);
