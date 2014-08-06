@@ -258,6 +258,7 @@ class IntConstraint(AST):
     ####
     # ranges -- a list of (lo,hi) tuples such that any integer conforming to
     #   this constraint has lo <= i <= hi for some tuple in the list.
+    #   Sorted after we validate the containing inttype.
     def __init__(self, ranges):
         self.ranges = ranges
 
@@ -288,6 +289,20 @@ class SMInteger(StructMember):
         if self.constraints:
             cstr = " IN %s" % self.constraints
         return "%s %s%s"%(self.inttype, self.getName(), cstr)
+
+    def minimum(self):
+        """DOCDOC"""
+        if self.constraints is None:
+            return 0
+        else:
+            return self.constraints.ranges[0][0]
+
+    def maximum(self):
+        """DOCDOC"""
+        if self.constraints is None:
+            return "UINT%d_MAX"%self.intttype.width
+        else:
+            return self.constraints.ranges[-1][-1]
 
 class SMStruct(StructMember):
     """A structure member of a structure"""

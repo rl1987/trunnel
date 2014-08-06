@@ -106,9 +106,9 @@ test_rst_accessors(void *arg)
   (void)arg;
 
   rst = restricted_new();
-  tt_uint_op(0, ==, restricted_get_i1(rst));
-  tt_uint_op(0, ==, restricted_get_i2(rst));
-  tt_uint_op(0, ==, restricted_get_i3(rst));
+  tt_uint_op(1, ==, restricted_get_i1(rst));
+  tt_uint_op(1, ==, restricted_get_i2(rst));
+  tt_uint_op(1, ==, restricted_get_i3(rst));
 
   tt_int_op(0, ==, restricted_set_i1(rst,1));
   tt_int_op(0, ==, restricted_set_i2(rst,5));

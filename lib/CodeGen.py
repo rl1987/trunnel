@@ -267,6 +267,7 @@ class Checker(ASTVisitor):
     def visitIntConstraint(self, ic):
         maximum = TYPE_MAXIMA[self.containingType.width]
         self.checkIntegerList(ic.ranges, maximum, None)
+        ic.ranges.sort()
 
     def visitSMStruct(self, sms):
         self.addMemberName(sms.name)
@@ -707,7 +708,7 @@ class CodeGenerationVisitor(IndentingGenerator):
         for g in self.generators:
             g(self.w).visit(sd)
 
-class NewFnGenerator(ASTVisitor):
+class NewFnGenerator(IndentingGenerator):
     """Code-generating visitor to construct the 'typename_new' function
        for a structure.
 
@@ -716,12 +717,25 @@ class NewFnGenerator(ASTVisitor):
        empty, and we require that this sets pointers to NULL.)
     """
     def __init__(self, writefn):
-        self.w = writefn
+        IndentingGenerator.__init__(self, writefn)
     def visitStructDecl(self, sd):
         name = sd.name
         self.w("%s_t *\n%s_new(void)\n{\n"%(name,name))
-        self.w("  return trunnel_calloc(1, sizeof(%s_t));\n"%name)
+        self.w("  %s_t *val = trunnel_calloc(1, sizeof(%s_t));\n"%(name,name))
+        self.w("  if (NULL == val)\n"
+               "    return NULL;\n")
+        self.pushIndent(2)
+        sd.visitChildren(self)
+        self.w("  return val;")
         self.w("}\n\n");
+
+    def visit_other(self, arg):
+        pass
+
+    def visitSMInteger(self, smi):
+        minval = smi.minimum()
+        if minval != 0:
+            self.w("val->%s = %s;\n"%(smi.c_name,minval))
 
 class FreeFnGenerator(IndentingGenerator):
     """Code-generating visitor to construct the 'typename_clear' and

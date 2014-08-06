@@ -79,6 +79,7 @@ test_nest_invalid(void *arg)
 
   /* Restricted fails */
   nest->strs->nt = strdup("xyz");
+  nest->res->i1 = 0;
   tt_int_op(-1, ==, nested_encode(buf, 128, nest));
 
   nested_free(nest); nest = NULL;
