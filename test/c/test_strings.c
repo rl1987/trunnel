@@ -156,6 +156,11 @@ test_strs_allocfail(void *arg)
   tt_int_op(-1, ==, strings_parse(&strs, inp, 16));
   tt_ptr_op(strs, ==, NULL);
 
+  /* this time, fail when allocating the string. */
+  set_alloc_fail(2);
+  tt_int_op(-1, ==, strings_parse(&strs, inp, 16));
+  tt_ptr_op(strs, ==, NULL);
+
   strs = strings_new();
   tt_assert(strs);
   set_alloc_fail(1);
