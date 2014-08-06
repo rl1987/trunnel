@@ -991,7 +991,7 @@ class AccessorFnGenerator(IndentingGenerator):
         else:
             elttype = "uint%d_t"%sva.basetype.width
 
-        maxlen = None
+        maxlen = if_overflow_possible = endif_overflow_possible = None
         if sva.widthfield is not None:
             maxlen = "UINT%s_MAX"%sva.widthfieldmember.inttype.width
             if_overflow_possible = "#if %s < SIZE_MAX\n"%maxlen
@@ -1058,59 +1058,6 @@ class AccessorFnGenerator(IndentingGenerator):
                "  return -1;\n"
                "}\n\n"%(elttype,nm))
 
-        if str(sva.basetype) == 'char':
-            self.docstring("""Return the value of the %s field of a %s_t as
-                              a NUL-terminated string."""%(nm,st))
-            self.declaration("const char *",
-                             "%s_getstr_%s(%s_t *inp)"%(st,nm,st))
-            self.w(("{\n"
-                    "  trunnel_assert(inp->%s.allocated_ >= inp->%s.n_);\n"
-                    "  if (inp->%s.allocated_ == inp->%s.n_) {\n"
-                    "    TRUNNEL_DYNARRAY_EXPAND(char, &inp->%s, 1);\n"
-                    "  }\n"
-                    "  inp->%s.elts_[inp->%s.n_] = 0;\n"
-                    "  return inp->%s.elts_;\n"
-                    " trunnel_alloc_failed:\n"
-                    "  return NULL;\n"
-                    "}\n") %(nm, nm, nm, nm, nm, nm, nm, nm))
-
-            self.docstring("""Set the value of the %s field of a %s_t to
-                              a given string of length  'len'. Return 0 on
-                              success; return -1 and set the error code
-                              on 'inp' on failure."""%(nm,st))
-            self.declaration("int",
-                             "%s_setstr0_%s(%s_t *inp, const char *val, size_t len)"%(st,nm,st))
-            # XXXX too much duplicated code with above function.
-            self.w("{\n"
-                    "  if (len == SIZE_MAX) goto trunnel_alloc_failed;\n")
-            if maxlen is not None:
-                self.w_no_indent(if_overflow_possible)
-                self.w("  if (len > %s)\n"
-                       "    goto trunnel_alloc_failed;\n"%maxlen)
-                self.w_no_indent(endif_overflow_possible)
-            self.w(("  if (inp->%s.allocated_ <= len) {\n"
-                    "    TRUNNEL_DYNARRAY_EXPAND(char, &inp->%s,\n"
-                    "                            len + 1 - inp->%s.allocated_);\n"
-                    "  }\n"
-                    "  memcpy(inp->%s.elts_, val, len);\n"
-                    "  inp->%s.n_ = len;\n"
-                    "  inp->%s.elts_[len] = 0;\n"
-                    "  return 0;\n"
-                    " trunnel_alloc_failed:\n"
-                    "  TRUNNEL_SET_ERROR_CODE(inp);\n"
-                    "  return -1;\n"
-                    "}\n")%(nm,nm,nm,nm,nm,nm))
-
-            self.docstring("""Set the value of the %s field of a %s_t to
-                              a given NUL-terminated string. Return 0 on
-                              success; return -1 and set the error code
-                              on 'inp' on failure."""%(nm,st))
-            self.declaration("int",
-                             "%s_setstr_%s(%s_t *inp, const char *val)"%(st,nm,st))
-            self.w(("{\n"
-                    "  return %s_setstr0_%s(inp, val, strlen(val));\n"
-                    "}\n")%(st, nm))
-
         self.docstring("""Return a pointer to the variable-length
                           array field %s of 'inp'.""")
         self.declaration("%s *"%elttype,
@@ -1176,6 +1123,69 @@ class AccessorFnGenerator(IndentingGenerator):
         self.w("  TRUNNEL_SET_ERROR_CODE(inp);\n")
         self.w("  return -1;\n")
         self.w("}\n")
+
+        if str(sva.basetype) == 'char':
+            self.writeVarArrayChar(sva, maxlen, if_overflow_possible)
+
+    def writeVarArrayChar(self, sva, maxlen, if_overflow_possible):
+        st = self.structName
+        nm = sva.c_fn_name
+        if if_overflow_possible != None:
+            endif_overflow_possible = "#endif"
+
+        self.docstring("""Return the value of the %s field of a %s_t as
+                          a NUL-terminated string."""%(nm,st))
+        self.declaration("const char *",
+                         "%s_getstr_%s(%s_t *inp)"%(st,nm,st))
+        self.w(("{\n"
+                "  trunnel_assert(inp->%s.allocated_ >= inp->%s.n_);\n"
+                "  if (inp->%s.allocated_ == inp->%s.n_) {\n"
+                "    TRUNNEL_DYNARRAY_EXPAND(char, &inp->%s, 1);\n"
+                "  }\n"
+                "  inp->%s.elts_[inp->%s.n_] = 0;\n"
+                "  return inp->%s.elts_;\n"
+                " trunnel_alloc_failed:\n"
+                "  return NULL;\n"
+                "}\n") %(nm, nm, nm, nm, nm, nm, nm, nm))
+
+        self.docstring("""Set the value of the %s field of a %s_t to
+                          a given string of length  'len'. Return 0 on
+                          success; return -1 and set the error code
+                          on 'inp' on failure."""%(nm,st))
+        self.declaration("int",
+                         "%s_setstr0_%s(%s_t *inp, const char *val, size_t len)"%(st,nm,st))
+        # XXXX too much duplicated code with above function.
+        self.w("{\n"
+                "  if (len == SIZE_MAX) goto trunnel_alloc_failed;\n")
+        if maxlen is not None:
+            self.w_no_indent(if_overflow_possible)
+            self.w("  if (len > %s)\n"
+                   "    goto trunnel_alloc_failed;\n"%maxlen)
+            self.w_no_indent(endif_overflow_possible)
+        self.w(("  if (inp->%s.allocated_ <= len) {\n"
+                "    TRUNNEL_DYNARRAY_EXPAND(char, &inp->%s,\n"
+                "                            len + 1 - inp->%s.allocated_);\n"
+                "  }\n"
+                "  memcpy(inp->%s.elts_, val, len);\n"
+                "  inp->%s.n_ = len;\n"
+                "  inp->%s.elts_[len] = 0;\n"
+                "  return 0;\n"
+                " trunnel_alloc_failed:\n"
+                "  TRUNNEL_SET_ERROR_CODE(inp);\n"
+                "  return -1;\n"
+                "}\n")%(nm,nm,nm,nm,nm,nm))
+
+        self.docstring("""Set the value of the %s field of a %s_t to
+                          a given NUL-terminated string. Return 0 on
+                          success; return -1 and set the error code
+                          on 'inp' on failure."""%(nm,st))
+        self.declaration("int",
+                         "%s_setstr_%s(%s_t *inp, const char *val)"%(st,nm,st))
+        self.w(("{\n"
+                "  return %s_setstr0_%s(inp, val, strlen(val));\n"
+                "}\n")%(st, nm))
+
+
 
     def visitSMString(self, sms):
         st = self.structName
