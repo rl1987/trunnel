@@ -601,7 +601,7 @@ class DeclarationGenerationVisitor(IndentingGenerator):
             self.w(sva.annotation)
 
         if str(sva.basetype) == "char":
-            self.w("TRUNNEL_DYNARRAY_HEAD(, char) %s;\n"%(sva.c_name))
+            self.w("trunnel_string_t %s;\n"%(sva.c_name))
         elif type(sva.basetype) == str:
             self.w("TRUNNEL_DYNARRAY_HEAD(, %s_t *) %s;\n"%(sva.basetype, sva.c_name))
         else:
@@ -1059,7 +1059,7 @@ class AccessorFnGenerator(IndentingGenerator):
                "}\n\n"%(elttype,nm))
 
         self.docstring("""Return a pointer to the variable-length
-                          array field %s of 'inp'.""")
+                          array field %s of 'inp'."""%nm)
         self.declaration("%s *"%elttype,
                          "%s_getarray_%s(%s_t *inp)"%(st,nm,st))
         self.w(("{\n"
@@ -1080,54 +1080,46 @@ class AccessorFnGenerator(IndentingGenerator):
                          "%s_setlen_%s(%s_t *inp, size_t newlen)"%(st,nm,st))
         self.w("{\n")
         self.pushIndent(2)
-        if str(sva.basetype) == 'char':
-            self.w("if (newlen > SIZE_MAX-1)\n"
-                   "  goto trunnel_alloc_failed;\n")
-            plus1 = " + 1"
-        else:
-            plus1 = ""
+        if str(sva.basetype) != 'char':
+            self.w("%s *newptr;\n"%elttype)
+        needFailed = False
         if maxlen is not None:
+            needFailed = True
             self.w_no_indent(if_overflow_possible)
             self.w("if (newlen > %s)\n"
                    "  goto trunnel_alloc_failed;\n"%maxlen)
             self.w_no_indent(endif_overflow_possible)
-        if type(sva.basetype) == str:
-            self.w("if (inp->%s.n_ >= newlen) {\n" %sva.c_name)
-            self.pushIndent(2)
-            self.w(("size_t i;\n"
-                    "for (i = newlen; i < inp->%s.n_; ++i) {\n"
-                    "  %s_free(inp->%s.elts_[i]);\n"
-                    "}\n"
-                    %(sva.c_name,sva.basetype,sva.c_name)))
-            self.popIndent(2)
-            self.w("}\n")
-        self.w("if (inp->%s.allocated_ < newlen%s) {\n" %(sva.c_name,plus1))
-        self.pushIndent(2)
-        self.w("TRUNNEL_DYNARRAY_EXPAND(%s, &inp->%s,\n"
-               "                        newlen%s - inp->%s.allocated_);\n"
-               %(elttype, sva.c_name, plus1, sva.c_name))
-        self.popIndent(2)
-        self.w("}\n")
 
-        self.w("if (inp->%s.n_ < newlen) {\n"%sva.c_name)
-        self.w("  memset(& (inp->%s.elts_[inp->%s.n_]), 0,\n"
-               "         (newlen - inp->%s.n_) * sizeof(&inp->%s.elts_[0]));\n"
-               %(sva.c_name, sva.c_name, sva.c_name, sva.c_name))
-        self.w("}\n")
-        self.w("inp->%s.n_ = newlen;\n"%sva.c_name)
         if str(sva.basetype) == 'char':
-            self.w("inp->%s.elts_[inp->%s.n_] = 0;\n"%(sva.c_name,sva.c_name))
-        self.w("return 0;\n")
+            self.w('return trunnel_string_setlen(&inp->%s, newlen,\n'
+                   '          &inp->trunnel_error_code_);\n' % sva.c_name)
+        else:
+            needFailed = True
+            if type(sva.basetype) == str:
+                freefn = "(trunnel_free_fn_t) %s_free"%sva.basetype
+            else:
+                freefn = "(trunnel_free_fn_t) NULL"
+
+            self.w(('newptr = trunnel_dynarray_setlen(&inp->%s.allocated_,\n'
+                    '               &inp->%s.n_, inp->%s.elts_, newlen,\n'
+                    '               sizeof(inp->%s.elts_[0]), %s,\n'
+                    '               &inp->trunnel_error_code_);\n')%(
+                        sva.c_name, sva.c_name, sva.c_name, sva.c_name, freefn))
+            self.w('if (newptr == NULL)\n  goto trunnel_alloc_failed;\n')
+            self.w('inp->%s.elts_ = newptr;\n'
+                   'return 0;\n'%sva.c_name)
+
         self.popIndent(2)
-        self.w(" trunnel_alloc_failed:\n")
-        self.w("  TRUNNEL_SET_ERROR_CODE(inp);\n")
-        self.w("  return -1;\n")
+        if needFailed:
+            self.w(" trunnel_alloc_failed:\n")
+            self.w("  TRUNNEL_SET_ERROR_CODE(inp);\n")
+            self.w("  return -1;\n")
         self.w("}\n")
 
         if str(sva.basetype) == 'char':
-            self.writeVarArrayChar(sva, maxlen, if_overflow_possible)
+            self.writeVarArrayCharAccessors(sva, maxlen, if_overflow_possible)
 
-    def writeVarArrayChar(self, sva, maxlen, if_overflow_possible):
+    def writeVarArrayCharAccessors(self, sva, maxlen, if_overflow_possible):
         st = self.structName
         nm = sva.c_fn_name
         if if_overflow_possible != None:
@@ -1138,15 +1130,8 @@ class AccessorFnGenerator(IndentingGenerator):
         self.declaration("const char *",
                          "%s_getstr_%s(%s_t *inp)"%(st,nm,st))
         self.w(("{\n"
-                "  trunnel_assert(inp->%s.allocated_ >= inp->%s.n_);\n"
-                "  if (inp->%s.allocated_ == inp->%s.n_) {\n"
-                "    TRUNNEL_DYNARRAY_EXPAND(char, &inp->%s, 1);\n"
-                "  }\n"
-                "  inp->%s.elts_[inp->%s.n_] = 0;\n"
-                "  return inp->%s.elts_;\n"
-                " trunnel_alloc_failed:\n"
-                "  return NULL;\n"
-                "}\n") %(nm, nm, nm, nm, nm, nm, nm, nm))
+                "  return trunnel_string_getstr(&inp->%s);\n"
+                "}\n"%nm))
 
         self.docstring("""Set the value of the %s field of a %s_t to
                           a given string of length  'len'. Return 0 on
@@ -1154,26 +1139,16 @@ class AccessorFnGenerator(IndentingGenerator):
                           on 'inp' on failure."""%(nm,st))
         self.declaration("int",
                          "%s_setstr0_%s(%s_t *inp, const char *val, size_t len)"%(st,nm,st))
-        # XXXX too much duplicated code with above function.
-        self.w("{\n"
-                "  if (len == SIZE_MAX) goto trunnel_alloc_failed;\n")
+        self.w("{\n")
         if maxlen is not None:
             self.w_no_indent(if_overflow_possible)
-            self.w("  if (len > %s)\n"
-                   "    goto trunnel_alloc_failed;\n"%maxlen)
+            self.w("  if (len > %s) {\n"
+                   "    TRUNNEL_SET_ERROR_CODE(inp);\n"
+                   "    return -1;\n"
+                   "  }\n"%maxlen)
             self.w_no_indent(endif_overflow_possible)
-        self.w(("  if (inp->%s.allocated_ <= len) {\n"
-                "    TRUNNEL_DYNARRAY_EXPAND(char, &inp->%s,\n"
-                "                            len + 1 - inp->%s.allocated_);\n"
-                "  }\n"
-                "  memcpy(inp->%s.elts_, val, len);\n"
-                "  inp->%s.n_ = len;\n"
-                "  inp->%s.elts_[len] = 0;\n"
-                "  return 0;\n"
-                " trunnel_alloc_failed:\n"
-                "  TRUNNEL_SET_ERROR_CODE(inp);\n"
-                "  return -1;\n"
-                "}\n")%(nm,nm,nm,nm,nm,nm))
+        self.w(("  return trunnel_string_setstr0(&inp->%s, val, len, &inp->trunnel_error_code_); \n"
+                "}\n")%nm)
 
         self.docstring("""Set the value of the %s field of a %s_t to
                           a given NUL-terminated string. Return 0 on
@@ -2109,7 +2084,6 @@ MODULE_BOILERPLATE = """
 /* %(c_fname)s -- generated by trunnel. */
 #include <string.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <arpa/inet.h>
 #include "trunnel-impl.h"
 #include "%(h_fname)s"
@@ -2153,7 +2127,6 @@ trunnel_strdup(const char *s)
 #define trunnel_free_(x) (free(x))
 #define trunnel_free(x) ((x) ? (free(x),0) : (0))
 
-#define trunnel_assert(x) assert(x)
 #define trunnel_abort() abort()
 
 static void trunnel_set_uint32(void *p, uint32_t v) {

@@ -7,7 +7,10 @@
 
 #ifndef TRUNNEL_IMPL_H_INCLUDED_
 #define TRUNNEL_IMPL_H_INCLUDED_
-#include <sys/types.h>
+#include "trunnel.h"
+#include <assert.h>
+
+#define trunnel_assert(x) assert(x)
 
 #define TRUNNEL_DYNARRAY_INITIALIZE(da) do {     \
     (da)->n_ = 0;                                \
@@ -52,8 +55,22 @@
   } while (0)
 
 void *trunnel_reallocarray(void *a, size_t x, size_t y);
+
 void *trunnel_dynarray_expand(size_t *allocated_p, void *ptr,
                               size_t howmanymore, size_t eltsize);
+
+typedef void (*trunnel_free_fn_t)(void *);
+
+void *trunnel_dynarray_setlen(size_t *allocated_p, size_t *len_p,
+                              void *ptr, size_t newlen,
+                              size_t eltsize, trunnel_free_fn_t free_fn,
+                              uint8_t *errcode_ptr);
+
+const char *trunnel_string_getstr(trunnel_string_t *str);
+int trunnel_string_setstr0(trunnel_string_t *str, const char *inp, size_t len,
+                           uint8_t *errcode_ptr);
+int trunnel_string_setlen(trunnel_string_t *str, size_t newlen,
+                           uint8_t *errcode_ptr);
 
 #endif
 
