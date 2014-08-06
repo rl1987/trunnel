@@ -352,10 +352,42 @@ test_varlen_accessors(void *arg)
   varlen_free(var2);
 }
 
+static void
+test_varlen_allocfail(void *arg)
+{
+  varlen_t *varlen = NULL;
+  const uint8_t *inp;
+  (void) arg;
+#ifdef ALLOCFAIL
+  set_alloc_fail(1);
+  inp = ux(SOME_LEN1);
+  tt_int_op(-1, ==, varlen_parse(&varlen, inp, strlen(SOME_LEN1)/2));
+  tt_ptr_op(varlen, ==, NULL);
+
+  /* this time, fail when allocating the string. */
+  set_alloc_fail(2);
+  tt_int_op(-1, ==, varlen_parse(&varlen, inp, strlen(SOME_LEN1)/2));
+  tt_ptr_op(varlen, ==, NULL);
+
+  /* this time, fail when allocating the len2 stuff */
+  set_alloc_fail(4);
+  inp = ux(SOME_LEN1_SOME_LEN2);
+  tt_int_op(-1, ==, varlen_parse(&varlen, inp, strlen(SOME_LEN1_SOME_LEN2)/2));
+  tt_ptr_op(varlen, ==, NULL);
+
+#else
+  (void) inp;
+  tt_skip();
+#endif
+ end:
+  varlen_free(varlen);
+}
+
 struct testcase_t vararray_tests[] = {
   { "truncated", test_varlen_truncated, 0, NULL, NULL },
   { "invalid", test_varlen_invalid, 0, NULL, NULL },
   { "encode-decode", test_varlen_encdec, 0, NULL, NULL },
   { "accessors", test_varlen_accessors, 0, NULL, NULL },
+  { "allocfail", test_varlen_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };
