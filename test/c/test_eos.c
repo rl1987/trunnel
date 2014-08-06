@@ -107,10 +107,31 @@ test_eos_accessors(void *arg)
   uses_eos_free(eos2);
 }
 
+
+static void
+test_eos_allocfail(void *arg)
+{
+  uses_eos_t *eos = NULL;
+  const uint8_t *inp;
+  (void) arg;
+#ifdef ALLOCFAIL
+  set_alloc_fail(1);
+  inp = ux("23282329");
+  tt_int_op(-1, ==, uses_eos_parse(&eos, inp, 4));
+  tt_ptr_op(eos, ==, NULL);
+#else
+  (void) inp;
+  tt_skip();
+#endif
+ end:
+  uses_eos_free(eos);
+}
+
 struct testcase_t eos_tests[] = {
   { "bad-length", test_eos_badlength, 0, NULL, NULL },
   { "invalid", test_eos_invalid, 0, NULL, NULL },
   { "encode-decode", test_eos_encdec, 0, NULL, NULL },
   { "accessors", test_eos_accessors, 0, NULL, NULL },
+  { "allocfail", test_eos_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };

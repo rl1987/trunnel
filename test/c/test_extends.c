@@ -133,10 +133,36 @@ test_extends_encdec(void *arg)
   extends_free(extends1);
 }
 
+static void
+test_extends_allocfail(void *arg)
+{
+  extends_t *extends = NULL;
+  extends2_t *extends2 = NULL;
+  const uint8_t *inp;
+  (void) arg;
+#ifdef ALLOCFAIL
+  set_alloc_fail(1);
+  inp = ux("20212200");
+  tt_int_op(-1, ==, extends_parse(&extends, inp, 4));
+  tt_ptr_op(extends, ==, NULL);
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, extends2_parse(&extends2, inp, 4));
+  tt_ptr_op(extends2, ==, NULL);
+
+#else
+  (void) inp;
+  tt_skip();
+#endif
+ end:
+  extends_free(extends);
+  extends2_free(extends2);
+}
+
 struct testcase_t extends_tests[] = {
   { "varlength", test_extends_varlength, 0, NULL, NULL },
   { "invalid", test_extends_invalid, 0, NULL, NULL },
   { "invalid2", test_extends2_invalid, 0, NULL, NULL },
   { "encode-decode", test_extends_encdec, 0, NULL, NULL },
+  { "allocfail", test_extends_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };

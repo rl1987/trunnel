@@ -341,7 +341,6 @@ test_varlen_accessors(void *arg)
   memcpy(var->str.elts_, "abcdefgh", 8);
   tt_str_op("abcdefgh", ==, varlen_getstr_str(var));
 
-  
 
 
   (void)buf; (void)inp;

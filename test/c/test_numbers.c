@@ -157,11 +157,30 @@ test_num_accessors(void *arg)
   numbers_free(num2);
 }
 
+static void
+test_num_allocfail(void *arg)
+{
+  numbers_t *num = NULL;
+  const uint8_t *inp;
+  (void) arg;
+#ifdef ALLOCFAIL
+  set_alloc_fail(1);
+  inp = ux("ff" "0101" "00000102" "00000000" "00000103");
+  tt_int_op(-1, ==, numbers_parse(&num, inp, 15));
+  tt_ptr_op(num, ==, NULL);
+#else
+  (void) inp;
+  tt_skip();
+#endif
+ end:
+  numbers_free(num);
+}
 
 struct testcase_t numbers_tests[] = {
   { "truncated", test_num_truncated, 0, NULL, NULL },
   { "invalid", test_num_invalid, 0, NULL, NULL },
   { "encode-decode", test_num_encdec, 0, NULL, NULL },
   { "accessors", test_num_accessors, 0, NULL, NULL },
+  { "allocfail", test_num_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };

@@ -144,10 +144,37 @@ test_strs_accessors(void *arg)
   strings_free(strs2);
 }
 
+static void
+test_strs_allocfail(void *arg)
+{
+  strings_t *strs = NULL;
+  const uint8_t *inp;
+  (void) arg;
+#ifdef ALLOCFAIL
+  set_alloc_fail(1);
+  inp = ux("486f6c61000000000000" "4d756e646f00");
+  tt_int_op(-1, ==, strings_parse(&strs, inp, 16));
+  tt_ptr_op(strs, ==, NULL);
+
+  strs = strings_new();
+  tt_assert(strs);
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, strings_set_nt(strs, "Mundo"));
+  tt_int_op(1, ==, strings_clear_errors(strs));
+  tt_int_op(0, ==, strings_set_nt(strs, "Mundo"));
+#else
+  (void) inp;
+  tt_skip();
+#endif
+ end:
+  strings_free(strs);
+}
+
 struct testcase_t strings_tests[] = {
   { "truncated", test_strs_truncated, 0, NULL, NULL },
   { "invalid", test_strs_invalid, 0, NULL, NULL },
   { "encode-decode", test_strs_encdec, 0, NULL, NULL },
   { "accessors", test_strs_accessors, 0, NULL, NULL },
+  { "allocfail", test_strs_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };

@@ -118,7 +118,6 @@ test_fixed_accessors(void *arg)
 
   fixed = fixed_new();
 
-  // XXXX Fix after rebase.
   tt_int_op(4, ==, fixed_getlen_a8(fixed));
   tt_int_op(6, ==, fixed_getlen_a16(fixed));
   tt_int_op(3, ==, fixed_getlen_a32(fixed));
@@ -183,10 +182,37 @@ test_fixed_accessors(void *arg)
   fixed_free(fixed2);
 }
 
+static void
+test_fixed_allocfail(void *arg)
+{
+  fixed_t *fixed = NULL;
+  const uint8_t *inp;
+  (void) arg;
+#ifdef ALLOCFAIL
+  set_alloc_fail(1);
+  inp = ux( "01020408"
+            "0010""0020""0040""0080""0100""0200"
+            "00000400""00000800""00001000"
+            "0000000000002000"
+            "01" "0002" "00000003"
+            "0000000000000004"
+            "50" "6000" "70000000"
+            "8000000000000000" );
+  tt_int_op(-1, ==, fixed_parse(&fixed, inp, 66));
+  tt_ptr_op(fixed, ==, NULL);
+#else
+  (void) inp;
+  tt_skip();
+#endif
+ end:
+  fixed_free(fixed);
+}
+
 struct testcase_t fixedarray_tests[] = {
   { "truncated", test_fixed_truncated, 0, NULL, NULL },
   { "invalid", test_fixed_invalid, 0, NULL, NULL },
   { "encode-decode", test_fixed_encdec, 0, NULL, NULL },
   { "accessors", test_fixed_accessors, 0, NULL, NULL },
+  { "allocfail", test_fixed_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };

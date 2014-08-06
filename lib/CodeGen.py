@@ -1196,7 +1196,7 @@ class AccessorFnGenerator(IndentingGenerator):
         self.w("{\n")
         self.pushIndent(2)
         self.w("trunnel_free(inp->%s);\n"%(sms.c_name))
-        self.w("if (NULL == (inp->%s = strdup(val))) {\n"%sms.c_name)
+        self.w("if (NULL == (inp->%s = trunnel_strdup(val))) {\n"%sms.c_name)
         self.w("  TRUNNEL_SET_ERROR_CODE(inp);");
         self.w("  return -1;")
         self.w("}")
@@ -2102,16 +2102,57 @@ MODULE_BOILERPLATE = """
 #include "trunnel-impl.h"
 #include "%(h_fname)s"
 
+#ifdef TRUNNEL_DEBUG_FAILING_ALLOC
+int trunnel_provoke_alloc_failure = 0;
+
+static void *
+trunnel_malloc(size_t n)
+{
+   if (trunnel_provoke_alloc_failure) {
+     if (--trunnel_provoke_alloc_failure == 0)
+       return NULL;
+   }
+   return malloc(n);
+}
+static void *
+trunnel_calloc(size_t a, size_t b)
+{
+   if (trunnel_provoke_alloc_failure) {
+     if (--trunnel_provoke_alloc_failure == 0)
+       return NULL;
+   }
+   return calloc(a,b);
+}
+static char *
+trunnel_strdup(const char *s)
+{
+   if (trunnel_provoke_alloc_failure) {
+     if (--trunnel_provoke_alloc_failure == 0)
+       return NULL;
+   }
+   return strdup(s);
+}
+#else
 #define trunnel_malloc(x) (malloc((x)))
+#define trunnel_calloc(a,b) (calloc(a,b))
+#define trunnel_strdupc(s) (strdup((x)))
+#endif
+
 #define trunnel_free_(x) (free(x))
 #define trunnel_free(x) ((x) ? (free(x),0) : (0))
-#define trunnel_calloc(a,b) (calloc(a,b))
+
 #define trunnel_assert(x) assert(x)
 #define trunnel_abort() abort()
 
 /* XXXX stick this in a file or something */
 static void *trunnel_reallocarray(void *a, size_t x, size_t y)
 {
+#ifdef TRUNNEL_DEBUG_FAILING_ALLOC
+   if (trunnel_provoke_alloc_failure) {
+     if (--trunnel_provoke_alloc_failure == 0)
+       return NULL;
+   }
+#endif
    if (x > SIZE_MAX / y)
      return NULL;
    return realloc(a, x * y);

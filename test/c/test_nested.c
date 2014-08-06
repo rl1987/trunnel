@@ -165,9 +165,32 @@ test_nest_accessors(void *arg)
   restricted_free(rst);
 }
 
+static void
+test_nest_allocfail(void *arg)
+{
+  nested_t *nested = NULL;
+  const uint8_t *inp;
+  (void) arg;
+#ifdef ALLOCFAIL
+  set_alloc_fail(1);
+  inp = ux("40" "0000" "00000000" "0000000000000000"
+           "00" "0000" "00000000" "0000000000000000"
+           "00000000000000000000" "5472756e6e656c00"
+           "00000001" "00000002" "00000003");
+  tt_int_op(-1, ==, nested_parse(&nested, inp, 60));
+  tt_ptr_op(nested, ==, NULL);
+#else
+  (void) inp;
+  tt_skip();
+#endif
+ end:
+  nested_free(nested);
+}
+
 struct testcase_t nested_tests[] = {
   { "parsing", test_nest_parsing, 0, NULL, NULL },
   { "invalid", test_nest_invalid, 0, NULL, NULL },
   { "accessors", test_nest_accessors, 0, NULL, NULL },
+  { "allocfail", test_nest_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };

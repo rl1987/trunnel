@@ -146,10 +146,30 @@ test_rst_accessors(void *arg)
   restricted_free(rst2);
 }
 
+static void
+test_rst_allocfail(void *arg)
+{
+  restricted_t *rst = NULL;
+  const uint8_t *inp;
+  (void) arg;
+#ifdef ALLOCFAIL
+  set_alloc_fail(1);
+  inp = ux("00000001" "00000005" "00000003");
+  tt_int_op(-1, ==, restricted_parse(&rst, inp, 12));
+  tt_ptr_op(rst, ==, NULL);
+#else
+  (void) inp;
+  tt_skip();
+#endif
+ end:
+  restricted_free(rst);
+}
+
 struct testcase_t restricted_tests[] = {
   { "truncated", test_rst_truncated, 0, NULL, NULL },
   { "invalid", test_rst_invalid, 0, NULL, NULL },
   { "encode-decode", test_rst_encdec, 0, NULL, NULL },
   { "accessors", test_rst_accessors, 0, NULL, NULL },
+  { "allocfail", test_rst_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };
