@@ -146,6 +146,8 @@ test_union1_encdec(void *arg)
   tt_int_op(len, ==, union1_parse(&out, inp, len));
   tt_int_op(2, ==, out->tag);
   tt_int_op(6, ==, out->un_a);
+  tt_int_op(2, ==, union1_get_tag(out));
+  tt_int_op(6, ==, union1_get_un_a(out));
   union1_free(out); out = NULL;
 
   /* CASE2 */
@@ -155,6 +157,9 @@ test_union1_encdec(void *arg)
   tt_int_op(3, ==, out->tag);
   tt_int_op(1, ==, out->un_b);
   tt_int_op(65536, ==, out->un_b2);
+  tt_int_op(3, ==, union1_get_tag(out));
+  tt_int_op(1, ==, union1_get_un_b(out));
+  tt_int_op(65536, ==, union1_get_un_b2(out));
   union1_free(out); out = NULL;
 
   /* CASE3 */
@@ -163,6 +168,10 @@ test_union1_encdec(void *arg)
   tt_int_op(len, ==, union1_parse(&out, inp, len));
   tt_int_op(5, ==, out->tag);
   tt_mem_op(".pure machinery.", ==, out->un_c, 16);
+  tt_int_op(5, ==, union1_get_tag(out));
+  tt_mem_op(".pure machinery.", ==, union1_getarray_un_c(out), 16);
+  tt_int_op(16, ==, union1_getlen_un_c(out));
+  tt_int_op('u', ==, union1_get_un_c(out, 2));
   union1_free(out); out = NULL;
 
   /* CASE4 */
@@ -171,6 +180,8 @@ test_union1_encdec(void *arg)
   tt_int_op(len, ==, union1_parse(&out, inp, len));
   tt_int_op(6, ==, out->tag);
   tt_str_op("Ashcans and unobtainable dollars!", ==, out->un_d);
+  tt_int_op(6, ==, union1_get_tag(out));
+  tt_str_op("Ashcans and unobtainable dollars!", ==, union1_get_un_d(out));
   union1_free(out); out = NULL;
 
   /* CASE5 */
@@ -182,6 +193,8 @@ test_union1_encdec(void *arg)
   tt_int_op(4, ==, out->un_e->i16);
   tt_int_op(3, ==, out->un_e->i32);
   tt_int_op(2, ==, out->un_e->i64);
+  tt_int_op(7, ==, union1_get_tag(out));
+  tt_ptr_op(out->un_e, ==, union1_get_un_e(out));
   union1_free(out); out = NULL;
 
  end:

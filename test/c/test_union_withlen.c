@@ -228,6 +228,10 @@ test_union2_encdec(void *arg)
   tt_int_op(out->length, ==, 1);
   tt_int_op(out->un_a, ==, 6);
   tt_str_op(out->more, ==, "f");
+  tt_int_op(union2_get_tag(out), ==, 2);
+  tt_int_op(union2_get_length(out), ==, 1);
+  tt_int_op(union2_get_un_a(out), ==, 6);
+  tt_str_op(union2_get_more(out), ==, "f");
   union2_free(out); out = NULL;
 
   /* CASE2 */
@@ -238,6 +242,10 @@ test_union2_encdec(void *arg)
   tt_int_op(out->length, ==, 2);
   tt_int_op(out->un_b, ==, 1);
   tt_str_op(out->more, ==, "");
+  tt_int_op(union2_get_tag(out), ==, 3);
+  tt_int_op(union2_get_length(out), ==, 2);
+  tt_int_op(union2_get_un_b(out), ==, 1);
+  tt_str_op(union2_get_more(out), ==, "");
   union2_free(out); out = NULL;
 
   /* CASE2b */
@@ -248,6 +256,10 @@ test_union2_encdec(void *arg)
   tt_int_op(out->length, ==, 2);
   tt_int_op(out->un_b, ==, 1);
   tt_str_op(out->more, ==, "");
+  tt_int_op(union2_get_tag(out), ==, 3);
+  tt_int_op(union2_get_length(out), ==, 2);
+  tt_int_op(union2_get_un_b(out), ==, 1);
+  tt_str_op(union2_get_more(out), ==, "");
   union2_free(out); out = NULL;
 
   /* CASE3 */
@@ -258,8 +270,11 @@ test_union2_encdec(void *arg)
   tt_int_op(out->length, ==, 16);
   tt_mem_op(out->un_c, ==, ".pure machinery.", 16);
   tt_int_op(union2_getlen_un_remainder(out), ==, 0);
-
   tt_str_op(out->more, ==, "");
+  tt_int_op(union2_get_tag(out), ==, 5);
+  tt_int_op(union2_get_length(out), ==, 16);
+  tt_mem_op(union2_getarray_un_c(out), ==, ".pure machinery.", 16);
+  tt_int_op(union2_get_un_c(out,1), ==, 'p');
   union2_free(out); out = NULL;
 
   /* CASE4 */
@@ -271,8 +286,10 @@ test_union2_encdec(void *arg)
   tt_mem_op(out->un_c, ==, "Ashcans and unob", 16);
   tt_int_op(union2_getlen_un_remainder(out), ==, 18);
   tt_int_op(union2_get_un_remainder(out, 0), ==, 't');
+  tt_int_op(union2_getlen_un_c(out), ==, 16);
   tt_mem_op(out->un_remainder.elts_, ==, "tainable dollars!", 18);
   tt_str_op(out->more, ==, "w");
+  tt_mem_op(union2_getarray_un_remainder(out), ==, "tainable dollars!", 18);
 
   /* mess with un_remainder to exercise accessors. */
   union2_set_un_remainder(out, 17, '?');
@@ -293,7 +310,6 @@ test_union2_encdec(void *arg)
   tt_int_op(out->length, ==, 0);
   tt_str_op(out->more, ==, "@");
   union2_free(out); out = NULL;
-
 
  end:
   union2_free(out);

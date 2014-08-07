@@ -169,6 +169,12 @@ test_union34_encdec(void *arg)
   tt_int_op(1, ==, union4->length);
   tt_int_op(0xff, ==, union3->un_a);
   tt_int_op(0xff, ==, union4->un_a);
+  tt_int_op(2, ==, union3_get_tag(union3));
+  tt_int_op(2, ==, union4_get_tag(union4));
+  tt_int_op(1, ==, union3_get_length(union3));
+  tt_int_op(1, ==, union4_get_length(union4));
+  tt_int_op(0xff, ==, union3_get_un_a(union3));
+  tt_int_op(0xff, ==, union4_get_un_a(union4));
   union3_free(union3); union3 = NULL;
   union4_free(union4); union4 = NULL;
 
