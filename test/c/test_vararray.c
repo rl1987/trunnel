@@ -305,10 +305,12 @@ test_varlen_encdec(void *arg)
 }
 
 static void
-test_varlen_accessors_str(void *arg)
+test_varlen_accessors(void *arg)
 {
   varlen_t *var = NULL;
   char *s = NULL;
+  const uint8_t *inp;
+  uint8_t buf[128];
   int i;
   (void)arg;
 
@@ -383,6 +385,28 @@ test_varlen_accessors_str(void *arg)
   tt_str_op("abcd", ==, varlen_getstr_str(var));
   tt_int_op(1, ==, varlen_clear_errors(var));
 
+  /* Now make it right */
+  tt_int_op(0, ==, varlen_setlen_str(var, 5));
+  tt_int_op(0, ==, varlen_setlen_a8(var, 5));
+  tt_int_op(0, ==, varlen_setlen_a16(var, 2));
+  tt_int_op(0, ==, varlen_setlen_a32(var, 1));
+  tt_int_op(0, ==, varlen_setlen_a64(var, 1));
+  tt_int_op(0, ==, varlen_setlen_nums(var, 2));
+  memcpy(varlen_getarray_str(var), "quuxy", 5);
+  tt_int_op(0, ==, varlen_set_nums(var, 0, numbers_new()));
+  tt_int_op(0, ==, varlen_set_nums(var, 1, numbers_new()));
+  tt_int_op(0, ==, varlen_set_nums(var, 1, numbers_new()));
+
+  tt_int_op(71, ==, varlen_encode(buf, sizeof(buf), var));
+  inp = ux("05""0002""00000001""00000000""00000001"
+           "7175757879" "0000000000"
+           "0000" "0000"
+           "00000000"
+           "00000000" "00000000"
+           "00""0000""00000000""00000000""00000000"
+           "00""0000""00000000""00000000""00000000");
+  tt_mem_op(inp, ==, buf, 71);
+
  end:
   if (s)
     free(s);
@@ -409,6 +433,40 @@ test_varlen_accessors_oob(void *arg)
   tt_int_op(-1, ==, varlen_setlen_nums(var, 1<<16));
   tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), var));
   tt_int_op(1, ==, varlen_clear_errors(var));
+
+  /* Make 'add' fail because of len ranges.  This is bad hackery! */
+  var->str.n_ = 255;
+  tt_int_op(-1, ==, varlen_add_str(var, 'x'));
+  var->str.n_ = 0;
+  tt_int_op(1, ==, varlen_clear_errors(var));
+
+  var->a8.n_ = 255;
+  tt_int_op(-1, ==, varlen_add_a8(var, 33));
+  var->a8.n_ = 0;
+  tt_int_op(1, ==, varlen_clear_errors(var));
+
+  var->a16.n_ = 65535;
+  tt_int_op(-1, ==, varlen_add_a16(var, 33));
+  var->a16.n_ = 0;
+  tt_int_op(1, ==, varlen_clear_errors(var));
+
+  var->a32.n_ = (uint32_t)-1;
+  tt_int_op(-1, ==, varlen_add_a32(var, 33));
+  var->a32.n_ = 0;
+  tt_int_op(1, ==, varlen_clear_errors(var));
+
+#if UINT64_MAX >= SIZE_MAX
+  var->a64.n_ = UINT64_MAX;
+  tt_int_op(-1, ==, varlen_add_a64(var, 33));
+  var->a64.n_ = 0;
+  tt_int_op(1, ==, varlen_clear_errors(var));
+#endif
+
+  var->nums.n_ = 65535;
+  tt_int_op(-1, ==, varlen_add_nums(var, NULL));
+  var->nums.n_ = 0;
+  tt_int_op(1, ==, varlen_clear_errors(var));
+
   tt_int_op(strlen(MINIMAL)/2, ==, varlen_encode(buf, sizeof(buf), var));
   inp = ux(MINIMAL);
   tt_mem_op(buf, ==, inp, strlen(MINIMAL)/2)
@@ -484,7 +542,7 @@ struct testcase_t vararray_tests[] = {
   { "truncated", test_varlen_truncated, 0, NULL, NULL },
   { "invalid", test_varlen_invalid, 0, NULL, NULL },
   { "encode-decode", test_varlen_encdec, 0, NULL, NULL },
-  { "accessors-str", test_varlen_accessors_str, 0, NULL, NULL },
+  { "accessors", test_varlen_accessors, 0, NULL, NULL },
   { "accessors-oob", test_varlen_accessors_oob, 0, NULL, NULL },
   { "allocfail", test_varlen_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
