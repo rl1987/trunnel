@@ -169,6 +169,12 @@ test_union34_encdec(void *arg)
   tt_int_op(1, ==, union4->length);
   tt_int_op(0xff, ==, union3->un_a);
   tt_int_op(0xff, ==, union4->un_a);
+  tt_int_op(2, ==, union3_get_tag(union3));
+  tt_int_op(2, ==, union4_get_tag(union4));
+  tt_int_op(1, ==, union3_get_length(union3));
+  tt_int_op(1, ==, union4_get_length(union4));
+  tt_int_op(0xff, ==, union3_get_un_a(union3));
+  tt_int_op(0xff, ==, union4_get_un_a(union4));
   union3_free(union3); union3 = NULL;
   union4_free(union4); union4 = NULL;
 
@@ -181,7 +187,7 @@ test_union34_encdec(void *arg)
   tt_int_op(9, ==, union4->tag);
   tt_int_op(0, ==, union3->length);
   tt_int_op(0, ==, union4->length);
-  tt_int_op(0, ==, union3_get_un_stuff_len(union3));
+  tt_int_op(0, ==, union3_getlen_un_stuff(union3));
 
   /* verify correct re-encode after 'length' trashed for union3 */
   union3->length = 9999;
@@ -201,7 +207,7 @@ test_union34_encdec(void *arg)
   tt_int_op(16, ==, union4->tag);
   tt_int_op(5, ==, union3->length);
   tt_int_op(5, ==, union4->length);
-  tt_int_op(5, ==, union3_get_un_stuff_len(union3));
+  tt_int_op(5, ==, union3_getlen_un_stuff(union3));
   tt_mem_op("efghi", ==, union3->un_stuff.elts_, 5);
   tt_int_op('e', ==, union3_get_un_stuff(union3, 0));
   union3_set_un_stuff(union3, 0, (uint8_t)'f');
@@ -222,10 +228,111 @@ test_union34_encdec(void *arg)
   union4_free(union4);
 }
 
+static void
+test_union34_allocfail(void *arg)
+{
+  union3_t *union3 = NULL;
+  union4_t *union4 = NULL;
+  const uint8_t *inp;
+  (void) arg;
+#ifdef ALLOCFAIL
+  {
+    int fail_at, i;
+    const struct { const char *s; int n_fails_3; int n_fails_4; } item[] = {
+      { CASE1, 1, 1 },
+      { CASE2, 2, 1 },
+      { CASE3, 2, 1 },
+      { NULL, 0, 0 },
+    };
+    for (i = 0; item[i].s; ++i) {
+      size_t len = strlen(item[i].s)/2;
+      inp = ux(item[i].s);
+      for (fail_at = 1; fail_at <= item[i].n_fails_3; ++fail_at) {
+        set_alloc_fail(fail_at);
+        tt_int_op(-1, ==, union3_parse(&union3, inp, len));
+        tt_ptr_op(union3, ==, NULL);
+      }
+      for (fail_at = 1; fail_at <= item[i].n_fails_4; ++fail_at) {
+        set_alloc_fail(fail_at);
+        tt_int_op(-1, ==, union4_parse(&union4, inp, len));
+        tt_ptr_op(union4, ==, NULL);
+      }
+    }
+  }
+
+  union3 = union3_new();
+  union3_set_tag(union3, 3);
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, union3_add_un_stuff(union3, 3));
+  tt_int_op(1, ==, union3_clear_errors(union3));
+
+  set_alloc_fail(1);
+  union3_setlen_un_stuff(union3, 3);
+  tt_int_op(1, ==, union3_clear_errors(union3));
+
+#else
+  (void) inp;
+  tt_skip();
+#endif
+ end:
+  union3_free(union3);
+  union4_free(union4);
+}
+
+static void
+test_union34_accessors(void *arg)
+{
+  union3_t *union3 = NULL;
+  union4_t *union4 = NULL;
+  uint8_t buf[30];
+  const uint8_t *inp;
+  (void)arg;
+
+  union3 = union3_new();
+  union4 = union4_new();
+
+  tt_int_op(0, ==, union3_set_tag(union3, 2));
+  tt_int_op(0, ==, union4_set_tag(union4, 2));
+  tt_int_op(0, ==, union3_set_length(union3, 1));
+  tt_int_op(0, ==, union4_set_length(union4, 1));
+  tt_int_op(0, ==, union3_set_un_a(union3, 33));
+  tt_int_op(0, ==, union4_set_un_a(union4, 33));
+  inp = ux("0002" "0001" "21");
+  tt_int_op(5, ==, union3_encode(buf, sizeof(buf), union3));
+  tt_mem_op(buf, ==, inp, 5);
+  tt_int_op(5, ==, union4_encode(buf, sizeof(buf), union4));
+  tt_mem_op(buf, ==, inp, 5);
+
+  /* union3 has 'stuff' accessors. */
+  union3_set_tag(union3, 3);
+  union3_add_un_stuff(union3, 0x20);
+  union3_add_un_stuff(union3, 0x20);
+  tt_mem_op(union3_getarray_un_stuff(union3), ==, "  ", 2);
+  tt_int_op(0, ==, union3_setlen_un_stuff(union3, 5));
+  inp = ux("0003" "0005" "2020000000");
+  tt_int_op(9, ==, union3_encode(buf, sizeof(buf), union3));
+  tt_mem_op(buf, ==, inp, 9);
+
+  union3->trunnel_error_code_ = 1;
+  tt_int_op(-1, ==, union3_encode(buf, sizeof(buf), union3));
+  tt_int_op(1, ==, union3_clear_errors(union3));
+
+  /* Can't actually provoke an error in union4; gotta fake it. */
+  union4->trunnel_error_code_ = 1;
+  tt_int_op(-1, ==, union4_encode(buf, sizeof(buf), union4));
+  tt_int_op(1, ==, union4_clear_errors(union4));
+
+ end:
+  union3_free(union3);
+  union4_free(union4);
+}
+
 struct testcase_t union_defaults_tests[] = {
   { "truncated", test_unions_truncated, 0, NULL, NULL },
   { "invalid-default", test_union3_invalid, 0, NULL, NULL },
   { "invalid-ignore", test_union4_invalid, 0, NULL, NULL },
   { "encode-decode", test_union34_encdec, 0, NULL, NULL },
+  { "allocfail", test_union34_allocfail, 0, NULL, NULL },
+  { "accessors", test_union34_accessors, 0, NULL, NULL },
   END_OF_TESTCASES
 };

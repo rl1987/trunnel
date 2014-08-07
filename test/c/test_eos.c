@@ -69,9 +69,69 @@ test_eos_encdec(void *arg)
   uses_eos_free(out);
 }
 
+static void
+test_eos_accessors(void *arg)
+{
+  uses_eos_t *eos = NULL, *eos2 = NULL;
+  const uint8_t *inp;
+  uint8_t buf[8];
+  (void) arg;
+
+  eos = uses_eos_new();
+  tt_int_op(0, ==, uses_eos_get_a(eos));
+  tt_int_op(0, ==, uses_eos_get_b(eos));
+
+  tt_int_op(0, ==, uses_eos_set_a(eos, 9000));
+  tt_int_op(0, ==, uses_eos_set_b(eos, 9001));
+
+  tt_int_op(4, ==, uses_eos_encode(buf, sizeof(buf), eos));
+  inp = ux("23282329");
+  tt_mem_op(inp, ==, buf, 4);
+
+  tt_int_op(4, ==, uses_eos_parse(&eos2, buf, 4));
+
+  tt_int_op(9000, ==, uses_eos_get_a(eos));
+  tt_int_op(9001, ==, uses_eos_get_b(eos));
+  tt_int_op(9000, ==, uses_eos_get_a(eos2));
+  tt_int_op(9001, ==, uses_eos_get_b(eos2));
+
+  /* can't set this otherwise */
+  eos->trunnel_error_code_ = 1;
+  tt_int_op(-1, ==, uses_eos_encode(buf, sizeof(buf), eos));
+  uses_eos_clear_errors(eos);
+  tt_int_op(4, ==, uses_eos_encode(buf, sizeof(buf), eos));
+  tt_mem_op(inp, ==, buf, 4);
+
+ end:
+  uses_eos_free(eos);
+  uses_eos_free(eos2);
+}
+
+
+static void
+test_eos_allocfail(void *arg)
+{
+  uses_eos_t *eos = NULL;
+  const uint8_t *inp;
+  (void) arg;
+#ifdef ALLOCFAIL
+  set_alloc_fail(1);
+  inp = ux("23282329");
+  tt_int_op(-1, ==, uses_eos_parse(&eos, inp, 4));
+  tt_ptr_op(eos, ==, NULL);
+#else
+  (void) inp;
+  tt_skip();
+#endif
+ end:
+  uses_eos_free(eos);
+}
+
 struct testcase_t eos_tests[] = {
   { "bad-length", test_eos_badlength, 0, NULL, NULL },
   { "invalid", test_eos_invalid, 0, NULL, NULL },
   { "encode-decode", test_eos_encdec, 0, NULL, NULL },
+  { "accessors", test_eos_accessors, 0, NULL, NULL },
+  { "allocfail", test_eos_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };

@@ -97,10 +97,10 @@ test_union1_invalid(void *arg)
   union1->tag = 9;
   union1->un_x = 3;
   tt_int_op(-1, ==, union1_encode(buf, sizeof(buf), union1));
-  tt_int_op(0, ==, union1_get_un_xs_len(union1));
+  tt_int_op(0, ==, union1_getlen_un_xs(union1));
   union1_add_un_xs(union1, 1);
   union1_add_un_xs(union1, 2);
-  tt_int_op(2, ==, union1_get_un_xs_len(union1));
+  tt_int_op(2, ==, union1_getlen_un_xs(union1));
   tt_int_op(-1, ==, union1_encode(buf, sizeof(buf), union1));
   union1_add_un_xs(union1, 3);
   /* Success! */
@@ -116,7 +116,8 @@ test_union1_invalid(void *arg)
 
   /* Check for a bad struct */
   union1->tag = 7;
-  union1->un_e.i32 = 0xbadbeef;
+  union1->un_e = numbers_new();
+  union1->un_e->i32 = 0xbadbeef;
   tt_int_op(-1, ==, union1_encode(buf, sizeof(buf), union1));
 
   union1_free(union1); union1 = NULL;
@@ -133,7 +134,7 @@ test_union1_encdec(void *arg)
 {
   const uint8_t *inp;
   union1_t *out = NULL;
-  //  uint8_t buf[128];
+  uint8_t buf[128];
   size_t len;
   (void)arg;
 
@@ -145,6 +146,14 @@ test_union1_encdec(void *arg)
   tt_int_op(len, ==, union1_parse(&out, inp, len));
   tt_int_op(2, ==, out->tag);
   tt_int_op(6, ==, out->un_a);
+  tt_int_op(2, ==, union1_get_tag(out));
+  tt_int_op(6, ==, union1_get_un_a(out));
+  union1_free(out); out = NULL;
+  out = union1_new();
+  union1_set_tag(out, 2);
+  union1_set_un_a(out, 6);
+  tt_int_op(len, ==, union1_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
   union1_free(out); out = NULL;
 
   /* CASE2 */
@@ -154,6 +163,16 @@ test_union1_encdec(void *arg)
   tt_int_op(3, ==, out->tag);
   tt_int_op(1, ==, out->un_b);
   tt_int_op(65536, ==, out->un_b2);
+  tt_int_op(3, ==, union1_get_tag(out));
+  tt_int_op(1, ==, union1_get_un_b(out));
+  tt_int_op(65536, ==, union1_get_un_b2(out));
+  union1_free(out); out = NULL;
+  out = union1_new();
+  union1_set_tag(out, 3);
+  union1_set_un_b(out, 1);
+  union1_set_un_b2(out, 65536);
+  tt_int_op(len, ==, union1_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
   union1_free(out); out = NULL;
 
   /* CASE3 */
@@ -162,6 +181,17 @@ test_union1_encdec(void *arg)
   tt_int_op(len, ==, union1_parse(&out, inp, len));
   tt_int_op(5, ==, out->tag);
   tt_mem_op(".pure machinery.", ==, out->un_c, 16);
+  tt_int_op(5, ==, union1_get_tag(out));
+  tt_mem_op(".pure machinery.", ==, union1_getarray_un_c(out), 16);
+  tt_int_op(16, ==, union1_getlen_un_c(out));
+  tt_int_op('u', ==, union1_get_un_c(out, 2));
+  union1_free(out); out = NULL;
+  out = union1_new();
+  union1_set_tag(out, 5);
+  memcpy(union1_getarray_un_c(out), ".pXre machinery.", 16);
+  union1_set_un_c(out, 2, 'u');
+  tt_int_op(len, ==, union1_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
   union1_free(out); out = NULL;
 
   /* CASE4 */
@@ -170,6 +200,15 @@ test_union1_encdec(void *arg)
   tt_int_op(len, ==, union1_parse(&out, inp, len));
   tt_int_op(6, ==, out->tag);
   tt_str_op("Ashcans and unobtainable dollars!", ==, out->un_d);
+  tt_int_op(6, ==, union1_get_tag(out));
+  tt_str_op("Ashcans and unobtainable dollars!", ==, union1_get_un_d(out));
+  union1_free(out); out = NULL;
+  out = union1_new();
+  union1_set_tag(out, 6);
+  union1_set_un_d(out, "Ashcans and uno");
+  union1_set_un_d(out, "Ashcans and unobtainable dollars!");
+  tt_int_op(len, ==, union1_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
   union1_free(out); out = NULL;
 
   /* CASE5 */
@@ -177,14 +216,111 @@ test_union1_encdec(void *arg)
   len = strlen(CASE5)/2;
   tt_int_op(len, ==, union1_parse(&out, inp, len));
   tt_int_op(7, ==, out->tag);
-  tt_int_op(5, ==, out->un_e.i8);
-  tt_int_op(4, ==, out->un_e.i16);
-  tt_int_op(3, ==, out->un_e.i32);
-  tt_int_op(2, ==, out->un_e.i64);
+  tt_int_op(5, ==, out->un_e->i8);
+  tt_int_op(4, ==, out->un_e->i16);
+  tt_int_op(3, ==, out->un_e->i32);
+  tt_int_op(2, ==, out->un_e->i64);
+  tt_int_op(7, ==, union1_get_tag(out));
+  tt_ptr_op(out->un_e, ==, union1_get_un_e(out));
   union1_free(out); out = NULL;
+  out = union1_new();
+  union1_set_tag(out, 7);
+  union1_set_un_e(out, numbers_new());
+  union1_get_un_e(out)->i8 = 90;
+  union1_set_un_e(out, numbers_new());
+  union1_get_un_e(out)->i8 = 5;
+  union1_get_un_e(out)->i16 = 4;
+  union1_get_un_e(out)->i32 = 3;
+  union1_get_un_e(out)->i64 = 2;
+  tt_int_op(len, ==, union1_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
+  union1_free(out); out = NULL;
+
+  /* CASE 7: */
+  inp = ux(CASE7);
+  len = strlen(CASE7)/2;
+  tt_int_op(len, ==, union1_parse(&out, inp, len));
+  tt_int_op(9, ==, out->tag);
+  tt_int_op(10, ==, union1_get_un_x(out));
+  tt_mem_op("\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A", ==,
+            union1_getarray_un_xs(out), 10);
+  tt_int_op(10, ==, union1_getlen_un_xs(out));
+  tt_int_op(3, ==, union1_get_un_xs(out, 2));
+  union1_free(out); out = NULL;
+  out = union1_new();
+  union1_set_tag(out, 9);
+  union1_set_un_x(out, 10);
+  union1_setlen_un_xs(out, 8);
+  memcpy(union1_getarray_un_xs(out), "\x01\x02\x03\x04\x05\x06\x07\x08", 8);
+  union1_add_un_xs(out, 9);
+  union1_add_un_xs(out, 10);
+  tt_int_op(len, ==, union1_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
 
  end:
   union1_free(out);
+}
+
+static void
+test_union1_allocfail(void *arg)
+{
+  union1_t *union1 = NULL;
+  const uint8_t *inp;
+  uint8_t buf[8];
+  (void) arg;
+#ifdef ALLOCFAIL
+  {
+    int fail_at, i;
+    const struct { const char *s; int n_fails; } item[] = {
+      { CASE1, 1 },
+      { CASE2, 1 },
+      { CASE3, 1 },
+      { CASE4, 2 },
+      { CASE5, 2 },
+      { CASE6, 1 },
+      { CASE7, 2 },
+      { NULL, 0 },
+    };
+    for (i = 0; item[i].s; ++i) {
+      size_t len = strlen(item[i].s)/2;
+      inp = ux(item[i].s);
+      for (fail_at = 1; fail_at <= item[i].n_fails; ++fail_at) {
+        set_alloc_fail(fail_at);
+        tt_int_op(-1, ==, union1_parse(&union1, inp, len));
+        tt_ptr_op(union1, ==, NULL);
+      }
+    }
+  }
+
+  union1 = union1_new();
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, union1_set_un_d(union1, "Fred"));
+  tt_int_op(1, ==, union1_clear_errors(union1));
+
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, union1_add_un_xs(union1, 9));
+  tt_int_op(1, ==, union1_clear_errors(union1));
+
+  union1->un_xs.n_ = 255;
+  tt_int_op(-1, ==, union1_add_un_xs(union1, 9));
+  tt_int_op(1, ==, union1_clear_errors(union1));
+  union1->un_xs.n_ = 0;
+
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, union1_setlen_un_xs(union1, 9));
+  tt_int_op(-1, ==, union1_encode(buf, sizeof(buf), union1));
+  tt_int_op(1, ==, union1_clear_errors(union1));
+
+  tt_int_op(-1, ==, union1_setlen_un_xs(union1, 1024));
+  tt_int_op(1, ==, union1_clear_errors(union1));
+  tt_int_op(0, ==, union1_getlen_un_xs(union1));
+
+#else
+  (void) inp;
+  tt_skip();
+#endif
+ end:
+  union1_free(union1);
 }
 
 
@@ -192,5 +328,6 @@ struct testcase_t union_nolen_tests[] = {
   { "truncated", test_union1_truncated, 0, NULL, NULL },
   { "invalid", test_union1_invalid, 0, NULL, NULL },
   { "encode-decode", test_union1_encdec, 0, NULL, NULL },
+  { "allocfail", test_union1_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };

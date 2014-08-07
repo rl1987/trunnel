@@ -85,12 +85,10 @@ test_varlen_invalid(void *arg)
   /* NULL can't be encoded */
   tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), NULL));
 
-  /* The string needs to be present */
   varlen = varlen_new();
-  tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
 
   /* The array lengths need to really match. */
-  varlen->str = strdup("X");
+  varlen_setstr_str(varlen, "X");
   varlen->len1 = 1;
   tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
   varlen->len1 = 0;
@@ -123,6 +121,32 @@ test_varlen_invalid(void *arg)
   varlen_set_nums(varlen, 0, numbers_new());
   tt_int_op(-1, !=, varlen_encode(buf, sizeof(buf), varlen));
 
+  /* Mismatched len1. */
+  tt_int_op(0, ==, varlen_add_a8(varlen, 5));
+  tt_int_op(0, ==, varlen_add_str(varlen, 'x'));
+  tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
+  varlen->len1++;
+  tt_int_op(-1, !=, varlen_encode(buf, sizeof(buf), varlen));
+
+  /* Mismatched len2. */
+  tt_int_op(0, ==, varlen_add_a16(varlen, 5));
+  tt_int_op(0, ==, varlen_add_nums(varlen, numbers_new()));
+  tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
+  varlen->len2++;
+  tt_int_op(-1, !=, varlen_encode(buf, sizeof(buf), varlen));
+
+  /* Mismatched len3. */
+  tt_int_op(0, ==, varlen_add_a32(varlen, 5));
+  tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
+  varlen->len3++;
+  tt_int_op(-1, !=, varlen_encode(buf, sizeof(buf), varlen));
+
+  /* Mismatched len4. */
+  tt_int_op(0, ==, varlen_add_a64(varlen, 5));
+  tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
+  varlen->len4++;
+  tt_int_op(-1, !=, varlen_encode(buf, sizeof(buf), varlen));
+
  end:
   varlen_free(varlen);
 }
@@ -148,13 +172,12 @@ test_varlen_encdec(void *arg)
   tt_int_op(0, ==, out->len2);
   tt_int_op(0, ==, out->len3);
   tt_int_op(0, ==, out->len4);
-  tt_assert(out->str);
-  tt_str_op("", ==, out->str);
-  tt_int_op(0, ==, varlen_get_a8_len(out));
-  tt_int_op(0, ==, varlen_get_a16_len(out));
-  tt_int_op(0, ==, varlen_get_a32_len(out));
-  tt_int_op(0, ==, varlen_get_a64_len(out));
-  tt_int_op(0, ==, varlen_get_nums_len(out));
+  tt_str_op("", ==, varlen_getstr_str(out));
+  tt_int_op(0, ==, varlen_getlen_a8(out));
+  tt_int_op(0, ==, varlen_getlen_a16(out));
+  tt_int_op(0, ==, varlen_getlen_a32(out));
+  tt_int_op(0, ==, varlen_getlen_a64(out));
+  tt_int_op(0, ==, varlen_getlen_nums(out));
   varlen_free(out); out = NULL;
 
   /* SOME_LEN1. */
@@ -165,12 +188,12 @@ test_varlen_encdec(void *arg)
   tt_int_op(0, ==, out->len2);
   tt_int_op(0, ==, out->len3);
   tt_int_op(0, ==, out->len4);
-  tt_str_op("Uf", ==, out->str);
-  tt_int_op(2, ==, varlen_get_a8_len(out));
-  tt_int_op(0, ==, varlen_get_a16_len(out));
-  tt_int_op(0, ==, varlen_get_a32_len(out));
-  tt_int_op(0, ==, varlen_get_a64_len(out));
-  tt_int_op(0, ==, varlen_get_nums_len(out));
+  tt_str_op("Uf", ==, varlen_getstr_str(out));
+  tt_int_op(2, ==, varlen_getlen_a8(out));
+  tt_int_op(0, ==, varlen_getlen_a16(out));
+  tt_int_op(0, ==, varlen_getlen_a32(out));
+  tt_int_op(0, ==, varlen_getlen_a64(out));
+  tt_int_op(0, ==, varlen_getlen_nums(out));
   tt_int_op(0x77, ==, varlen_get_a8(out, 0));
   tt_int_op(0x88, ==, varlen_get_a8(out, 1));
   varlen_free(out); out = NULL;
@@ -183,12 +206,12 @@ test_varlen_encdec(void *arg)
   tt_int_op(2, ==, out->len2);
   tt_int_op(0, ==, out->len3);
   tt_int_op(0, ==, out->len4);
-  tt_str_op("Uf", ==, out->str);
-  tt_int_op(2, ==, varlen_get_a8_len(out));
-  tt_int_op(2, ==, varlen_get_a16_len(out));
-  tt_int_op(0, ==, varlen_get_a32_len(out));
-  tt_int_op(0, ==, varlen_get_a64_len(out));
-  tt_int_op(2, ==, varlen_get_nums_len(out));
+  tt_str_op("Uf", ==, varlen_getstr_str(out));
+  tt_int_op(2, ==, varlen_getlen_a8(out));
+  tt_int_op(2, ==, varlen_getlen_a16(out));
+  tt_int_op(0, ==, varlen_getlen_a32(out));
+  tt_int_op(0, ==, varlen_getlen_a64(out));
+  tt_int_op(2, ==, varlen_getlen_nums(out));
   tt_int_op(0x77, ==, varlen_get_a8(out, 0));
   tt_int_op(0x88, ==, varlen_get_a8(out, 1));
   tt_int_op(0x1337, ==, varlen_get_a16(out, 0));
@@ -201,6 +224,10 @@ test_varlen_encdec(void *arg)
   tt_int_op(6, ==, varlen_get_nums(out, 1)->i16);
   tt_int_op(7, ==, varlen_get_nums(out, 1)->i32);
   tt_int_op(8, ==, varlen_get_nums(out, 1)->i64);
+  tt_assert(varlen_get_nums(out, 1) == varlen_getarray_nums(out)[1]);
+  tt_assert(varlen_get_str(out, 1) == varlen_getarray_str(out)[1]);
+  tt_assert(varlen_get_a8(out, 1) == varlen_getarray_a8(out)[1]);
+  tt_assert(varlen_get_a16(out, 1) == varlen_getarray_a16(out)[1]);
   varlen_free(out); out = NULL;
 
   /* SOME_LEN3. */
@@ -211,16 +238,17 @@ test_varlen_encdec(void *arg)
   tt_int_op(0, ==, out->len2);
   tt_int_op(4, ==, out->len3);
   tt_int_op(0, ==, out->len4);
-  tt_str_op("", ==, out->str);
-  tt_int_op(0, ==, varlen_get_a8_len(out));
-  tt_int_op(0, ==, varlen_get_a16_len(out));
-  tt_int_op(4, ==, varlen_get_a32_len(out));
-  tt_int_op(0, ==, varlen_get_a64_len(out));
-  tt_int_op(0, ==, varlen_get_nums_len(out));
+  tt_str_op("", ==, varlen_getstr_str(out));
+  tt_int_op(0, ==, varlen_getlen_a8(out));
+  tt_int_op(0, ==, varlen_getlen_a16(out));
+  tt_int_op(4, ==, varlen_getlen_a32(out));
+  tt_int_op(0, ==, varlen_getlen_a64(out));
+  tt_int_op(0, ==, varlen_getlen_nums(out));
   tt_int_op(0x606, ==, varlen_get_a32(out, 0));
   tt_int_op(0x0842, ==, varlen_get_a32(out, 1));
   tt_int_op(0x867, ==, varlen_get_a32(out, 2));
   tt_int_op(0x5309, ==, varlen_get_a32(out, 3));
+  tt_assert(varlen_get_a32(out, 1) == varlen_getarray_a32(out)[1]);
   varlen_free(out); out = NULL;
 
   /* SOME_LEN4. */
@@ -231,18 +259,19 @@ test_varlen_encdec(void *arg)
   tt_int_op(0, ==, out->len2);
   tt_int_op(0, ==, out->len3);
   tt_int_op(2, ==, out->len4);
-  tt_str_op("", ==, out->str);
-  tt_int_op(0, ==, varlen_get_a8_len(out));
-  tt_int_op(0, ==, varlen_get_a16_len(out));
-  tt_int_op(0, ==, varlen_get_a32_len(out));
-  tt_int_op(2, ==, varlen_get_a64_len(out));
-  tt_int_op(0, ==, varlen_get_nums_len(out));
+  tt_str_op("", ==, varlen_getstr_str(out));
+  tt_int_op(0, ==, varlen_getlen_a8(out));
+  tt_int_op(0, ==, varlen_getlen_a16(out));
+  tt_int_op(0, ==, varlen_getlen_a32(out));
+  tt_int_op(2, ==, varlen_getlen_a64(out));
+  tt_int_op(0, ==, varlen_getlen_nums(out));
   u64 = varlen_get_a64(out, 0);
   tt_int_op(0x606, ==, (uint32_t)(u64 >> 32));
   tt_int_op(0x842, ==, (uint32_t)u64);
   u64 = varlen_get_a64(out, 1);
   tt_int_op(0x867, ==, (uint32_t)(u64 >> 32));
   tt_int_op(0x5309, ==, (uint32_t)u64);
+  tt_assert(varlen_get_a64(out, 1) == varlen_getarray_a64(out)[1]);
   varlen_free(out); out = NULL;
 
   /* Now make a purely synthetic one, mainly to execute *_set() */
@@ -251,7 +280,7 @@ test_varlen_encdec(void *arg)
   out->len2 = 1;
   out->len3 = 1;
   out->len4 = 1;
-  out->str = strdup("Y");
+  varlen_setstr_str(out, "Y");
   varlen_add_a8(out, 0);
   varlen_add_a16(out, 0);
   varlen_add_a32(out, 0);
@@ -275,9 +304,265 @@ test_varlen_encdec(void *arg)
   varlen_free(out);
 }
 
+static void
+test_varlen_accessors(void *arg)
+{
+  varlen_t *var = NULL;
+  char *s = NULL;
+  const uint8_t *inp;
+  uint8_t buf[128];
+  int i;
+  (void)arg;
+
+  var = varlen_new();
+  tt_int_op(0, ==, varlen_get_len1(var));
+  tt_int_op(0, ==, varlen_get_len2(var));
+  tt_int_op(0, ==, varlen_get_len3(var));
+  tt_int_op(0, ==, varlen_get_len4(var));
+
+  tt_int_op(0, ==, varlen_set_len1(var, 5));
+  tt_int_op(0, ==, varlen_set_len2(var, 2));
+  tt_int_op(0, ==, varlen_set_len3(var, 1));
+  tt_int_op(0, ==, varlen_set_len4(var, 1));
+
+  tt_int_op(0, ==, varlen_add_str(var, 'a'));
+  tt_int_op(0, ==, varlen_add_str(var, 'b'));
+  tt_int_op(0, ==, varlen_add_str(var, 'c'));
+  tt_int_op('c', ==, varlen_get_str(var, 2));
+  tt_str_op("abc", ==, varlen_getstr_str(var));
+  tt_int_op(0, ==, varlen_set_str(var, 2, 'd'));
+  tt_str_op("abd", ==, varlen_getstr_str(var));
+  tt_int_op(3, ==, varlen_getlen_str(var));
+  tt_int_op(0, ==, varlen_setstr_str(var, "Plugh"));
+  tt_int_op(5, ==, varlen_getlen_str(var));
+  tt_str_op("Plugh", ==, varlen_getstr_str(var));
+  tt_mem_op("Plugh", ==, varlen_getarray_str(var), 6);
+
+  tt_int_op(0, ==, varlen_setstr_str(var, "abcdefgh"));
+  for (i = 0; i < 30; ++i)
+    tt_int_op(0, ==, varlen_add_str(var, 'x'));
+
+  tt_str_op("abcdefghxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", ==,
+            varlen_getstr_str(var));
+
+  /* Adding a 256th character to the string should fail. */
+  while (0 == varlen_add_str(var, 'x'))
+    ;
+  tt_int_op(255, ==, varlen_getlen_str(var));
+  tt_str_op("abcdefghxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", ==,
+            varlen_getstr_str(var));
+  tt_int_op(1, ==, varlen_clear_errors(var));
+
+  tt_int_op(0, ==, varlen_setlen_str(var, 20));
+  tt_int_op(20, ==, varlen_getlen_str(var));
+
+  /* Setting the string to a 256-character thing should fail. */
+  s = calloc(1,256);
+  tt_int_op(-1, ==, varlen_setstr0_str(var, s, 256));
+  tt_int_op(1, ==, varlen_clear_errors(var));
+  tt_int_op(0, ==, varlen_setstr0_str(var, s, 255));
+  tt_int_op(0, ==, varlen_clear_errors(var));
+
+
+  /* Be tricky: getstr when there is no room for a NUL. */
+  /* (we need to set up the array by hand to make sure this happens) */
+  var->str.allocated_ = 8;
+  var->str.n_ = 8;
+  free(var->str.elts_);
+  var->str.elts_ = malloc(8);
+  memcpy(var->str.elts_, "abcdefgh", 8);
+  tt_str_op("abcdefgh", ==, varlen_getstr_str(var));
+
+  /* Some setlen_str tests */
+  tt_int_op(0, ==, varlen_setlen_str(var, 4));
+  tt_str_op("abcd", ==, varlen_getstr_str(var));
+
+  tt_int_op(-1, ==, varlen_setlen_str(var, 256));
+  tt_str_op("abcd", ==, varlen_getstr_str(var));
+  tt_int_op(1, ==, varlen_clear_errors(var));
+
+  /* Now make it right */
+  tt_int_op(0, ==, varlen_setlen_str(var, 5));
+  tt_int_op(0, ==, varlen_setlen_a8(var, 5));
+  tt_int_op(0, ==, varlen_setlen_a16(var, 2));
+  tt_int_op(0, ==, varlen_setlen_a32(var, 1));
+  tt_int_op(0, ==, varlen_setlen_a64(var, 1));
+  tt_int_op(0, ==, varlen_setlen_nums(var, 2));
+  memcpy(varlen_getarray_str(var), "quuxy", 5);
+  tt_int_op(0, ==, varlen_set_nums(var, 0, numbers_new()));
+  tt_int_op(0, ==, varlen_set_nums(var, 1, numbers_new()));
+  tt_int_op(0, ==, varlen_set_nums(var, 1, numbers_new()));
+
+  tt_int_op(71, ==, varlen_encode(buf, sizeof(buf), var));
+  inp = ux("05""0002""00000001""00000000""00000001"
+           "7175757879" "0000000000"
+           "0000" "0000"
+           "00000000"
+           "00000000" "00000000"
+           "00""0000""00000000""00000000""00000000"
+           "00""0000""00000000""00000000""00000000");
+  tt_mem_op(inp, ==, buf, 71);
+
+ end:
+  if (s)
+    free(s);
+  varlen_free(var);
+}
+
+static void
+test_varlen_accessors_oob(void *arg)
+{
+  varlen_t *var = NULL;
+  uint8_t buf[20];
+  const uint8_t *inp;
+  (void) arg;
+
+  var = varlen_new();
+  tt_int_op(-1, ==, varlen_setlen_a8(var, 256));
+  tt_int_op(1, ==, varlen_clear_errors(var));
+  tt_int_op(-1, ==, varlen_setlen_a16(var, 1<<16));
+  tt_int_op(1, ==, varlen_clear_errors(var));
+#if UINT32_MAX < SIZE_MAX
+  tt_int_op(-1, ==, varlen_setlen_a32(var, ((uint64_t)1)<<32));
+  tt_int_op(1, ==, varlen_clear_errors(var));
+#endif
+  tt_int_op(-1, ==, varlen_setlen_nums(var, 1<<16));
+  tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), var));
+  tt_int_op(1, ==, varlen_clear_errors(var));
+
+  /* Make 'add' fail because of len ranges.  This is bad hackery! */
+  var->str.n_ = 255;
+  tt_int_op(-1, ==, varlen_add_str(var, 'x'));
+  var->str.n_ = 0;
+  tt_int_op(1, ==, varlen_clear_errors(var));
+
+  var->a8.n_ = 255;
+  tt_int_op(-1, ==, varlen_add_a8(var, 33));
+  var->a8.n_ = 0;
+  tt_int_op(1, ==, varlen_clear_errors(var));
+
+  var->a16.n_ = 65535;
+  tt_int_op(-1, ==, varlen_add_a16(var, 33));
+  var->a16.n_ = 0;
+  tt_int_op(1, ==, varlen_clear_errors(var));
+
+  var->a32.n_ = (uint32_t)-1;
+  tt_int_op(-1, ==, varlen_add_a32(var, 33));
+  var->a32.n_ = 0;
+  tt_int_op(1, ==, varlen_clear_errors(var));
+
+#if UINT64_MAX >= SIZE_MAX
+  var->a64.n_ = UINT64_MAX;
+  tt_int_op(-1, ==, varlen_add_a64(var, 33));
+  var->a64.n_ = 0;
+  tt_int_op(1, ==, varlen_clear_errors(var));
+#endif
+
+  var->nums.n_ = 65535;
+  tt_int_op(-1, ==, varlen_add_nums(var, NULL));
+  var->nums.n_ = 0;
+  tt_int_op(1, ==, varlen_clear_errors(var));
+
+  tt_int_op(strlen(MINIMAL)/2, ==, varlen_encode(buf, sizeof(buf), var));
+  inp = ux(MINIMAL);
+  tt_mem_op(buf, ==, inp, strlen(MINIMAL)/2)
+
+ end:
+  varlen_free(var);
+}
+
+static void
+test_varlen_allocfail(void *arg)
+{
+  varlen_t *varlen = NULL;
+  const uint8_t *inp;
+  (void) arg;
+#ifdef ALLOCFAIL
+  {
+    int fail_at, i;
+    const struct { const char *s; int n_fails; } item[] = {
+      { MINIMAL, 7 },
+      { SOME_LEN1, 7 },
+      { SOME_LEN1_SOME_LEN2, 9 },
+      { SOME_LEN3, 7 },
+      { SOME_LEN4, 7 },
+      { NULL, 0 },
+    };
+    for (i = 0; item[i].s; ++i) {
+      size_t len = strlen(item[i].s)/2;
+      inp = ux(item[i].s);
+      for (fail_at = 1; fail_at <= item[i].n_fails; ++fail_at) {
+        set_alloc_fail(fail_at);
+        tt_int_op(-1, ==, varlen_parse(&varlen, inp, len));
+        tt_ptr_op(varlen, ==, NULL);
+      }
+    }
+  }
+
+  varlen = varlen_new();
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_setlen_str(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_setlen_a8(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_setlen_a16(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_setlen_a32(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_setlen_a64(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_setlen_nums(varlen,2));
+
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_add_str(varlen,'x'));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_add_a8(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_add_a16(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_add_a32(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_add_a64(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_add_nums(varlen,NULL));
+
+  /* Fail on getstr */
+  tt_int_op(0, ==, varlen_add_str(varlen, 'x'));
+  tt_int_op(8, ==, varlen->str.allocated_);
+  memset(varlen->str.elts_, 'y', 8);
+  varlen->str.n_ = 8;
+  set_alloc_fail(1);
+  tt_ptr_op(NULL, ==, varlen_getstr_str(varlen));
+  /* Now succeed */
+  tt_str_op("yyyyyyyy", ==, varlen_getstr_str(varlen));
+
+  /* Fail because of int overflow */
+  tt_int_op(-1, ==, varlen_setlen_nums(varlen, SIZE_MAX/sizeof(numbers_t*)+1));
+
+  /* Fail because setstr0 maxes out at SIZE_MAX-1. */
+  tt_int_op(-1, ==, varlen_setstr0_str(varlen, "X", SIZE_MAX));
+
+  /* Fail because string_setlen maxes out at SIZE_MAX-1. */
+  tt_int_op(-1, ==, varlen_setlen_str(varlen, SIZE_MAX));
+
+#else
+  (void) inp;
+  tt_skip();
+#endif
+ end:
+  varlen_free(varlen);
+}
+
 struct testcase_t vararray_tests[] = {
   { "truncated", test_varlen_truncated, 0, NULL, NULL },
   { "invalid", test_varlen_invalid, 0, NULL, NULL },
   { "encode-decode", test_varlen_encdec, 0, NULL, NULL },
+  { "accessors", test_varlen_accessors, 0, NULL, NULL },
+  { "accessors-oob", test_varlen_accessors_oob, 0, NULL, NULL },
+  { "allocfail", test_varlen_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };

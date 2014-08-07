@@ -111,10 +111,76 @@ test_num_encdec(void *arg)
   numbers_free(out);
 }
 
+static void
+test_num_accessors(void *arg)
+{
+  uint8_t buf[15];
+  const uint8_t *inp;
+  numbers_t *num = NULL, *num2 = NULL;
+  (void)arg;
+
+  num = numbers_new();
+  tt_int_op(0, ==, numbers_get_i8(num));
+  tt_int_op(0, ==, numbers_get_i16(num));
+  tt_int_op(0, ==, numbers_get_i32(num));
+  tt_assert(0  ==  numbers_get_i64(num));
+
+  tt_int_op(0, ==, numbers_set_i8(num, 255));
+  tt_int_op(0, ==, numbers_set_i16(num, 257));
+  tt_int_op(0, ==, numbers_set_i32(num, 258));
+  tt_assert(0  ==  numbers_set_i64(num, 259));
+
+  tt_int_op(15, ==, numbers_encode(buf, sizeof(buf), num));
+  inp = ux("ff" "0101" "00000102" "00000000" "00000103");
+  tt_mem_op(buf, ==, inp, 15);
+
+  tt_int_op(15, ==, numbers_parse(&num2, buf, 15));
+  tt_int_op(255, ==, numbers_get_i8(num));
+  tt_int_op(257, ==, numbers_get_i16(num));
+  tt_int_op(258, ==, numbers_get_i32(num));
+  tt_assert(259  ==  numbers_get_i64(num));
+
+  tt_int_op(255, ==, numbers_get_i8(num2));
+  tt_int_op(257, ==, numbers_get_i16(num2));
+  tt_int_op(258, ==, numbers_get_i32(num2));
+  tt_assert(259  ==  numbers_get_i64(num2));
+
+  tt_int_op(-1, ==, numbers_set_i32(num, 0xbadbeef));
+  tt_int_op(0, ==, numbers_set_i32(num, 258));
+  tt_int_op(-1, ==, numbers_encode(buf, sizeof(buf), num));
+  tt_int_op(1, ==, numbers_clear_errors(num));
+  tt_int_op(15, ==, numbers_encode(buf, sizeof(buf), num));
+  tt_mem_op(buf, ==, inp, 15);
+
+ end:
+  numbers_free(num);
+  numbers_free(num2);
+}
+
+static void
+test_num_allocfail(void *arg)
+{
+  numbers_t *num = NULL;
+  const uint8_t *inp;
+  (void) arg;
+#ifdef ALLOCFAIL
+  set_alloc_fail(1);
+  inp = ux("ff" "0101" "00000102" "00000000" "00000103");
+  tt_int_op(-1, ==, numbers_parse(&num, inp, 15));
+  tt_ptr_op(num, ==, NULL);
+#else
+  (void) inp;
+  tt_skip();
+#endif
+ end:
+  numbers_free(num);
+}
 
 struct testcase_t numbers_tests[] = {
   { "truncated", test_num_truncated, 0, NULL, NULL },
   { "invalid", test_num_invalid, 0, NULL, NULL },
   { "encode-decode", test_num_encdec, 0, NULL, NULL },
+  { "accessors", test_num_accessors, 0, NULL, NULL },
+  { "allocfail", test_num_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };

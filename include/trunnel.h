@@ -8,6 +8,8 @@
 #ifndef TRUNNEL_H_INCLUDED_
 #define TRUNNEL_H_INCLUDED_
 
+#include <sys/types.h>
+
 #define TRUNNEL_DYNARRAY_HEAD(name, elttype)       \
   struct name {                                    \
     size_t n_;                                     \
@@ -16,6 +18,8 @@
   }
 
 #define TRUNNEL_DYNARRAY_INIT(elttype) { 0, 0, (elttype*)NULL }
+
+typedef TRUNNEL_DYNARRAY_HEAD(trunnel_string_st, char) trunnel_string_t;
 
 #endif
 
