@@ -260,6 +260,16 @@ test_union34_allocfail(void *arg)
     }
   }
 
+  union3 = union3_new();
+  union3_set_tag(union3, 3);
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, union3_add_un_stuff(union3, 3));
+  tt_int_op(1, ==, union3_clear_errors(union3));
+
+  set_alloc_fail(1);
+  union3_setlen_un_stuff(union3, 3);
+  tt_int_op(1, ==, union3_clear_errors(union3));
+
 #else
   (void) inp;
   tt_skip();
@@ -269,6 +279,53 @@ test_union34_allocfail(void *arg)
   union4_free(union4);
 }
 
+static void
+test_union34_accessors(void *arg)
+{
+  union3_t *union3 = NULL;
+  union4_t *union4 = NULL;
+  uint8_t buf[30];
+  const uint8_t *inp;
+  (void)arg;
+
+  union3 = union3_new();
+  union4 = union4_new();
+
+  tt_int_op(0, ==, union3_set_tag(union3, 2));
+  tt_int_op(0, ==, union4_set_tag(union4, 2));
+  tt_int_op(0, ==, union3_set_length(union3, 1));
+  tt_int_op(0, ==, union4_set_length(union4, 1));
+  tt_int_op(0, ==, union3_set_un_a(union3, 33));
+  tt_int_op(0, ==, union4_set_un_a(union4, 33));
+  inp = ux("0002" "0001" "21");
+  tt_int_op(5, ==, union3_encode(buf, sizeof(buf), union3));
+  tt_mem_op(buf, ==, inp, 5);
+  tt_int_op(5, ==, union4_encode(buf, sizeof(buf), union4));
+  tt_mem_op(buf, ==, inp, 5);
+
+  /* union3 has 'stuff' accessors. */
+  union3_set_tag(union3, 3);
+  union3_add_un_stuff(union3, 0x20);
+  union3_add_un_stuff(union3, 0x20);
+  tt_mem_op(union3_getarray_un_stuff(union3), ==, "  ", 2);
+  tt_int_op(0, ==, union3_setlen_un_stuff(union3, 5));
+  inp = ux("0003" "0005" "2020000000");
+  tt_int_op(9, ==, union3_encode(buf, sizeof(buf), union3));
+  tt_mem_op(buf, ==, inp, 9);
+
+  union3->trunnel_error_code_ = 1;
+  tt_int_op(-1, ==, union3_encode(buf, sizeof(buf), union3));
+  tt_int_op(1, ==, union3_clear_errors(union3));
+
+  /* Can't actually provoke an error in union4; gotta fake it. */
+  union4->trunnel_error_code_ = 1;
+  tt_int_op(-1, ==, union4_encode(buf, sizeof(buf), union4));
+  tt_int_op(1, ==, union4_clear_errors(union4));
+
+ end:
+  union3_free(union3);
+  union4_free(union4);
+}
 
 struct testcase_t union_defaults_tests[] = {
   { "truncated", test_unions_truncated, 0, NULL, NULL },
@@ -276,5 +333,6 @@ struct testcase_t union_defaults_tests[] = {
   { "invalid-ignore", test_union4_invalid, 0, NULL, NULL },
   { "encode-decode", test_union34_encdec, 0, NULL, NULL },
   { "allocfail", test_union34_allocfail, 0, NULL, NULL },
+  { "accessors", test_union34_accessors, 0, NULL, NULL },
   END_OF_TESTCASES
 };
