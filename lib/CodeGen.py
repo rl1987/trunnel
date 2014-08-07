@@ -726,6 +726,7 @@ class NewFnGenerator(IndentingGenerator):
                "    return NULL;\n")
         self.pushIndent(2)
         sd.visitChildren(self)
+        self.popIndent(2)
         self.w("  return val;")
         self.w("}\n\n");
 
