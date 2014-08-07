@@ -233,6 +233,14 @@ test_union2_encdec(void *arg)
   tt_int_op(union2_get_un_a(out), ==, 6);
   tt_str_op(union2_get_more(out), ==, "f");
   union2_free(out); out = NULL;
+  out = union2_new();
+  union2_set_tag(out, 2);
+  union2_set_length(out, 1);
+  union2_set_un_a(out, 6);
+  union2_set_more(out, "f");
+  tt_int_op(len, ==, union2_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
+  union2_free(out); out = NULL;
 
   /* CASE2 */
   inp = ux(CASE2);
@@ -247,17 +255,24 @@ test_union2_encdec(void *arg)
   tt_int_op(union2_get_un_b(out), ==, 1);
   tt_str_op(union2_get_more(out), ==, "");
   union2_free(out); out = NULL;
+  out = union2_new();
+  union2_set_tag(out, 3);
+  union2_set_un_b(out, 1);
+  union2_set_more(out, "");
+  tt_int_op(len, ==, union2_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
+  union2_free(out); out = NULL;
 
   /* CASE2b */
-  inp = ux(CASE2);
-  len = strlen(CASE2)/2;
+  inp = ux(CASE2b);
+  len = strlen(CASE2b)/2;
   tt_int_op(len, ==, union2_parse(&out, inp, len));
   tt_int_op(out->tag, ==, 3);
-  tt_int_op(out->length, ==, 2);
+  tt_int_op(out->length, ==, 4);
   tt_int_op(out->un_b, ==, 1);
   tt_str_op(out->more, ==, "");
   tt_int_op(union2_get_tag(out), ==, 3);
-  tt_int_op(union2_get_length(out), ==, 2);
+  tt_int_op(union2_get_length(out), ==, 4);
   tt_int_op(union2_get_un_b(out), ==, 1);
   tt_str_op(union2_get_more(out), ==, "");
   union2_free(out); out = NULL;
@@ -275,6 +290,14 @@ test_union2_encdec(void *arg)
   tt_int_op(union2_get_length(out), ==, 16);
   tt_mem_op(union2_getarray_un_c(out), ==, ".pure machinery.", 16);
   tt_int_op(union2_get_un_c(out,1), ==, 'p');
+  union2_free(out); out = NULL;
+  out = union2_new();
+  union2_set_tag(out, 5);
+  memcpy(union2_getarray_un_c(out), "Xpure machinery.", 16);
+  union2_set_un_c(out, 0, '.');
+  union2_set_more(out, "");
+  tt_int_op(len, ==, union2_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
   union2_free(out); out = NULL;
 
   /* CASE4 */
@@ -301,6 +324,17 @@ test_union2_encdec(void *arg)
   tt_mem_op(buf, ==, inp, len+1);
 
   union2_free(out); out = NULL;
+  out = union2_new();
+  union2_set_tag(out, 5);
+  memcpy(union2_getarray_un_c(out), "Ashcans and unob", 16);
+  union2_set_more(out, "w");
+  union2_setlen_un_remainder(out, 17);
+  memcpy(union2_getarray_un_remainder(out), "tainable dollars!", 17);
+  union2_add_un_remainder(out, '?');
+  union2_add_un_remainder(out, '!');
+  tt_int_op(len+1, ==, union2_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len+1);
+  union2_free(out); out = NULL;
 
   /* CASE5 */
   inp = ux(CASE5);
@@ -310,6 +344,12 @@ test_union2_encdec(void *arg)
   tt_int_op(out->length, ==, 0);
   tt_str_op(out->more, ==, "@");
   union2_free(out); out = NULL;
+
+  out = union2_new();
+  union2_set_tag(out, 8);
+  union2_set_more(out, "@");
+  tt_int_op(len, ==, union2_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
 
  end:
   union2_free(out);

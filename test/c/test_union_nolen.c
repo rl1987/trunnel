@@ -134,7 +134,7 @@ test_union1_encdec(void *arg)
 {
   const uint8_t *inp;
   union1_t *out = NULL;
-  //  uint8_t buf[128];
+  uint8_t buf[128];
   size_t len;
   (void)arg;
 
@@ -149,6 +149,12 @@ test_union1_encdec(void *arg)
   tt_int_op(2, ==, union1_get_tag(out));
   tt_int_op(6, ==, union1_get_un_a(out));
   union1_free(out); out = NULL;
+  out = union1_new();
+  union1_set_tag(out, 2);
+  union1_set_un_a(out, 6);
+  tt_int_op(len, ==, union1_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
+  union1_free(out); out = NULL;
 
   /* CASE2 */
   inp = ux(CASE2);
@@ -160,6 +166,13 @@ test_union1_encdec(void *arg)
   tt_int_op(3, ==, union1_get_tag(out));
   tt_int_op(1, ==, union1_get_un_b(out));
   tt_int_op(65536, ==, union1_get_un_b2(out));
+  union1_free(out); out = NULL;
+  out = union1_new();
+  union1_set_tag(out, 3);
+  union1_set_un_b(out, 1);
+  union1_set_un_b2(out, 65536);
+  tt_int_op(len, ==, union1_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
   union1_free(out); out = NULL;
 
   /* CASE3 */
@@ -173,6 +186,13 @@ test_union1_encdec(void *arg)
   tt_int_op(16, ==, union1_getlen_un_c(out));
   tt_int_op('u', ==, union1_get_un_c(out, 2));
   union1_free(out); out = NULL;
+  out = union1_new();
+  union1_set_tag(out, 5);
+  memcpy(union1_getarray_un_c(out), ".pXre machinery.", 16);
+  union1_set_un_c(out, 2, 'u');
+  tt_int_op(len, ==, union1_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
+  union1_free(out); out = NULL;
 
   /* CASE4 */
   inp = ux(CASE4);
@@ -182,6 +202,13 @@ test_union1_encdec(void *arg)
   tt_str_op("Ashcans and unobtainable dollars!", ==, out->un_d);
   tt_int_op(6, ==, union1_get_tag(out));
   tt_str_op("Ashcans and unobtainable dollars!", ==, union1_get_un_d(out));
+  union1_free(out); out = NULL;
+  out = union1_new();
+  union1_set_tag(out, 6);
+  union1_set_un_d(out, "Ashcans and uno");
+  union1_set_un_d(out, "Ashcans and unobtainable dollars!");
+  tt_int_op(len, ==, union1_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
   union1_free(out); out = NULL;
 
   /* CASE5 */
@@ -196,7 +223,18 @@ test_union1_encdec(void *arg)
   tt_int_op(7, ==, union1_get_tag(out));
   tt_ptr_op(out->un_e, ==, union1_get_un_e(out));
   union1_free(out); out = NULL;
-
+  out = union1_new();
+  union1_set_tag(out, 7);
+  union1_set_un_e(out, numbers_new());
+  union1_get_un_e(out)->i8 = 90;
+  union1_set_un_e(out, numbers_new());
+  union1_get_un_e(out)->i8 = 5;
+  union1_get_un_e(out)->i16 = 4;
+  union1_get_un_e(out)->i32 = 3;
+  union1_get_un_e(out)->i64 = 2;
+  tt_int_op(len, ==, union1_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
+  union1_free(out); out = NULL;
  end:
   union1_free(out);
 }
