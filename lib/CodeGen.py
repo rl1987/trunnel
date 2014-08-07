@@ -1161,7 +1161,7 @@ class AccessorFnGenerator(IndentingGenerator):
                    "    return -1;\n"
                    "  }\n"%maxlen)
             self.w_no_indent(endif_overflow_possible)
-        self.w(("  return trunnel_string_setstr0(&inp->%s, val, len, &inp->trunnel_error_code_); \n"
+        self.w(("  return trunnel_string_setstr0(&inp->%s, val, len, &inp->trunnel_error_code_);\n"
                 "}\n")%nm)
 
         self.docstring("""Set the value of the %s field of a %s_t to
