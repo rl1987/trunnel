@@ -530,6 +530,25 @@ test_varlen_allocfail(void *arg)
   set_alloc_fail(1);
   tt_int_op(-1, ==, varlen_add_nums(varlen,NULL));
 
+  /* Fail on getstr */
+  tt_int_op(0, ==, varlen_add_str(varlen, 'x'));
+  tt_int_op(8, ==, varlen->str.allocated_);
+  memset(varlen->str.elts_, 'y', 8);
+  varlen->str.n_ = 8;
+  set_alloc_fail(1);
+  tt_ptr_op(NULL, ==, varlen_getstr_str(varlen));
+  /* Now succeed */
+  tt_str_op("yyyyyyyy", ==, varlen_getstr_str(varlen));
+
+  /* Fail because of int overflow */
+  tt_int_op(-1, ==, varlen_setlen_nums(varlen, SIZE_MAX/sizeof(numbers_t*)+1));
+
+  /* Fail because setstr0 maxes out at SIZE_MAX-1. */
+  tt_int_op(-1, ==, varlen_setstr0_str(varlen, "X", SIZE_MAX));
+
+  /* Fail because string_setlen maxes out at SIZE_MAX-1. */
+  tt_int_op(-1, ==, varlen_setlen_str(varlen, SIZE_MAX));
+
 #else
   (void) inp;
   tt_skip();
