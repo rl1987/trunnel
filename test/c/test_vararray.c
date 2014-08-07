@@ -359,22 +359,26 @@ test_varlen_allocfail(void *arg)
   const uint8_t *inp;
   (void) arg;
 #ifdef ALLOCFAIL
-  set_alloc_fail(1);
-  inp = ux(SOME_LEN1);
-  tt_int_op(-1, ==, varlen_parse(&varlen, inp, strlen(SOME_LEN1)/2));
-  tt_ptr_op(varlen, ==, NULL);
-
-  /* this time, fail when allocating the string. */
-  set_alloc_fail(2);
-  tt_int_op(-1, ==, varlen_parse(&varlen, inp, strlen(SOME_LEN1)/2));
-  tt_ptr_op(varlen, ==, NULL);
-
-  /* this time, fail when allocating the len2 stuff */
-  set_alloc_fail(4);
-  inp = ux(SOME_LEN1_SOME_LEN2);
-  tt_int_op(-1, ==, varlen_parse(&varlen, inp, strlen(SOME_LEN1_SOME_LEN2)/2));
-  tt_ptr_op(varlen, ==, NULL);
-
+  {
+    int fail_at, i;
+    const struct { const char *s; int n_fails; } item[] = {
+      { MINIMAL, 7 },
+      { SOME_LEN1, 7 },
+      { SOME_LEN1_SOME_LEN2, 9 },
+      { SOME_LEN3, 7 },
+      { SOME_LEN4, 7 },
+      { NULL, 0 },
+    };
+    for (i = 0; item[i].s; ++i) {
+      size_t len = strlen(item[i].s)/2;
+      inp = ux(item[i].s);
+      for (fail_at = 1; fail_at <= item[i].n_fails; ++fail_at) {
+        set_alloc_fail(fail_at);
+        tt_int_op(-1, ==, varlen_parse(&varlen, inp, len));
+        tt_ptr_op(varlen, ==, NULL);
+      }
+    }
+  }
 #else
   (void) inp;
   tt_skip();
