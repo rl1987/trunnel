@@ -86,6 +86,14 @@ test_repeats_encdec32(void *arg)
   inp = ux("00" "00009999" "00010000" "FFFFFFFF");
   tt_mem_op(buf, ==, inp, 13);
 
+  tt_uint_op(0x9999,  ==, extends3_getarray_remainder(extends3)[0]);
+  tt_uint_op(0x10000, ==, extends3_getarray_remainder(extends3)[1]);
+
+  extends3_setlen_remainder(extends3, 4);
+  tt_int_op(17, ==, extends3_encode(buf, 17, extends3));
+  inp = ux("00" "00009999" "00010000" "FFFFFFFF" "00000000");
+  tt_mem_op(buf, ==, inp, 17);
+
  end:
   extends3_free(extends3);
 }
@@ -198,6 +206,8 @@ test_repeats_encdec_struct(void *arg)
   n = numbers_new();
   --n->i64;
   extends4_add_remainder(extends4, n);
+  tt_ptr_op(extends4_getarray_remainder(extends4)[0], ==, n2);
+  tt_ptr_op(extends4_getarray_remainder(extends4)[2], ==, n);
 
   tt_int_op(-2, ==, extends4_encode(buf, 45, extends4));
   tt_int_op(46, ==, extends4_encode(buf, 46, extends4));
@@ -208,8 +218,98 @@ test_repeats_encdec_struct(void *arg)
            );
   tt_mem_op(buf, ==, inp, 46);
 
+  extends4_set_remainder(extends4, 0, numbers_new());
+  extends4_setlen_remainder(extends4, 2);
+  tt_int_op(31, ==, extends4_encode(buf, 46, extends4));
+  inp = ux("00"
+           "00" "0000" "00000000" "00000000""00000000"
+           "05" "0004" "00000003" "00000000""00000002"
+           );
+  tt_mem_op(buf, ==, inp, 31);
+
  end:
   extends4_free(extends4);
+}
+
+static void
+test_repeats_allocfail(void *arg)
+{
+  extends3_t *ext3 = NULL;
+  extends4_t *ext4 = NULL;
+  uint8_t buf[128];
+  const uint8_t *inp;
+  int i;
+  (void) arg;
+#ifdef ALLOCFAIL
+  for (i = 1; i <= 4; ++i) {
+    if (i < 4) {
+      set_alloc_fail(i);
+      inp = ux("3000" "00000001" "00000005" "00000003");
+      tt_int_op(-1, ==, extends3_parse(&ext3, inp, 14));
+    }
+    set_alloc_fail(i);
+    inp = ux("3000" "08" "0009" "0000000A" "00000000""0000000B");
+    tt_int_op(-1, ==, extends4_parse(&ext4, inp, 17));
+  }
+
+  inp = ux("3000" "00000001" "00000005" "00000003");
+  tt_int_op(14, ==, extends3_parse(&ext3, inp, 14));
+  inp = ux("3000" "08" "0009" "0000000A" "00000000""0000000B");
+  tt_int_op(17, ==, extends4_parse(&ext4, inp, 17));
+
+  tt_str_op(extends3_get_a(ext3), ==, "0");
+  tt_str_op(extends4_get_a(ext4), ==, "0");
+
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, extends3_set_a(ext3, "X"));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, extends4_set_a(ext4, "X"));
+  tt_ptr_op(extends3_get_a(ext3), ==, NULL);
+  tt_ptr_op(extends4_get_a(ext4), ==, NULL);
+
+  tt_int_op(-1, ==, extends3_encode(buf, sizeof(buf), ext3));
+  tt_int_op(-1, ==, extends4_encode(buf, sizeof(buf), ext4));
+
+  tt_int_op(1, ==, extends3_clear_errors(ext3));
+  tt_int_op(1, ==, extends4_clear_errors(ext4));
+
+  tt_int_op(0, ==, extends3_set_a(ext3, "X"));
+  tt_int_op(0, ==, extends4_set_a(ext4, "X"));
+
+  tt_int_op(14, ==, extends3_encode(buf, sizeof(buf), ext3));
+  tt_int_op(17, ==, extends4_encode(buf, sizeof(buf), ext4));
+
+  /* Failing setlen */
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, extends3_setlen_remainder(ext3, 100));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, extends4_setlen_remainder(ext4, 100));
+  tt_int_op(extends3_getlen_remainder(ext3), ==, 3);
+  tt_int_op(extends4_getlen_remainder(ext4), ==, 1);
+  tt_int_op(1, ==, extends3_clear_errors(ext3));
+  tt_int_op(1, ==, extends4_clear_errors(ext4));
+
+  /* Failing add */
+  extends3_free(ext3);
+  ext3 = extends3_new();
+  extends4_free(ext4);
+  ext4 = extends4_new();
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, extends3_add_remainder(ext3, 1));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, extends4_add_remainder(ext4, NULL));
+  tt_int_op(1, ==, extends3_clear_errors(ext3));
+  tt_int_op(1, ==, extends4_clear_errors(ext4));
+
+#else
+  (void) inp;
+  (void) i;
+  (void) buf;
+  tt_skip();
+#endif
+ end:
+  extends3_free(ext3);
+  extends4_free(ext4);
 }
 
 struct testcase_t repeats_tests[] = {
@@ -217,6 +317,6 @@ struct testcase_t repeats_tests[] = {
   { "encode-decode-u32", test_repeats_encdec32, 0, NULL, NULL },
   { "invalid-struct", test_repeats_invalid_struct, 0, NULL, NULL },
   { "encode-decode-struct", test_repeats_encdec_struct, 0, NULL, NULL },
-
+  { "allocfail", test_repeats_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };
