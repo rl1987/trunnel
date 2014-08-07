@@ -32,10 +32,10 @@ FOR VERSION 1
 
   o Write some tests for the C code
   o Get complete coverage for generator
-  . Get complete coverage on generated code made by complete-coverage
+  o Get complete coverage on generated code made by complete-coverage
     generator
     o Initial phase
-    - Post-accessor phase
+    o Post-accessor phase
 
   . Document it.
     o Explain that I don't care about things that need backtracking

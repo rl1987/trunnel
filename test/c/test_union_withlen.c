@@ -237,6 +237,7 @@ test_union2_encdec(void *arg)
   union2_set_tag(out, 2);
   union2_set_length(out, 1);
   union2_set_un_a(out, 6);
+  union2_set_more(out, "this is not the thing we set. The next one is.");
   union2_set_more(out, "f");
   tt_int_op(len, ==, union2_encode(buf, sizeof(buf), out));
   tt_mem_op(buf, ==, inp, len);
@@ -383,6 +384,7 @@ test_union2_allocfail(void *arg)
 {
   union2_t *union2 = NULL;
   const uint8_t *inp;
+  uint8_t buf[128];
   (void) arg;
 #ifdef ALLOCFAIL
   {
@@ -406,6 +408,38 @@ test_union2_allocfail(void *arg)
       }
     }
   }
+
+  union2 = union2_new();
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, union2_add_un_xs(union2, 9));
+  tt_int_op(1, ==, union2_clear_errors(union2));
+
+  union2->un_xs.n_ = 255;
+  tt_int_op(-1, ==, union2_add_un_xs(union2, 9));
+  tt_int_op(1, ==, union2_clear_errors(union2));
+  union2->un_xs.n_ = 0;
+
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, union2_setlen_un_xs(union2, 9));
+  tt_int_op(-1, ==, union2_encode(buf, sizeof(buf), union2));
+  tt_int_op(1, ==, union2_clear_errors(union2));
+
+  tt_int_op(-1, ==, union2_setlen_un_xs(union2, 1024));
+  tt_int_op(1, ==, union2_clear_errors(union2));
+  tt_int_op(0, ==, union2_getlen_un_xs(union2));
+
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, union2_add_un_remainder(union2, 9));
+  tt_int_op(1, ==, union2_clear_errors(union2));
+
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, union2_setlen_un_remainder(union2, 9));
+  tt_int_op(1, ==, union2_clear_errors(union2));
+
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, union2_set_more(union2, "Can't strdup this."));
+  tt_int_op(1, ==, union2_clear_errors(union2));
+
 
 #else
   (void) inp;
