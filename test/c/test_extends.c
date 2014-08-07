@@ -139,18 +139,47 @@ test_extends_allocfail(void *arg)
   extends_t *extends = NULL;
   extends2_t *extends2 = NULL;
   const uint8_t *inp;
+  int which_fails;
+  uint8_t buf[3];
   (void) arg;
 #ifdef ALLOCFAIL
-  set_alloc_fail(1);
   inp = ux("20212200");
-  tt_int_op(-1, ==, extends_parse(&extends, inp, 4));
-  tt_ptr_op(extends, ==, NULL);
+  for (which_fails = 1; which_fails <= 3; ++which_fails) {
+    set_alloc_fail(which_fails);
+    tt_int_op(-1, ==, extends_parse(&extends, inp, 4));
+    tt_ptr_op(extends, ==, NULL);
+    set_alloc_fail(which_fails);
+    tt_int_op(-1, ==, extends2_parse(&extends2, inp, 4));
+    tt_ptr_op(extends2, ==, NULL);
+  }
+
+  tt_int_op(4, ==, extends_parse(&extends, inp, 4));
+  tt_ptr_op(extends, !=, NULL);
+  tt_int_op(4, ==, extends2_parse(&extends2, inp, 4));
+  tt_ptr_op(extends2, !=, NULL);
+
+  tt_str_op(extends_get_a(extends), ==, " !\"");
+  tt_str_op(extends2_get_a(extends2), ==, " !\"");
+
   set_alloc_fail(1);
-  tt_int_op(-1, ==, extends2_parse(&extends2, inp, 4));
-  tt_ptr_op(extends2, ==, NULL);
+  tt_int_op(-1, ==, extends_set_a(extends, "X"));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, extends2_set_a(extends2, "X"));
+  tt_ptr_op(extends_get_a(extends), ==, NULL);
+  tt_ptr_op(extends2_get_a(extends2), ==, NULL);
+
+  tt_int_op(0, ==, extends_set_a(extends, "X"));
+  tt_int_op(0, ==, extends2_set_a(extends2, "X"));
+  tt_int_op(-1, ==, extends_encode(buf, sizeof(buf), extends));
+  tt_int_op(-1, ==, extends2_encode(buf, sizeof(buf), extends2));
+  tt_int_op(1, ==, extends_clear_errors(extends));
+  tt_int_op(1, ==, extends2_clear_errors(extends2));
+  tt_int_op(2, ==, extends_encode(buf, sizeof(buf), extends));
+  tt_int_op(2, ==, extends2_encode(buf, sizeof(buf), extends2));
 
 #else
   (void) inp;
+  (void) which_fails;
   tt_skip();
 #endif
  end:
@@ -158,11 +187,110 @@ test_extends_allocfail(void *arg)
   extends2_free(extends2);
 }
 
+static void
+test_extends_accessors(void *arg)
+{
+  extends_t *ext = NULL;
+  extends2_t *ext2 = NULL;
+  uint8_t buf[128];
+  (void)arg;
+
+  ext = extends_new();
+  ext2 = extends2_new();
+
+  extends_set_a(ext, "Hello world");
+  extends2_set_a(ext2, "Hello world");
+
+  tt_int_op(12, ==, extends_encode(buf, sizeof(buf), ext));
+  tt_mem_op(buf, ==, "Hello world", 12);
+  tt_int_op(12, ==, extends2_encode(buf, sizeof(buf), ext2));
+  tt_mem_op(buf, ==, "Hello world", 12);
+
+  extends_add_remainder(ext, (uint8_t) 'x');
+  extends_add_remainder(ext, (uint8_t) 'y');
+  extends_add_remainder(ext, (uint8_t) 'z');
+  extends_add_remainder(ext, (uint8_t) 'z');
+  extends_add_remainder(ext, (uint8_t) 'y');
+  tt_mem_op("xyzzy", ==, extends_getarray_remainder(ext), 5);
+
+  extends2_add_remainder(ext2, 'F');
+  extends2_add_remainder(ext2, 'y');
+  extends2_add_remainder(ext2, 'F');
+  extends2_add_remainder(ext2, 'F');
+  extends2_add_remainder(ext2, 'y');
+  tt_mem_op("FyFFy", ==, extends2_getarray_remainder(ext2), 6);
+
+  tt_int_op(17, ==, extends_encode(buf, sizeof(buf), ext));
+  tt_mem_op(buf, ==, "Hello world\0xyzzy", 17);
+  tt_int_op(17, ==, extends2_encode(buf, sizeof(buf), ext2));
+  tt_mem_op(buf, ==, "Hello world\0FyFFy", 17);
+  tt_int_op('y', ==, extends2_get_remainder(ext2, 1));
+  tt_int_op(0, ==, extends2_set_remainder(ext2, 0, 'x'));
+  tt_int_op(0, ==, extends2_set_remainder(ext2, 2, 'z'));
+  tt_int_op(0, ==, extends2_set_remainder(ext2, 3, 'z'));
+  tt_int_op(17, ==, extends2_encode(buf, sizeof(buf), ext2));
+  tt_mem_op(buf, ==, "Hello world\0xyzzy", 17);
+
+  extends_setlen_remainder(ext, 3);
+  extends2_setlen_remainder(ext2, 3);
+
+  tt_int_op(15, ==, extends_encode(buf, sizeof(buf), ext));
+  tt_mem_op(buf, ==, "Hello world\0xyz", 15);
+  tt_int_op(15, ==, extends2_encode(buf, sizeof(buf), ext2));
+  tt_mem_op(buf, ==, "Hello world\0xyz", 15);
+
+  tt_str_op("xyz", ==, extends2_getstr_remainder(ext2));
+  tt_int_op(0, ==, extends2_setstr_remainder(ext2, "Plover"));
+  tt_int_op(18, ==, extends2_encode(buf, sizeof(buf), ext2));
+  tt_mem_op(buf, ==, "Hello world\0Plover", 18);
+
+ end:
+  extends_free(ext);
+  extends2_free(ext2);
+}
+
+static void
+test_extends_accessors_fail(void *arg)
+{
+  extends_t *extends = NULL;
+  extends2_t *extends2 = NULL;
+  (void) arg;
+#ifdef ALLOCFAIL
+  extends = extends_new();
+  extends2 = extends2_new();
+
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, extends_add_remainder(extends, (uint8_t) 'a'));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, extends2_add_remainder(extends2, 'a'));
+  tt_int_op(1, ==, extends_clear_errors(extends));
+  tt_int_op(1, ==, extends2_clear_errors(extends2));
+
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, extends_setlen_remainder(extends, 30));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, extends2_add_remainder(extends2, 30));
+  tt_int_op(1, ==, extends_clear_errors(extends));
+  tt_int_op(1, ==, extends2_clear_errors(extends2));
+
+#else
+  (void) inp;
+  (void) which_fails;
+  tt_skip();
+#endif
+ end:
+  extends_free(extends);
+  extends2_free(extends2);
+}
+
+
 struct testcase_t extends_tests[] = {
   { "varlength", test_extends_varlength, 0, NULL, NULL },
   { "invalid", test_extends_invalid, 0, NULL, NULL },
   { "invalid2", test_extends2_invalid, 0, NULL, NULL },
   { "encode-decode", test_extends_encdec, 0, NULL, NULL },
   { "allocfail", test_extends_allocfail, 0, NULL, NULL },
+  { "accessors", test_extends_accessors, 0, NULL, NULL },
+  { "accessors_allocfail", test_extends_accessors_fail, 0, NULL, NULL },
   END_OF_TESTCASES
 };
