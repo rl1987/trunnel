@@ -351,6 +351,29 @@ test_union2_encdec(void *arg)
   tt_int_op(len, ==, union2_encode(buf, sizeof(buf), out));
   tt_mem_op(buf, ==, inp, len);
 
+  /* CASE 6: */
+  inp = ux(CASE6);
+  len = strlen(CASE6)/2;
+  tt_int_op(len, ==, union2_parse(&out, inp, len));
+  tt_int_op(9, ==, out->tag);
+  tt_int_op(10, ==, union2_get_un_x(out));
+  tt_mem_op("\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A", ==,
+            union2_getarray_un_xs(out), 10);
+  tt_int_op(10, ==, union2_getlen_un_xs(out));
+  tt_int_op(3, ==, union2_get_un_xs(out, 2));
+  union2_free(out); out = NULL;
+  out = union2_new();
+  union2_set_tag(out, 9);
+  union2_set_un_x(out, 10);
+  union2_setlen_un_xs(out, 8);
+  memcpy(union2_getarray_un_xs(out), "\x01\x02\x03\x04\x05\x06\x07\x08", 8);
+  union2_add_un_xs(out, 9);
+  union2_add_un_xs(out, 10);
+  union2_set_more(out, "jkdhfkldshjf");
+  union2_set_more(out, "\x40");
+  tt_int_op(len, ==, union2_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
+
  end:
   union2_free(out);
 }

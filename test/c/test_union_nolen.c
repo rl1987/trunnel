@@ -235,6 +235,29 @@ test_union1_encdec(void *arg)
   tt_int_op(len, ==, union1_encode(buf, sizeof(buf), out));
   tt_mem_op(buf, ==, inp, len);
   union1_free(out); out = NULL;
+
+  /* CASE 7: */
+  inp = ux(CASE7);
+  len = strlen(CASE7)/2;
+  tt_int_op(len, ==, union1_parse(&out, inp, len));
+  tt_int_op(9, ==, out->tag);
+  tt_int_op(10, ==, union1_get_un_x(out));
+  tt_mem_op("\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A", ==,
+            union1_getarray_un_xs(out), 10);
+  tt_int_op(10, ==, union1_getlen_un_xs(out));
+  tt_int_op(3, ==, union1_get_un_xs(out, 2));
+  union1_free(out); out = NULL;
+  out = union1_new();
+  union1_set_tag(out, 9);
+  union1_set_un_x(out, 10);
+  union1_setlen_un_xs(out, 8);
+  memcpy(union1_getarray_un_xs(out), "\x01\x02\x03\x04\x05\x06\x07\x08", 8);
+  union1_add_un_xs(out, 9);
+  union1_add_un_xs(out, 10);
+  puts("X");
+  tt_int_op(len, ==, union1_encode(buf, sizeof(buf), out));
+  tt_mem_op(buf, ==, inp, len);
+
  end:
   union1_free(out);
 }
@@ -244,6 +267,7 @@ test_union1_allocfail(void *arg)
 {
   union1_t *union1 = NULL;
   const uint8_t *inp;
+  uint8_t buf[8];
   (void) arg;
 #ifdef ALLOCFAIL
   {
@@ -268,6 +292,29 @@ test_union1_allocfail(void *arg)
       }
     }
   }
+
+  union1 = union1_new();
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, union1_set_un_d(union1, "Fred"));
+  tt_int_op(1, ==, union1_clear_errors(union1));
+
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, union1_add_un_xs(union1, 9));
+  tt_int_op(1, ==, union1_clear_errors(union1));
+
+  union1->un_xs.n_ = 255;
+  tt_int_op(-1, ==, union1_add_un_xs(union1, 9));
+  tt_int_op(1, ==, union1_clear_errors(union1));
+  union1->un_xs.n_ = 0;
+
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, union1_setlen_un_xs(union1, 9));
+  tt_int_op(-1, ==, union1_encode(buf, sizeof(buf), union1));
+  tt_int_op(1, ==, union1_clear_errors(union1));
+
+  tt_int_op(-1, ==, union1_setlen_un_xs(union1, 1024));
+  tt_int_op(1, ==, union1_clear_errors(union1));
+  tt_int_op(0, ==, union1_getlen_un_xs(union1));
 
 #else
   (void) inp;
