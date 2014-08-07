@@ -115,7 +115,7 @@ trunnel_dynarray_setlen(size_t *allocated_p, size_t *len_p,
     }
   }
   if (*len_p < newlen) {
-    memset( ((char*)ptr) + (eltsize * *len_p), 0, (newlen - *len_p) * *len_p);
+    memset( ((char*)ptr) + (eltsize * *len_p), 0, (newlen - *len_p) * eltsize);
   }
   *len_p = newlen;
   return ptr;
