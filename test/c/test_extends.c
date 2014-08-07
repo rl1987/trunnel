@@ -218,7 +218,7 @@ test_extends_accessors(void *arg)
   extends2_add_remainder(ext2, 'F');
   extends2_add_remainder(ext2, 'F');
   extends2_add_remainder(ext2, 'y');
-  tt_mem_op("FyFFy", ==, extends2_getarray_remainder(ext2), 6);
+  tt_mem_op("FyFFy", ==, extends2_getarray_remainder(ext2), 5);
 
   tt_int_op(17, ==, extends_encode(buf, sizeof(buf), ext));
   tt_mem_op(buf, ==, "Hello world\0xyzzy", 17);

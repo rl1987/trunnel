@@ -254,7 +254,7 @@ static void
 test_dynarray_setlen_ints(void *arg)
 {
   void *newptr;
-  uint8_t error;
+  uint8_t error=0;
   int i;
   TRUNNEL_DYNARRAY_HEAD(,uint32_t) da = TRUNNEL_DYNARRAY_INIT(uint32_t);
   (void)arg;
@@ -365,7 +365,7 @@ static void
 test_dynarray_setlen_ptrs(void *arg)
 {
   void *newptr;
-  uint8_t error;
+  uint8_t error=0;
   int i;
   TRUNNEL_DYNARRAY_HEAD(,struct foo *) da = TRUNNEL_DYNARRAY_INIT(struct foo *);
   (void)arg;

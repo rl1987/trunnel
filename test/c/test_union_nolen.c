@@ -254,7 +254,6 @@ test_union1_encdec(void *arg)
   memcpy(union1_getarray_un_xs(out), "\x01\x02\x03\x04\x05\x06\x07\x08", 8);
   union1_add_un_xs(out, 9);
   union1_add_un_xs(out, 10);
-  puts("X");
   tt_int_op(len, ==, union1_encode(buf, sizeof(buf), out));
   tt_mem_op(buf, ==, inp, len);
 

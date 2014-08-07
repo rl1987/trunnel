@@ -351,6 +351,7 @@ test_union2_encdec(void *arg)
   union2_set_more(out, "@");
   tt_int_op(len, ==, union2_encode(buf, sizeof(buf), out));
   tt_mem_op(buf, ==, inp, len);
+  union2_free(out); out = NULL;
 
   /* CASE 6: */
   inp = ux(CASE6);

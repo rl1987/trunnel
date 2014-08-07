@@ -250,6 +250,7 @@ test_repeats_allocfail(void *arg)
     set_alloc_fail(i);
     inp = ux("3000" "08" "0009" "0000000A" "00000000""0000000B");
     tt_int_op(-1, ==, extends4_parse(&ext4, inp, 17));
+    tt_ptr_op(NULL, ==, ext4);
   }
 
   inp = ux("3000" "00000001" "00000005" "00000003");
