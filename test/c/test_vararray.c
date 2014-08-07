@@ -121,6 +121,32 @@ test_varlen_invalid(void *arg)
   varlen_set_nums(varlen, 0, numbers_new());
   tt_int_op(-1, !=, varlen_encode(buf, sizeof(buf), varlen));
 
+  /* Mismatched len1. */
+  tt_int_op(0, ==, varlen_add_a8(varlen, 5));
+  tt_int_op(0, ==, varlen_add_str(varlen, 'x'));
+  tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
+  varlen->len1++;
+  tt_int_op(-1, !=, varlen_encode(buf, sizeof(buf), varlen));
+
+  /* Mismatched len2. */
+  tt_int_op(0, ==, varlen_add_a16(varlen, 5));
+  tt_int_op(0, ==, varlen_add_nums(varlen, numbers_new()));
+  tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
+  varlen->len2++;
+  tt_int_op(-1, !=, varlen_encode(buf, sizeof(buf), varlen));
+
+  /* Mismatched len3. */
+  tt_int_op(0, ==, varlen_add_a32(varlen, 5));
+  tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
+  varlen->len3++;
+  tt_int_op(-1, !=, varlen_encode(buf, sizeof(buf), varlen));
+
+  /* Mismatched len4. */
+  tt_int_op(0, ==, varlen_add_a64(varlen, 5));
+  tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), varlen));
+  varlen->len4++;
+  tt_int_op(-1, !=, varlen_encode(buf, sizeof(buf), varlen));
+
  end:
   varlen_free(varlen);
 }
