@@ -1066,7 +1066,7 @@ class AccessorFnGenerator(IndentingGenerator):
             self.w("  if (inp->%s.n_ == (%s))\n"
                    "    goto trunnel_alloc_failed;\n"%(sva.c_name,maxlen))
 
-        self.w("  TRUNNEL_DYNARRAY_ADD(%s, &inp->%s, elt);\n"
+        self.w("  TRUNNEL_DYNARRAY_ADD(%s, &inp->%s, elt, {});\n"
                "  return 0;\n"
                " trunnel_alloc_failed:\n"
                "  TRUNNEL_SET_ERROR_CODE(inp);\n"
@@ -1927,7 +1927,7 @@ class ParseFnGenerator(IndentingGenerator):
             else:
                 tp = "uint8_t"
                 self.needLabels.add('trunnel_alloc_failed')
-                self.w("TRUNNEL_DYNARRAY_EXPAND(%s, &obj->%s, %s);\n"
+                self.w("TRUNNEL_DYNARRAY_EXPAND(%s, &obj->%s, %s, {});\n"
                        %(tp, sva.c_name, w))
                 self.w("obj->%s.n_ = %s;"%(sva.c_name,w))
 
@@ -1945,7 +1945,7 @@ class ParseFnGenerator(IndentingGenerator):
                 elttype = "uint%d_t"%sva.basetype.width
 
             if sva.widthfield is not None:
-                self.w('TRUNNEL_DYNARRAY_EXPAND(%s, &obj->%s, obj->%s);\n'
+                self.w('TRUNNEL_DYNARRAY_EXPAND(%s, &obj->%s, obj->%s, {});\n'
                        %(elttype, sva.c_name, sva.widthfieldmember.c_name))
 
             self.w('{\n'
@@ -1969,10 +1969,12 @@ class ParseFnGenerator(IndentingGenerator):
             self.pushIndent(4)
             if type(sva.basetype) == str:
                 self.w(self.parseStructInto(sva.basetype, "elt"))
+                on_fail = "{%s_free(elt);}" % sva.basetype
             else:
                 self.parseInteger(sva.basetype.width, "elt")
+                on_fail = "{}"
 
-            self.w("TRUNNEL_DYNARRAY_ADD(%s, &obj->%s, elt);"%(elttype,sva.c_name))
+            self.w("TRUNNEL_DYNARRAY_ADD(%s, &obj->%s, elt, %s);"%(elttype,sva.c_name, on_fail))
 
             self.popIndent(2)
             self.w('}\n')

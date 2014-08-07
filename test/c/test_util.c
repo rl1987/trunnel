@@ -47,20 +47,20 @@ test_dynarray_expand(void *arg)
   (void) arg;
 
   /* Expand from nothing gets 8, unless it's more. */
-  TRUNNEL_DYNARRAY_EXPAND(int, &ints, 3);
+  TRUNNEL_DYNARRAY_EXPAND(int, &ints, 3, {});
   tt_int_op(ints.allocated_, ==, 8);
 
   /* Expanding further should work okay. */
-  TRUNNEL_DYNARRAY_EXPAND(int, &ints, 1);
+  TRUNNEL_DYNARRAY_EXPAND(int, &ints, 1, {});
   tt_int_op(ints.allocated_, ==, 16);
 
   /* Expanding by 0 expands too */
-  TRUNNEL_DYNARRAY_EXPAND(int, &ints, 0);
+  TRUNNEL_DYNARRAY_EXPAND(int, &ints, 0, {});
   tt_int_op(ints.allocated_, ==, 32);
 
   ints.elts_[31] = 9999;
 
-  TRUNNEL_DYNARRAY_EXPAND(int, &ints, 100);
+  TRUNNEL_DYNARRAY_EXPAND(int, &ints, 100, {});
   tt_int_op(ints.allocated_, ==, 132);
 
   tt_int_op(ints.elts_[31], ==, 9999);
@@ -78,20 +78,22 @@ test_dynarray_expand_fail1(void *arg)
 {
   TRUNNEL_DYNARRAY_HEAD(, int) ints = TRUNNEL_DYNARRAY_INIT(int);
   int should_fail_now = 0;
+  int okay = 0;
   (void) arg;
 
-  TRUNNEL_DYNARRAY_EXPAND(int, &ints, 100);
+  TRUNNEL_DYNARRAY_EXPAND(int, &ints, 100, {});
   tt_int_op(ints.allocated_, ==, 100);
 
   /* Overflow the size. */
   should_fail_now = 1;
-  TRUNNEL_DYNARRAY_EXPAND(int, &ints, SIZE_MAX - 50);
+  TRUNNEL_DYNARRAY_EXPAND(int, &ints, SIZE_MAX - 50, {okay = 1;});
   tt_fail();
   assert(0);
  trunnel_alloc_failed:
   tt_assert(should_fail_now);
   tt_int_op(ints.allocated_, ==, 100);
   ints.elts_[99] = 12345;
+  tt_assert(okay);
 end:
   TRUNNEL_DYNARRAY_CLEAR(&ints);
 }
@@ -101,20 +103,22 @@ test_dynarray_expand_fail2(void *arg)
 {
   TRUNNEL_DYNARRAY_HEAD(, int) ints = TRUNNEL_DYNARRAY_INIT(int);
   int should_fail_now = 0;
+  int okay = 0;
   (void) arg;
 
-  TRUNNEL_DYNARRAY_EXPAND(int, &ints, 100);
+  TRUNNEL_DYNARRAY_EXPAND(int, &ints, 100, {});
   tt_int_op(ints.allocated_, ==, 100);
 
   /* Make reallocarray fail */
   should_fail_now = 1;
-  TRUNNEL_DYNARRAY_EXPAND(int, &ints, SIZE_MAX/sizeof(int));
+  TRUNNEL_DYNARRAY_EXPAND(int, &ints, SIZE_MAX/sizeof(int), {okay=1;});
   tt_fail();
   assert(0);
  trunnel_alloc_failed:
   tt_assert(should_fail_now);
   tt_int_op(ints.allocated_, ==, 100);
   ints.elts_[99] = 12345;
+  tt_assert(okay);
 end:
   TRUNNEL_DYNARRAY_CLEAR(&ints);
 }

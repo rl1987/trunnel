@@ -28,19 +28,21 @@
     (da)->elts_[(n)] = (v);                                    \
   } while (0)
 
-#define TRUNNEL_DYNARRAY_EXPAND(elttype, da, howmanymore) do {       \
+#define TRUNNEL_DYNARRAY_EXPAND(elttype, da, howmanymore, on_fail) do { \
     elttype *newarray;                                               \
     newarray = trunnel_dynarray_expand(&(da)->allocated_,            \
                                        (da)->elts_, (howmanymore),   \
                                        sizeof(elttype));             \
-    if (newarray == NULL)                                            \
+    if (newarray == NULL) {                                          \
+      on_fail;                                                       \
       goto trunnel_alloc_failed;                                     \
+    }                                                                \
     (da)->elts_ = newarray;                                          \
   } while (0)
 
-#define TRUNNEL_DYNARRAY_ADD(elttype, da, v) do {          \
+#define TRUNNEL_DYNARRAY_ADD(elttype, da, v, on_fail) do { \
       if ((da)->n_ == (da)->allocated_) {                  \
-        TRUNNEL_DYNARRAY_EXPAND(elttype, da, 1);           \
+        TRUNNEL_DYNARRAY_EXPAND(elttype, da, 1, on_fail);  \
       }                                                    \
       (da)->elts_[(da)->n_++] = (v);                       \
     } while (0)

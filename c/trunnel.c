@@ -46,7 +46,7 @@ trunnel_string_getstr(trunnel_string_t *str)
 {
   trunnel_assert(str->allocated_ >= str->n_);
   if (str->allocated_ == str->n_) {
-    TRUNNEL_DYNARRAY_EXPAND(char, str, 1);
+    TRUNNEL_DYNARRAY_EXPAND(char, str, 1, {});
   }
   str->elts_[str->n_] = 0;
   return str->elts_;
@@ -61,7 +61,7 @@ trunnel_string_setstr0(trunnel_string_t *str, const char *val, size_t len,
   if (len == SIZE_MAX)
     goto trunnel_alloc_failed;
   if (str->allocated_ <= len) {
-    TRUNNEL_DYNARRAY_EXPAND(char, str, len + 1 - str->allocated_);
+    TRUNNEL_DYNARRAY_EXPAND(char, str, len + 1 - str->allocated_, {});
   }
   memcpy(str->elts_, val, len);
   str->n_ = len;
@@ -79,7 +79,7 @@ trunnel_string_setlen(trunnel_string_t *str, size_t newlen,
   if (newlen == SIZE_MAX)
     goto trunnel_alloc_failed;
   if (str->allocated_ < newlen + 1) {
-    TRUNNEL_DYNARRAY_EXPAND(char, str, newlen + 1 - str->allocated_);
+    TRUNNEL_DYNARRAY_EXPAND(char, str, newlen + 1 - str->allocated_, {});
   }
   if (str->n_ < newlen) {
     memset(& (str->elts_[str->n_]), 0, (newlen - str->n_));
