@@ -224,6 +224,10 @@ test_varlen_encdec(void *arg)
   tt_int_op(6, ==, varlen_get_nums(out, 1)->i16);
   tt_int_op(7, ==, varlen_get_nums(out, 1)->i32);
   tt_int_op(8, ==, varlen_get_nums(out, 1)->i64);
+  tt_assert(varlen_get_nums(out, 1) == varlen_getarray_nums(out)[1]);
+  tt_assert(varlen_get_str(out, 1) == varlen_getarray_str(out)[1]);
+  tt_assert(varlen_get_a8(out, 1) == varlen_getarray_a8(out)[1]);
+  tt_assert(varlen_get_a16(out, 1) == varlen_getarray_a16(out)[1]);
   varlen_free(out); out = NULL;
 
   /* SOME_LEN3. */
@@ -244,6 +248,7 @@ test_varlen_encdec(void *arg)
   tt_int_op(0x0842, ==, varlen_get_a32(out, 1));
   tt_int_op(0x867, ==, varlen_get_a32(out, 2));
   tt_int_op(0x5309, ==, varlen_get_a32(out, 3));
+  tt_assert(varlen_get_a32(out, 1) == varlen_getarray_a32(out)[1]);
   varlen_free(out); out = NULL;
 
   /* SOME_LEN4. */
@@ -266,6 +271,7 @@ test_varlen_encdec(void *arg)
   u64 = varlen_get_a64(out, 1);
   tt_int_op(0x867, ==, (uint32_t)(u64 >> 32));
   tt_int_op(0x5309, ==, (uint32_t)u64);
+  tt_assert(varlen_get_a64(out, 1) == varlen_getarray_a64(out)[1]);
   varlen_free(out); out = NULL;
 
   /* Now make a purely synthetic one, mainly to execute *_set() */
@@ -299,11 +305,9 @@ test_varlen_encdec(void *arg)
 }
 
 static void
-test_varlen_accessors(void *arg)
+test_varlen_accessors_str(void *arg)
 {
-  varlen_t *var = NULL, *var2 = NULL;
-  uint8_t buf[128] = { 0 };
-  const uint8_t *inp = NULL;
+  varlen_t *var = NULL;
   char *s = NULL;
   int i;
   (void)arg;
@@ -379,13 +383,38 @@ test_varlen_accessors(void *arg)
   tt_str_op("abcd", ==, varlen_getstr_str(var));
   tt_int_op(1, ==, varlen_clear_errors(var));
 
-  (void)buf; (void)inp;
-
  end:
   if (s)
     free(s);
   varlen_free(var);
-  varlen_free(var2);
+}
+
+static void
+test_varlen_accessors_oob(void *arg)
+{
+  varlen_t *var = NULL;
+  uint8_t buf[20];
+  const uint8_t *inp;
+  (void) arg;
+
+  var = varlen_new();
+  tt_int_op(-1, ==, varlen_setlen_a8(var, 256));
+  tt_int_op(1, ==, varlen_clear_errors(var));
+  tt_int_op(-1, ==, varlen_setlen_a16(var, 1<<16));
+  tt_int_op(1, ==, varlen_clear_errors(var));
+#if UINT32_MAX < SIZE_MAX
+  tt_int_op(-1, ==, varlen_setlen_a32(var, ((uint64_t)1)<<32));
+  tt_int_op(1, ==, varlen_clear_errors(var));
+#endif
+  tt_int_op(-1, ==, varlen_setlen_nums(var, 1<<16));
+  tt_int_op(-1, ==, varlen_encode(buf, sizeof(buf), var));
+  tt_int_op(1, ==, varlen_clear_errors(var));
+  tt_int_op(strlen(MINIMAL)/2, ==, varlen_encode(buf, sizeof(buf), var));
+  inp = ux(MINIMAL);
+  tt_mem_op(buf, ==, inp, strlen(MINIMAL)/2)
+
+ end:
+  varlen_free(var);
 }
 
 static void
@@ -455,7 +484,8 @@ struct testcase_t vararray_tests[] = {
   { "truncated", test_varlen_truncated, 0, NULL, NULL },
   { "invalid", test_varlen_invalid, 0, NULL, NULL },
   { "encode-decode", test_varlen_encdec, 0, NULL, NULL },
-  { "accessors", test_varlen_accessors, 0, NULL, NULL },
+  { "accessors-str", test_varlen_accessors_str, 0, NULL, NULL },
+  { "accessors-oob", test_varlen_accessors_oob, 0, NULL, NULL },
   { "allocfail", test_varlen_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };
