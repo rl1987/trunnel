@@ -201,10 +201,49 @@ test_union1_encdec(void *arg)
   union1_free(out);
 }
 
+static void
+test_union1_allocfail(void *arg)
+{
+  union1_t *union1 = NULL;
+  const uint8_t *inp;
+  (void) arg;
+#ifdef ALLOCFAIL
+  {
+    int fail_at, i;
+    const struct { const char *s; int n_fails; } item[] = {
+      { CASE1, 1 },
+      { CASE2, 1 },
+      { CASE3, 1 },
+      { CASE4, 2 },
+      { CASE5, 2 },
+      { CASE6, 1 },
+      { CASE7, 2 },
+      { NULL, 0 },
+    };
+    for (i = 0; item[i].s; ++i) {
+      size_t len = strlen(item[i].s)/2;
+      inp = ux(item[i].s);
+      for (fail_at = 1; fail_at <= item[i].n_fails; ++fail_at) {
+        set_alloc_fail(fail_at);
+        tt_int_op(-1, ==, union1_parse(&union1, inp, len));
+        tt_ptr_op(union1, ==, NULL);
+      }
+    }
+  }
+
+#else
+  (void) inp;
+  tt_skip();
+#endif
+ end:
+  union1_free(union1);
+}
+
 
 struct testcase_t union_nolen_tests[] = {
   { "truncated", test_union1_truncated, 0, NULL, NULL },
   { "invalid", test_union1_invalid, 0, NULL, NULL },
   { "encode-decode", test_union1_encdec, 0, NULL, NULL },
+  { "allocfail", test_union1_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };

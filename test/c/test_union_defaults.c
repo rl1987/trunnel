@@ -228,10 +228,53 @@ test_union34_encdec(void *arg)
   union4_free(union4);
 }
 
+static void
+test_union34_allocfail(void *arg)
+{
+  union3_t *union3 = NULL;
+  union4_t *union4 = NULL;
+  const uint8_t *inp;
+  (void) arg;
+#ifdef ALLOCFAIL
+  {
+    int fail_at, i;
+    const struct { const char *s; int n_fails_3; int n_fails_4; } item[] = {
+      { CASE1, 1, 1 },
+      { CASE2, 2, 1 },
+      { CASE3, 2, 1 },
+      { NULL, 0, 0 },
+    };
+    for (i = 0; item[i].s; ++i) {
+      size_t len = strlen(item[i].s)/2;
+      inp = ux(item[i].s);
+      for (fail_at = 1; fail_at <= item[i].n_fails_3; ++fail_at) {
+        set_alloc_fail(fail_at);
+        tt_int_op(-1, ==, union3_parse(&union3, inp, len));
+        tt_ptr_op(union3, ==, NULL);
+      }
+      for (fail_at = 1; fail_at <= item[i].n_fails_4; ++fail_at) {
+        set_alloc_fail(fail_at);
+        tt_int_op(-1, ==, union4_parse(&union4, inp, len));
+        tt_ptr_op(union4, ==, NULL);
+      }
+    }
+  }
+
+#else
+  (void) inp;
+  tt_skip();
+#endif
+ end:
+  union3_free(union3);
+  union4_free(union4);
+}
+
+
 struct testcase_t union_defaults_tests[] = {
   { "truncated", test_unions_truncated, 0, NULL, NULL },
   { "invalid-default", test_union3_invalid, 0, NULL, NULL },
   { "invalid-ignore", test_union4_invalid, 0, NULL, NULL },
   { "encode-decode", test_union34_encdec, 0, NULL, NULL },
+  { "allocfail", test_union34_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };

@@ -315,9 +315,47 @@ test_union2_encdec(void *arg)
   union2_free(out);
 }
 
+static void
+test_union2_allocfail(void *arg)
+{
+  union2_t *union2 = NULL;
+  const uint8_t *inp;
+  (void) arg;
+#ifdef ALLOCFAIL
+  {
+    int fail_at, i;
+    const struct { const char *s; int n_fails; } item[] = {
+      { CASE1, 2 },
+      { CASE2, 2 },
+      { CASE3, 3 },
+      { CASE4, 3 },
+      { CASE5, 2 },
+      { CASE6, 3 },
+      { NULL, 0 },
+    };
+    for (i = 0; item[i].s; ++i) {
+      size_t len = strlen(item[i].s)/2;
+      inp = ux(item[i].s);
+      for (fail_at = 1; fail_at <= item[i].n_fails; ++fail_at) {
+        set_alloc_fail(fail_at);
+        tt_int_op(-1, ==, union2_parse(&union2, inp, len));
+        tt_ptr_op(union2, ==, NULL);
+      }
+    }
+  }
+
+#else
+  (void) inp;
+  tt_skip();
+#endif
+ end:
+  union2_free(union2);
+}
+
 struct testcase_t union_withlen_tests[] = {
   { "truncated", test_union2_truncated, 0, NULL, NULL },
   { "invalid", test_union2_invalid, 0, NULL, NULL },
   { "encode-decode", test_union2_encdec, 0, NULL, NULL },
+  { "allocfail", test_union2_allocfail, 0, NULL, NULL },
   END_OF_TESTCASES
 };
