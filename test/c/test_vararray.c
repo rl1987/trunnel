@@ -351,12 +351,16 @@ test_varlen_accessors(void *arg)
             varlen_getstr_str(var));
   tt_int_op(1, ==, varlen_clear_errors(var));
 
+  tt_int_op(0, ==, varlen_setlen_str(var, 20));
+  tt_int_op(20, ==, varlen_getlen_str(var));
+
   /* Setting the string to a 256-character thing should fail. */
   s = calloc(1,256);
   tt_int_op(-1, ==, varlen_setstr0_str(var, s, 256));
   tt_int_op(1, ==, varlen_clear_errors(var));
   tt_int_op(0, ==, varlen_setstr0_str(var, s, 255));
   tt_int_op(0, ==, varlen_clear_errors(var));
+
 
   /* Be tricky: getstr when there is no room for a NUL. */
   /* (we need to set up the array by hand to make sure this happens) */
@@ -367,7 +371,13 @@ test_varlen_accessors(void *arg)
   memcpy(var->str.elts_, "abcdefgh", 8);
   tt_str_op("abcdefgh", ==, varlen_getstr_str(var));
 
+  /* Some setlen_str tests */
+  tt_int_op(0, ==, varlen_setlen_str(var, 4));
+  tt_str_op("abcd", ==, varlen_getstr_str(var));
 
+  tt_int_op(-1, ==, varlen_setlen_str(var, 256));
+  tt_str_op("abcd", ==, varlen_getstr_str(var));
+  tt_int_op(1, ==, varlen_clear_errors(var));
 
   (void)buf; (void)inp;
 
@@ -405,6 +415,34 @@ test_varlen_allocfail(void *arg)
       }
     }
   }
+
+  varlen = varlen_new();
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_setlen_str(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_setlen_a8(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_setlen_a16(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_setlen_a32(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_setlen_a64(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_setlen_nums(varlen,2));
+
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_add_str(varlen,'x'));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_add_a8(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_add_a16(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_add_a32(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_add_a64(varlen,2));
+  set_alloc_fail(1);
+  tt_int_op(-1, ==, varlen_add_nums(varlen,NULL));
+
 #else
   (void) inp;
   tt_skip();
