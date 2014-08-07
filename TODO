@@ -25,20 +25,23 @@ FOR VERSION 1
     o Allow more things in unions.
 
   . Access functions
-    - for unions?
-    o for array members?
+    o For everything.
+    - We need to decide on union semantics RSN though.
 
   o Set length fields for length-having unions automatically.
 
   o Write some tests for the C code
   o Get complete coverage for generator
-  o Get complete coverage on generated code made by complete-coverage
+  . Get complete coverage on generated code made by complete-coverage
     generator
+    o Initial phase
+    - Post-accessor phase
 
   . Document it.
     o Explain that I don't care about things that need backtracking
     o Documentation in code
     - Document format.
+    - Document all accessors in code; fix DOCDOC comments.
 
   o Allow "u8 until_end[];" in eos position.
 
@@ -58,6 +61,8 @@ FOR VERSION 1.1 OR LATER
     - Allow union case statements to contain ranges that involve named
       constants.
     - Extend checker to simplify?  Eg ranges.  C field names.
+    - Restrict vararrays in unions to only use fields declared outside
+      or in same case.
     X verify that fixed arrays don't overflow size_t
 
   - Features
@@ -65,6 +70,8 @@ FOR VERSION 1.1 OR LATER
     - Add extra structure data fields and corresponding "clear" functions to
       output.
     - Write a thing to output nail grammars?
+    - Propagate union tag restrictions to be constraints on tag field.
+    - Use maxima for length fields to determine real max for vararray len
 
   o Generality
     o Allow length fields inside unions.

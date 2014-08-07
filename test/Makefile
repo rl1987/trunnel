@@ -23,7 +23,8 @@ TEST_OBJS = \
     c/test_union_nolen.o \
     c/test_union_withlen.o \
     c/test_union_defaults.o \
-    c/test_remainder_repeats.o
+    c/test_remainder_repeats.o \
+    c/test_util.o
 
 OBJS=tinytest/tinytest.o \
     valid/basic.o \
@@ -39,7 +40,7 @@ clean:
 	rm -f $(OBJS) ctest
 
 reset-gcov:
-	rm -f */*.gcda
+	rm -f */*.gcda ../*/*.gcda
 
 distclean: clean
 	rm -f valid/basic.[ch]
