@@ -124,6 +124,27 @@ end:
 }
 
 static void
+test_dynarray_expand_fail3(void *arg)
+{
+  TRUNNEL_DYNARRAY_HEAD(, int) ints = TRUNNEL_DYNARRAY_INIT(int);
+  size_t sz = SIZE_MAX / 2 + 200;
+  int okay = 0;
+  (void) arg;
+
+  /* Make reallocarray fail because of allocation doubling failing. */
+  ints.allocated_ = sz;
+  TRUNNEL_DYNARRAY_EXPAND(int, &ints, 0, {okay=1;});
+  tt_fail();
+  assert(0);
+ trunnel_alloc_failed:
+  tt_int_op(ints.allocated_, ==, sz);
+  tt_assert(okay);
+end:
+  /* Don't clear, since we never really allocated. */
+  ;
+}
+
+static void
 test_setstr0(void *arg)
 {
   trunnel_string_t s = TRUNNEL_DYNARRAY_INIT(char);
@@ -487,6 +508,7 @@ struct testcase_t util_tests[] = {
   { "dynarray_expand", test_dynarray_expand, 0, NULL, NULL },
   { "dynarray_expand_fail1", test_dynarray_expand_fail1, 0, NULL, NULL },
   { "dynarray_expand_fail2", test_dynarray_expand_fail2, 0, NULL, NULL },
+  { "dynarray_expand_fail3", test_dynarray_expand_fail3, 0, NULL, NULL },
   { "dynarray_setlen_ints", test_dynarray_setlen_ints, 0, NULL, NULL },
   { "dynarray_setlen_ptrs", test_dynarray_setlen_ptrs, 0, NULL, NULL },
   END_OF_TESTCASES
