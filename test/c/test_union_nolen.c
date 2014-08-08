@@ -317,6 +317,7 @@ test_union1_allocfail(void *arg)
 
 #else
   (void) inp;
+  (void) buf;
   tt_skip();
 #endif
  end:

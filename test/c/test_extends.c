@@ -180,6 +180,7 @@ test_extends_allocfail(void *arg)
 #else
   (void) inp;
   (void) which_fails;
+  (void)buf;
   tt_skip();
 #endif
  end:
@@ -274,8 +275,6 @@ test_extends_accessors_fail(void *arg)
   tt_int_op(1, ==, extends2_clear_errors(extends2));
 
 #else
-  (void) inp;
-  (void) which_fails;
   tt_skip();
 #endif
  end:

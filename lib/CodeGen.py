@@ -2138,7 +2138,7 @@ trunnel_strdup(const char *s)
 #else
 #define trunnel_malloc(x) (malloc((x)))
 #define trunnel_calloc(a,b) (calloc(a,b))
-#define trunnel_strdup(s) (strdup((x)))
+#define trunnel_strdup(s) (strdup((s)))
 #endif
 
 #define trunnel_free_(x) (free(x))

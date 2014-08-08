@@ -444,6 +444,7 @@ test_union2_allocfail(void *arg)
 
 #else
   (void) inp;
+  (void) buf;
   tt_skip();
 #endif
  end:
