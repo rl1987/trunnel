@@ -14,14 +14,16 @@ CC=gcc
 CFLAGS="-g -O2 -D_FORTIFY_SOURCE=2 -fstack-protector-all -Wstack-protector -fwrapv --param ssp-buffer-size=1 -fPIE -fasynchronous-unwind-tables -Wall -fno-strict-aliasing -Wno-deprecated-declarations -W -Wfloat-equal -Wundef -Wpointer-arith -Wstrict-prototypes -Wmissing-prototypes -Wwrite-strings -Wredundant-decls -Wchar-subscripts -Wcomment -Wformat=2 -Wwrite-strings -Wmissing-declarations -Wredundant-decls -Wnested-externs -Wbad-function-cast -Wswitch-enum -Werror -Winit-self -Wmissing-field-initializers -Wdeclaration-after-statement -Wold-style-definition -Waddress -Wmissing-noreturn -Wstrict-overflow=1 -I `dirname $0`/../include"
 X=" -Wshorten-64-to-32  -Qunused-arguments"
 
-if python -m coverage >/dev/null ; then
-  COVERAGE="python -m coverage"
-  RUN0="python -m coverage run"
-  RUN="python -m coverage run -a"
+PYTHON=python
+
+if $PYTHON -m coverage >/dev/null ; then
+  COVERAGE="$PYTHON -m coverage"
+  RUN0="$PYTHON -m coverage run"
+  RUN="$PYTHON -m coverage run -a"
 else
   COVERAGE="true"
-  RUN0="python"
-  RUN="python"
+  RUN0="$PYTHON"
+  RUN="$PYTHON"
 fi
 
 
