@@ -53,8 +53,7 @@
 #define TRUNNEL_DYNARRAY_LEN(da) ((da)->n_)
 
 #define TRUNNEL_DYNARRAY_CLEAR(da) do {           \
-    if ((da)->elts_)                              \
-      trunnel_free((da)->elts_);                  \
+    trunnel_free((da)->elts_);                    \
     (da)->elts_ = NULL;                           \
     (da)->n_ = (da)->allocated_ = 0;              \
   } while (0)
