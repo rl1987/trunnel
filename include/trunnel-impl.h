@@ -18,13 +18,16 @@
     (da)->elts_ = NULL;                          \
   } while (0)
 
-#define TRUNNEL_DYNARRAY_GET(da, n)                                     \
+#ifdef NDEBUG
+#define TRUNNEL_DYNARRAY_GET(da, n)             \
+  ((da)->elts_[(n)])
+#else
+#define TRUNNEL_DYNARRAY_GET(da, n)             \
   (((n) >= (da)->n_ ? (trunnel_abort(),0) : 0), (da)->elts_[(n)])
+#endif
 
-#define TRUNNEL_DYNARRAY_SET(da, n, v) do {                   \
-    if ((n) >= (da)->n_) {                                    \
-      trunnel_abort();                                        \
-    }                                                          \
+#define TRUNNEL_DYNARRAY_SET(da, n, v) do {                    \
+    trunnel_assert((n) < (da)->n_);                            \
     (da)->elts_[(n)] = (v);                                    \
   } while (0)
 
