@@ -1,82 +1,76 @@
+===== Here is our actual grammar, extracted from Grammar.py
 
-=================== HERE IS OUR ACTUAL GRAMMAR, extracted from Grammar.py
+ Declarations ::= Declaration 
+ Declarations ::= Declarations Declaration 
+ File ::= Declarations 
 
-         File ::= Declaration
-         File ::= File Declaration
+ Declaration ::= OptAnnotation ConstDecl 
+ Declaration ::= OptAnnotation StructDecl 
 
-         Declaration ::= OptAnnotation ConstDecl
-         Declaration ::= OptAnnotation StructDecl
+ ConstDecl ::= const CONST_ID = INT ; 
+ StructDecl ::= struct ID { StructMembers StructEnding } 
 
-         ConstDecl ::= const CONST_ID = INT ;
+ StructMember ::= SMArray 
+ StructMember ::= SMInteger 
+ StructMember ::= SMString 
+ StructMember ::= SMStruct 
+ StructMember ::= SMUnion 
 
-         StructDecl ::= struct ID { StructMembers StructEnding }
-         StructEnding ::=
-         StructEnding ::= eos ;
-         StructEnding ::= SMRemainder ;
+ SMArray ::= SMFixedArray 
+ SMArray ::= SMVarArray 
+ SMInteger ::= IntType ID OptIntConstraint 
+ SMString ::= nulterm ID 
+ SMStruct ::= StructDecl ID 
+ SMStruct ::= struct ID ID 
+ SMUnion ::= union ID [ ID ] OptUnionLength { UnionMembers } 
 
-         SMRemainder ::= OptAnnotation u8 ID [ ]
-
-         StructMembers ::= OptAnnotation StructMember ;
-         StructMembers ::= StructMembers OptAnnotation StructMember ;
-
-         Integer ::= INT
-         Integer ::= CONST_ID
-
-         OptAnnotation ::=
-         OptAnnotation ::= ANNOTATION
-
-         StructMember ::= SMInteger
-         StructMember ::= SMStruct
-         StructMember ::= SMString
-         StructMember ::= SMArray
-         StructMember ::= SMUnion
-
-         SMInteger ::= IntType ID OptIntConstraint
-         IntType ::= u8
-         IntType ::= u16
-         IntType ::= u32
-         IntType ::= u64
-
-         OptIntConstraint ::=
-         OptIntConstraint ::= IN [ IntList ]
-
-         IntList ::= IntListMember
-         IntList ::= IntList , IntListMember
-         IntListMember ::= Integer
-         IntListMember ::= Integer .. Integer
-
-         SMStruct ::= struct ID ID
-         SMString ::= nulterm ID
-         SMArray ::= SMFixedArray
-         SMArray ::= SMVarArray
-         ArrayBase ::= IntType
-         ArrayBase ::= struct ID
-         ArrayBase ::= char
-         SMVarArray ::= ArrayBase ID [ ID ]
-         SMFixedArray ::= ArrayBase ID [ Integer ]
-
-         SMUnion ::= union ID [ ID ] OptUnionLength { UnionMembers }
-         OptUnionLength ::=
-         OptUnionLength ::= WITH LENGTH ID
-
-         UnionMembers ::= UnionMember
-         UnionMembers ::= UnionMembers UnionMember
-         UnionMember ::= UnionCase : UnionFields OptExtentSpec
-         UnionCase ::= IntList
-         UnionCase ::= default
-         OptExtentSpec ::=
-         OptExtentSpec ::= ... ;
-         OptExtentSpec ::= SMRemainder ;
-         UnionFields ::= ;
-         UnionFields ::= UnionField ;
-         UnionFields ::= UnionFields UnionField ;
-         UnionFields ::= fail ;
-         UnionFields ::= ignore ;
-         UnionFields ::= SMRemainder ;
-         UnionField ::= SMInteger
-         UnionField ::= SMFixedArray
-         UnionField ::= SMString
-         UnionField ::= SMStruct
+ ArrayBase ::= IntType 
+ ArrayBase ::= StructDecl 
+ ArrayBase ::= char 
+ ArrayBase ::= struct ID 
+ IntList ::= IntList , IntListMember 
+ IntList ::= IntListMember 
+ IntListMember ::= Integer 
+ IntListMember ::= Integer .. Integer 
+ IntType ::= u16 
+ IntType ::= u32 
+ IntType ::= u64 
+ IntType ::= u8 
+ Integer ::= CONST_ID
+ Integer ::= INT 
+ OptAnnotation ::= 
+ OptAnnotation ::= ANNOTATION 
+ OptExtentSpec ::= 
+ OptExtentSpec ::= ... ; 
+ OptExtentSpec ::= SMRemainder ; 
+ OptIntConstraint ::= 
+ OptIntConstraint ::= IN [ IntList ]
+ OptUnionLength ::= 
+ OptUnionLength ::= WITH LENGTH ID
+ SMFixedArray ::= ArrayBase ID [ Integer ] 
+ SMRemainder ::= OptAnnotation ArrayBase ID [ ] 
+ SMVarArray ::= ArrayBase ID [ ID ] 
+ StructEnding ::= 
+ StructEnding ::= SMRemainder ; 
+ StructEnding ::= eos ; 
+ StructMembers ::= 
+ StructMembers ::= StructMembers OptAnnotation StructMember ; 
+ UnionCase ::= IntList 
+ UnionCase ::= default 
+ UnionField ::= SMFixedArray 
+ UnionField ::= SMInteger 
+ UnionField ::= SMString
+ UnionField ::= SMStruct 
+ UnionField ::= SMVarArray 
+ UnionFields ::= ; 
+ UnionFields ::= SMRemainder ; 
+ UnionFields ::= UnionField ; 
+ UnionFields ::= UnionFields UnionField ; 
+ UnionFields ::= fail ; 
+ UnionFields ::= ignore ; 
+ UnionMember ::= UnionCase : UnionFields OptExtentSpec 
+ UnionMembers ::= UnionMember 
+ UnionMembers ::= UnionMembers UnionMember 
 
 
 Additional constraints:
@@ -87,4 +81,3 @@ Additional constraints:
    only to earlier-occurring fields in the same structure.
 
    No ExtentSpec unless the union has a UnionLength.
-

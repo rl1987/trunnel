@@ -750,6 +750,38 @@ class Parser(spark.GenericParser, object):
         " UnionField ::= SMStruct "
         return info[0]
 
+if __name__ == '__main__':
+    print ("===== Here is our actual grammar, extracted from Grammar.py\n")
+
+    ordering = { 'File' : 0, 'Declarations' : 0,
+                 'Declaration': 1, 'StructDecl' : 2, 'ConstDecl' : 2,
+                 'StructMember' : 3, 'SMInteger' : 4,
+                 'SMArray' : 4, 'SMString' : 4, 'SMStruct' : 4, 'SMUnion' : 4
+               }
+    docs = []
+    for item in Parser.__dict__.values():
+        if not getattr(item,'__name__','').startswith("p_"):
+            continue
+        doc = item.__doc__
+        docs.append( (ordering.get(doc.split()[0], 9999), doc) )
+
+    lasto = 0
+    for o,d in sorted(docs):
+        if o != lasto:
+            print("")
+            lasto = o
+        print(d)
+
+    print("""
+
+Additional constraints:
+
+   Structure declarations form a DAG.
+
+   Field references in SMVarArray and SMUnion and SMUnionLength refer
+   only to earlier-occurring fields in the same structure.
+
+   No ExtentSpec unless the union has a UnionLength.""")
 
 __license__ = """
 Copyright 2014  The Tor Project, Inc.

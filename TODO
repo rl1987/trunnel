@@ -50,6 +50,8 @@ FOR VERSION 1
   o Make it do the rest of what Tor needs
     o 'struct x until_end[];'
 
+  o Rebuild-grammar script.
+
 
 FOR VERSION 1.1 OR LATER
 

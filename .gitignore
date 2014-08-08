@@ -15,6 +15,7 @@ tests.log
 /test/ctest
 /doc/*.[ch]
 /examples/*.[ch]
+/test/grammar.tmp
 
 /.coverage
 

@@ -43,6 +43,10 @@ for fn in `dirname $0`/valid/*.trunnel; do
   $CC $CFLAGS -c $CNAME || echo "FAILED: $CC $CFLAGS $fn"
 done
 
+echo >>tests.log "==== MakeGrammar"
+$RUN $GRAMMAR > grammar.tmp 2>>tests.log || echo "FAILED: grammar"
+rm -f grammar.tmp
+
 $COVERAGE report $TRUNNEL $GRAMMAR
 $COVERAGE annotate $TRUNNEL
 $COVERAGE annotate $GRAMMAR
