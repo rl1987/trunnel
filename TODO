@@ -40,8 +40,8 @@ FOR VERSION 1
   . Document it.
     o Explain that I don't care about things that need backtracking
     o Documentation in code
+    o Document all accessors in code; fix DOCDOC comments.
     - Document format.
-    - Document all accessors in code; fix DOCDOC comments.
 
   o Allow "u8 until_end[];" in eos position.
 

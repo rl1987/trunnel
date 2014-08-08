@@ -10,6 +10,8 @@
 
 #include <sys/types.h>
 
+/** Macro to declare a variable-length dynamically allocated array.  Trunnel
+ * uses these to store all variable-length arrays. */
 #define TRUNNEL_DYNARRAY_HEAD(name, elttype)       \
   struct name {                                    \
     size_t n_;                                     \
@@ -17,8 +19,10 @@
     elttype *elts_;                                \
   }
 
+/** Initializer for a dynamic array of a given element type. */
 #define TRUNNEL_DYNARRAY_INIT(elttype) { 0, 0, (elttype*)NULL }
 
+/** Typedef used for storing variable-length arrays of char. */
 typedef TRUNNEL_DYNARRAY_HEAD(trunnel_string_st, char) trunnel_string_t;
 
 #endif

@@ -59,17 +59,8 @@
       ssize_t typename_parse_into(typename_t *, const uint8_t *, size_t)
                                                    -- see ParseFnGenerator
 
-   For every variable-length array named 'member' whose elements are
-   type 'elt' in a structure named 'typename', we generate these
-   accessor functions. See AccessorFnGenerator for more information
-   about them.
-
-      size_t typename_get_member_len(const typename_t *)
-      elt typename_get_member(typename_t *, int idx)
-      void typename_set_member(typename_t *, int idx, elt value)
-      int typename_add_member(typename_t *, elt value)
-
-      DOCDOC there are so many more accessors now.
+   For every member, we generate two or more accessor functions.  See
+   AccessorFnGenerator for more information about them.
 
 """
 
@@ -816,18 +807,21 @@ class FreeFnGenerator(IndentingGenerator):
         pass
 
 class AccessorFnGenerator(IndentingGenerator):
-    """Code-generating visitor that generates the accessors for dynamic
-       arrays.
+    """Code-generating visitor that generates the accessors for structure
+       members.  See function documentation for a description of every
+       function we generate.
 
-       For each variable-length array of non-char, we generate four
-       functions:
-           A 'get_len' function that returns its current length.
-           A 'get' function that returns the value at a given index.
-           A 'set' function that changes the value at a given index.
-           An 'add' function that appends a new value to the end.
+       As a general note: all "set" functions that change the value or
+       properties of a field can return 0 for success or -1 on failure.
+       When they return -1, they also set an error code on the structure,
+       so that future encode attempts will fail unless you call an
+       appropriate 'clear_errors' function.  This design lets careful
+       users check that set functions are successful, while preventing
+       careless users from getting into too much trouble.
 
-       These functions are implemented simply as wrappers around the
-       TRUNNEL_DYNARRAY_* macros.
+       General principles: It should never be necessary to look at or
+       modify a structure directly.  It should be quite hard to shoot
+       yourself in the foot.
     """
     def __init__(self, writefn, prototypes_only=False):
         IndentingGenerator.__init__(self, writefn)
@@ -851,6 +845,14 @@ class AccessorFnGenerator(IndentingGenerator):
         pass
 
     def visitSMInteger(self, smi):
+        """For an integer field 'FIELD' in a structure called 'TYPE', we
+           generate a pair of functions:
+                 TYPE_get_FIELD(x)
+                 TYPE_set_FIELD(x, v)
+           The 'get' function returns the current value of the field in a
+           provided strutrure.  The 'set' function changes the value, after
+           checking that all specified constraints on the field are met.
+        """
         st = self.structName
         nm = smi.c_fn_name
         tp = "uint%d_t"%smi.inttype.width
@@ -880,6 +882,16 @@ class AccessorFnGenerator(IndentingGenerator):
         self.w("}\n")
 
     def visitSMStruct(self, sms):
+        """For a struct field 'FIELD' in a structure called 'TYPE', we
+           generate these functions:
+                 TYPE_get_FIELD(x)
+                 TYPE_set_FIELD(x, v)
+                 TYPE_set0_FIELD(x, v)
+           The 'get' function returns the current value of the field in a
+           provided strutrure.  The 'set0' function changes the value.
+           The 'set' function changes the value, after freeing the prvious
+           value (if any).
+        """
         st = self.structName
         nm = sms.c_fn_name
         tp = "%s_t *"%sms.structname
@@ -915,6 +927,26 @@ class AccessorFnGenerator(IndentingGenerator):
         self.w("}\n")
 
     def visitSMFixedArray(self, sfa):
+        """For a fixed-length array field 'FIELD' in a structure called
+           'TYPE', we generate these functions:
+                 TYPE_get_FIELD(x, index)
+                 TYPE_getlen_FIELD(x)
+                 TYPE_getarray_FIELD(x)
+                 TYPE_set_FIELD(x, index, v)
+                 TYPE_set0_FIELD(x, index, v)
+
+           The 'get' function returns the current value of the field
+           in a provided strutrure at the index 'idx'.  The 'getlen'
+           function returns the (constant) number of elements for the
+           array, by analogy with the getlen function for
+           variable-length arrays.  The 'getarray' function returns
+           a pointer to the array itself.
+
+           The 'set0' function changes the value at a given index.
+           The 'set' function changes the value at a given index,
+           after freeing the previous value (if any).
+
+        """
         st = self.structName
         nm = sfa.c_fn_name
         if str(sfa.basetype) == 'char':
@@ -924,7 +956,9 @@ class AccessorFnGenerator(IndentingGenerator):
         else:
             elttype = "uint%d_t"%sfa.basetype.width
 
-        self.docstring("""Return the (constant) length of the array holding the
+        self.docstring(
+
+        """Return the (constant) length of the array holding the
                           %s field of the %s_t in 'inp'."""%(nm,st))
         self.declaration("size_t", "%s_getlen_%s(const %s_t *inp)"%(st,nm,st))
         self.w("{\n"
@@ -997,6 +1031,29 @@ class AccessorFnGenerator(IndentingGenerator):
             self.w_(s)
 
     def visitSMVarArray(self, sva):
+        """For a variable-length array field 'FIELD' in a structure called
+           'TYPE', we generate these functions:
+                 TYPE_get_FIELD(x, index)
+                 TYPE_getlen_FIELD(x)
+                 TYPE_getarray_FIELD(x)
+                 TYPE_set_FIELD(x, index, v)
+                 TYPE_set0_FIELD(x, index, v)
+
+                 TYPE_add_FIELD(x, v)
+                 TYPE_setlen_FIELD(x, newlen)
+
+           The 'get', getlen, getarray, set0, and set functions are as for
+           fixed-length arrays.
+
+           The 'add' function adds a new element to the end of the
+           array, expanding it as necessary.  The 'setlen' function
+           expands and 0-pads the array, or contracts the array and
+           frees dead elements as needed.
+
+           Additionally, if the array is an array of char, the funtions
+           described in writeVarArrayCharAccessors are generated.
+        """
+
         st = self.structName
         nm = sva.c_fn_name
         if type(sva.basetype) == str:
@@ -1135,6 +1192,18 @@ class AccessorFnGenerator(IndentingGenerator):
             self.writeVarArrayCharAccessors(sva, maxlen, if_overflow_possible)
 
     def writeVarArrayCharAccessors(self, sva, maxlen, if_overflow_possible):
+        """For a variable-length array field 'FIELD' of char in a structure
+           called 'TYPE', we generate these functions:
+               TYPE_getstr_FIELD(x)
+               TYPE_setstr0_FIELD(x, val, len)
+               TYPE_setstr_FIELD(x, val)
+
+           The 'getstr' function returns the value as a NUL-terminated string,
+           and returns NULL on allocation failure.  The 'setstr0' function
+           replaces the current value with a copy of the len-byte string in
+           val.  And the 'setstr' function behaves as setstr0, but uses
+           strlen() to find the length of the string.
+        """
         st = self.structName
         nm = sva.c_fn_name
         if if_overflow_possible != None:
@@ -1178,6 +1247,15 @@ class AccessorFnGenerator(IndentingGenerator):
 
 
     def visitSMString(self, sms):
+        """For a nul-terminated string field 'FIELD' of char in a structure
+           called 'TYPE', we generate these functions:
+               TYPE_get_FIELD(x)
+               TYPE_set_FIELD(x, val)
+
+           The 'get' function returns the value as a NUL-terminated string.
+           The 'set' function replaces the current value with a copy of the
+           string in 'val'.
+        """
         st = self.structName
         nm = sms.c_fn_name
 
@@ -1402,7 +1480,7 @@ def arrayIsBytes(arry):
 
 class EncodeFnGenerator(IndentingGenerator):
     """Code-generating visitor that generates the 'typename_encode()'
-       function for a given structure.
+       function and 'typename_clear_errors()' function for a given structure.
 
        The function checks the provided object for correctness using
        typename_check(), then tries to encode each of its elements in

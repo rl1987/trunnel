@@ -12,25 +12,27 @@
 
 #define trunnel_assert(x) assert(x)
 
-#define TRUNNEL_DYNARRAY_INITIALIZE(da) do {     \
-    (da)->n_ = 0;                                \
-    (da)->allocated_ = 0;                        \
-    (da)->elts_ = NULL;                          \
-  } while (0)
+/* ====== dynamic arrays ======== */
 
 #ifdef NDEBUG
 #define TRUNNEL_DYNARRAY_GET(da, n)             \
   ((da)->elts_[(n)])
 #else
+/** Return the 'n'th element of 'da'. */
 #define TRUNNEL_DYNARRAY_GET(da, n)             \
   (((n) >= (da)->n_ ? (trunnel_abort(),0) : 0), (da)->elts_[(n)])
 #endif
 
+/** Change the 'n'th element of 'da' to 'v'. */
 #define TRUNNEL_DYNARRAY_SET(da, n, v) do {                    \
     trunnel_assert((n) < (da)->n_);                            \
     (da)->elts_[(n)] = (v);                                    \
   } while (0)
 
+/** Expand the dynamic array 'da' of 'elttype' so that it can hold at least
+ * 'howmanymore' elements than its current capacity. Always tries to increase
+ * the length of the array. On failure, run the code in 'on_fail' and goto
+ * trunnel_alloc_failed. */
 #define TRUNNEL_DYNARRAY_EXPAND(elttype, da, howmanymore, on_fail) do { \
     elttype *newarray;                                               \
     newarray = trunnel_dynarray_expand(&(da)->allocated_,            \
@@ -43,6 +45,8 @@
     (da)->elts_ = newarray;                                          \
   } while (0)
 
+/** Add 'v' to the end of the dynamic array 'da' of 'elttype', expanding it if
+ * necessary.  code in 'on_fail' and goto trunnel_alloc_failed. */
 #define TRUNNEL_DYNARRAY_ADD(elttype, da, v, on_fail) do { \
       if ((da)->n_ == (da)->allocated_) {                  \
         TRUNNEL_DYNARRAY_EXPAND(elttype, da, 1, on_fail);  \
@@ -50,29 +54,74 @@
       (da)->elts_[(da)->n_++] = (v);                       \
     } while (0)
 
+/** Return the number of elements in 'da'. */
 #define TRUNNEL_DYNARRAY_LEN(da) ((da)->n_)
 
+/** Remove all storage held by 'da' and set it to be empty.  Does not free
+ * storage held by the elements themselves. */
 #define TRUNNEL_DYNARRAY_CLEAR(da) do {           \
     trunnel_free((da)->elts_);                    \
     (da)->elts_ = NULL;                           \
     (da)->n_ = (da)->allocated_ = 0;              \
   } while (0)
 
+/** Helper: wraps or implements an OpenBSD-style reallocarray.  Behaves
+ * as realloc(a, x*y), but verifies that no overflow will occur in the
+ * multiplication. Returns NULL on failure. */
 void *trunnel_reallocarray(void *a, size_t x, size_t y);
 
+/** Helper to expand a dynamic array. Behaves as TRUNNEL_DYNARRAY_EXPAND(),
+ * taking the array of elements in 'ptr', a pointer to thethe current number
+ * of allocated elements in allocated_p, the minimum numbeer of elements to
+ * add in 'howmanymore', and the size of a single element in 'eltsize'.
+ *
+ * On success, adjust *allocated_p, and return the new value for the array of
+ * elements.  On failure, adjust nothing and return NULL.
+ */
 void *trunnel_dynarray_expand(size_t *allocated_p, void *ptr,
                               size_t howmanymore, size_t eltsize);
 
+/** Type for a function to free members of a dynarray of pointers. */
 typedef void (*trunnel_free_fn_t)(void *);
 
+/**
+ * Helper to change the length of a dynamic array. Takes pointers to the
+ * current allocated and n fields of the array in 'allocated_p' and 'len_p',
+ * and the current array of elements in 'ptr'; takes the length of a single
+ * element in 'eltsize'.  Changes the length to 'newlen'.  If 'newlen' is
+ * greater than the current length, pads the new elements with 0.  If newlen
+ * is less than the current length, and free_fn is non-NULL, treat the
+ * array as an array of void *, and invoke free_fn() on each removed element.
+ *
+ * On success, adjust *allocated_p and *len_p, and return the new value for
+ * the array of elements.  On failure, adjust nothing, set *errcode_ptr to 1,
+ * and return NULL.
+ */
 void *trunnel_dynarray_setlen(size_t *allocated_p, size_t *len_p,
                               void *ptr, size_t newlen,
                               size_t eltsize, trunnel_free_fn_t free_fn,
                               uint8_t *errcode_ptr);
 
+/**
+ * Helper: return a pointer to the value of 'str' as a NUL-terminated string.
+ * Might have to reallocate the storage for 'str' in order to fit in the final
+ * NUL character.  On allocation failure, return NULL.
+ */
 const char *trunnel_string_getstr(trunnel_string_t *str);
+
+/**
+ * Helper: change the contents of 'str' to hold the 'len'-byte string in
+ * 'inp'.  Adjusts the storage to have a terminating NUL that doesn't count
+ * towards the length of the string.  On success, return 0.  On failure, set
+ * *errcode_ptr to 1 and return -1.
+ */
 int trunnel_string_setstr0(trunnel_string_t *str, const char *inp, size_t len,
                            uint8_t *errcode_ptr);
+
+/**
+ * As trunnel_dynarray_setlen, but adjusts a string rather than a dynamic
+ * array, and ensures that the new string is NUL-terminated.
+ */
 int trunnel_string_setlen(trunnel_string_t *str, size_t newlen,
                            uint8_t *errcode_ptr);
 
