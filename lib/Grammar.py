@@ -65,7 +65,7 @@ class Annotation(Token):
 
 # Set of reserved keywords.
 KEYWORDS = set("""
-  union struct
+  union struct extern
   u8 u16 u32 u64 char
   IN const nulterm WITH LENGTH default fail ignore eos
 """.split())
@@ -162,12 +162,15 @@ class File(AST):
         self.constants = []
         self.declarations = []
         self.declarationsByName = {}
+        self.externStructs = []
         for m in members:
             self.add(m)
 
     def add(self, m):
         if isinstance(m, ConstDecl):
             self.constants.append(m)
+        elif isinstance(m, ExternStructDecl):
+            self.externStructs.append(m.name)
         else:
             self.declarations.append(m)
             self.declarationsByName[m.name] = m
@@ -223,6 +226,11 @@ class ConstDecl(AST):
         self.name = name
         self.value = value
         self.annotation = None
+
+class ExternStructDecl(AST):
+    """Declaration that a Trunnel structure is available elsewhere."""
+    def __init__(self, name):
+        self.name = str(name)
 
 class StructMember(AST):
     """Abstract type. Base type for things that can be a member of a struct."""
@@ -503,6 +511,10 @@ class Parser(spark.GenericParser, object):
         if a:
             d.annotation = str(a)
         return d
+
+    def p_Decl_3(self, info):
+        " Declaration ::= extern struct ID ; "
+        return ExternStructDecl(info[2])
 
     def p_ConstDecl(self, info):
         " ConstDecl ::= const CONST_ID = INT ; "

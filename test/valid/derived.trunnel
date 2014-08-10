@@ -5,13 +5,8 @@ const THREE = 3;
 const FOUR = 4;
 const FIVE = 5;
 
-
-struct restricted {
-   /** A restricted number */
-   u32 i1 IN [ 1 ];
-   u32 i2 IN [ 1..2, 5, 10 ];
-   u32 i3 IN [ 1..THREE ];
-}
+extern struct restricted;
+extern struct numbers;
 
 struct nested {
    /** A structure in a structure */
@@ -26,12 +21,6 @@ struct nested {
    struct restricted res;
 }
 
-struct uses_eos {
-  u16 a;
-  u16 b;
-  eos;
-}
-
 /** A structure full of fixed-lenth arrays. */
 struct fixed {
    /** A fixed array */
@@ -40,14 +29,7 @@ struct fixed {
    u32 a32[THREE];
    u64 a64[1];
 
-  /** Some numbers */
-  struct numbers {
-     /** A number */
-     u8 i8;
-     u16 i16;
-     u32 i32 IN [0..0xbadbeee, 0xbadbef0..0xffffffff];
-     u64 i64;
-  } nums[TWO];
+   struct numbers nums[TWO];
 }
 
 struct varlen {
@@ -122,24 +104,6 @@ struct union4 {
      TWO: u8 a;
      default: ignore;
    };
-}
-
-struct extends {
-   nulterm a;
-   /** The rest of this thing. */
-   u8 remainder[];
-}
-
-struct extends2 {
-   nulterm a;
-   /** The rest of this thing. */
-   char remainder[];
-}
-
-struct extends3 {
-   nulterm a;
-   /** The rest of this thing. */
-   u32 remainder[];
 }
 
 struct extends4 {

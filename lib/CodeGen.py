@@ -49,13 +49,13 @@
                                                    -- see EncodeFnGenerator
       ssize_t typename_parse_into(typename_t **, const uint8_t *, size_t)
                                                    -- see ParseFnGenerator
+      const char *typename_check(const typename_t *) -- see CheckFnGenerator
 
    We also generate these static, non-exported functions. See the
    associated generators for more information about how they work and
    what they do.
 
       void typename_clear(typename_t *) -- see FreeFnGenerator.
-      const char *typename_check(const typename_t *) -- see CheckFnGenerator
       ssize_t typename_parse_into(typename_t *, const uint8_t *, size_t)
                                                    -- see ParseFnGenerator
 
@@ -170,6 +170,11 @@ class Checker(ASTVisitor):
             if c.name in self.constNames:
                 raise CheckError("duplicate constant name %s"%c.name)
             self.constNames.add(c.name)
+        for n in f.externStructs:
+            if n in self.structNames:
+                raise CheckError("duplicate structure name %s"%n)
+            self.structNames.add(n)
+            self.structUses[n] = set()
         for d in f.declarations:
             if d.name in self.structNames:
                 raise CheckError("duplicate structure name %s"%d.name)
@@ -215,7 +220,7 @@ class Checker(ASTVisitor):
             for s in removed_this_time:
                 del self.structUses[s]
 
-        self.sortedStructs = sorted_structs
+        self.sortedStructs = [ s for s in sorted_structs if s not in f.externStructs ]
 
     def visitConstDecl(self, cd):
         self.constValues[cd.name] = cd.value.value
@@ -585,6 +590,8 @@ class DeclarationGenerationVisitor(CodeGenerator):
         self.sort_order = sort_order
 
     def visitFile(self, f):
+        for n in f.externStructs:
+            self.w("struct %s_st;\n"%n)
         f.visitChildrenSorted(self.sort_order, self)
 
     def visitConstDecl(self, cd):
@@ -611,14 +618,14 @@ class DeclarationGenerationVisitor(CodeGenerator):
         if sms.annotation != None:
             self.w(sms.annotation)
 
-        self.w("%s_t *%s;\n"%(sms.structname,sms.c_name))
+        self.w("struct %s_st *%s;\n"%(sms.structname,sms.c_name))
 
     def visitSMFixedArray(self, sfa):
         if sfa.annotation != None:
             self.w(sfa.annotation)
         fields = {'base' : sfa.basetype, 'c_name' : sfa.c_name, 'w': sfa.width}
         if type(sfa.basetype) == str:
-            self.format("{base}_t *{c_name}[{w}];", **fields)
+            self.format("struct {base}_st *{c_name}[{w}];", **fields)
         elif str(sfa.basetype) == "char":
             self.format("char {c_name}[{w}+1];", **fields)
         else:
@@ -632,7 +639,7 @@ class DeclarationGenerationVisitor(CodeGenerator):
         if str(sva.basetype) == "char":
             self.format("trunnel_string_t {c_name};", **fields)
         elif type(sva.basetype) == str:
-            self.format("TRUNNEL_DYNARRAY_HEAD(, {base}_t *) {c_name};",
+            self.format("TRUNNEL_DYNARRAY_HEAD(, struct {base}_st *) {c_name};",
                         **fields)
         else:
             self.format("TRUNNEL_DYNARRAY_HEAD(, uint{base.width}_t) {c_name};",
@@ -672,9 +679,11 @@ class PrototypeGenerationVisitor(CodeGenerator):
        various functions we generate.
     """
 
-    def __init__(self, sort_order, f):
+    def __init__(self, sort_order, f, docstrings=True):
         CodeGenerator.__init__(self, f.write)
         self.sort_order = sort_order
+        if not docstrings:
+            self.docstring = lambda *a:None
     def visitFile(self, f):
         f.visitChildrenSorted(self.sort_order, self)
     def visitConstDecl(self, cd):
@@ -708,6 +717,11 @@ class PrototypeGenerationVisitor(CodeGenerator):
                           invalid."""%(name))
         self.w("ssize_t %s_encode(uint8_t *output, const size_t avail, const %s_t *input);\n"%(name,name))
 
+        self.docstring("""Check whether the internal state of the %s in
+                          'obj' is consistent. Return NULL if it is, and a
+                          short message if it is not."""%name)
+        self.w("const char *%s_check(const %s_t *obj);\n"%(name,name))
+
         self.docstring("""Clear any errors that were set on the object 'obj'
                           by its setter functions.  Return true iff errors
                           were cleared.""")
@@ -724,11 +738,16 @@ class CodeGenerationVisitor(CodeGenerator):
     """
     def __init__(self, sort_order, f):
         CodeGenerator.__init__(self, f.write)
+        self.f = f
         self.sort_order = sort_order
         self.generators = [ NewFnGenerator, FreeFnGenerator,
                             AccessorFnGenerator, CheckFnGenerator,
                             EncodeFnGenerator, ParseFnGenerator ]
     def visitFile(self, f):
+        for n in f.externStructs:
+            fakeStruct = Grammar.StructDecl(n, [])
+            self.w("typedef struct %s_st %s_t;"%(n,n))
+            PrototypeGenerationVisitor(self.sort_order,self.f,docstrings=False).visit(fakeStruct)
         f.visitChildrenSorted(self.sort_order, self)
     def visitConstDecl(self, cd):
         pass
@@ -943,7 +962,7 @@ class AccessorFnGenerator(CodeGenerator):
         """
         st = self.structName
         nm = sms.c_fn_name
-        tp = "%s_t *"%sms.structname
+        tp = "struct %s_st *"%sms.structname
 
         self.docstring("Return the value of the %s field of the %s_t in 'inp'"%(nm,st))
         self.declaration(tp, "%s_get_%s(%s_t *inp)"%(st,nm,st))
@@ -1001,7 +1020,7 @@ class AccessorFnGenerator(CodeGenerator):
         if str(sfa.basetype) == 'char':
             elttype = 'char'
         elif type(sfa.basetype) == str:
-            elttype = "%s_t *"%sfa.basetype
+            elttype = "struct %s_st *"%sfa.basetype
         else:
             elttype = "uint%d_t"%sfa.basetype.width
 
@@ -1105,7 +1124,7 @@ class AccessorFnGenerator(CodeGenerator):
         st = self.structName
         nm = sva.c_fn_name
         if type(sva.basetype) == str:
-            elttype = "%s_t *"%sva.basetype
+            elttype = "struct %s_st *"%sva.basetype
         elif str(sva.basetype) == 'char':
             elttype = 'char'
         else:
@@ -1395,10 +1414,7 @@ class CheckFnGenerator(CodeGenerator):
         # To check a whole structure: check that the structure pointer
         # isn't NULL, then check the contents.
         self.structName = name = sd.name
-        self.docstring("""Check whether the internal state of the %s in
-                          'obj' is consistent. Return NULL if it is, and a
-                          short message if it is not."""%name)
-        self.w("static const char *\n%s_check(const %s_t *obj)\n{\n"%(name,name))
+        self.w("const char *\n%s_check(const %s_t *obj)\n{\n"%(name,name))
         self.pushIndent(2)
         self.w('if (obj == NULL)\n'
                '  return "Object was NULL";\n'
