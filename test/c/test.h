@@ -6,7 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "valid/basic.h"
+#include "valid/simple.h"
+#include "valid/derived.h"
 #include "tinytest/tinytest.h"
 #include "tinytest/tinytest_macros.h"
 
