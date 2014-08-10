@@ -118,13 +118,18 @@ class Lexer(spark.GenericScanner, object):
         r"[ \t]+"
         pass
 
-    def t_comment(self, s):
+    def t_comment1(self, s):
         r"\/\/.*"
         pass
 
     def t_annotation(self, s):
         r'/\*\*(?:[^\*]|\*+[^*/])*\*/'
         self.rv.append(Annotation(s, self.lineno))
+        self.lineno += (s.count("\n"))
+
+    def t_comment2(self, s):
+        r'/\*[^\*](?:[^\*]|\*+[^*/])*\*/'
+        self.lineno += (s.count("\n"))
 
     def t_newline(self, s):
         r"\n"

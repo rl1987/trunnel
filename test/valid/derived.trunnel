@@ -78,6 +78,9 @@ struct union2 {
      FOUR, 0x05:
            // A comment to get ignored.
            u8 c[16];
+	   /*
+	      Another comment to ignore.
+	    */
            u8 remainder[];
      8 : ;
      9 : u8 x;
