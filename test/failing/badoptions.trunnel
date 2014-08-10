@@ -1,0 +1,6 @@
+
+struct x {
+  u8 foo;
+}
+
+trunnel pragmas opaque, silly, expansive;

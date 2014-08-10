@@ -1,3 +1,4 @@
+#define TRUNNEL_EXPOSE_STRINGS_
 #include "test.h"
 
 static void

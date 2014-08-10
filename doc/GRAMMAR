@@ -7,6 +7,7 @@
  Declaration ::= OptAnnotation ConstDecl
  Declaration ::= OptAnnotation StructDecl OptSemi
  Declaration ::= extern struct ID ;
+ Declaration ::= trunnel ID IDList ;
 
  ConstDecl ::= const CONST_ID = INT ;
  StructDecl ::= struct ID { StructMembers StructEnding }
@@ -29,6 +30,8 @@
  ArrayBase ::= StructDecl
  ArrayBase ::= char
  ArrayBase ::= struct ID
+ IDList ::= ID
+ IDList ::= IDList , ID
  IntList ::= IntList , IntListMember
  IntList ::= IntListMember
  IntListMember ::= Integer

@@ -8,6 +8,8 @@ const FIVE = 5;
 extern struct restricted;
 extern struct numbers;
 
+trunnel options opaque;
+
 struct nested {
    /** A structure in a structure */
    struct numbers num1;

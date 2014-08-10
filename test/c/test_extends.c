@@ -1,3 +1,5 @@
+#define TRUNNEL_EXPOSE_EXTENDS_
+#define TRUNNEL_EXPOSE_EXTENDS2_
 #include "test.h"
 
 static void

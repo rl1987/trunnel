@@ -1,3 +1,4 @@
+#define TRUNNEL_EXPOSE_FIXED_
 #include "test.h"
 
 static void

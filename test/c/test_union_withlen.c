@@ -1,3 +1,4 @@
+#define TRUNNEL_EXPOSE_UNION2_
 #include "test.h"
 
 static const char CASE1[] =

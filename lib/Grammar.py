@@ -65,7 +65,7 @@ class Annotation(Token):
 
 # Set of reserved keywords.
 KEYWORDS = set("""
-  union struct extern
+  union struct extern trunnel
   u8 u16 u32 u64 char
   IN const nulterm WITH LENGTH default fail ignore eos
 """.split())
@@ -163,6 +163,7 @@ class File(AST):
         self.declarations = []
         self.declarationsByName = {}
         self.externStructs = []
+        self.options = []
         for m in members:
             self.add(m)
 
@@ -171,6 +172,8 @@ class File(AST):
             self.constants.append(m)
         elif isinstance(m, ExternStructDecl):
             self.externStructs.append(m.name)
+        elif isinstance(m, TrunnelOptionsDecl):
+            self.options.extend(m.options)
         else:
             self.declarations.append(m)
             self.declarationsByName[m.name] = m
@@ -231,6 +234,12 @@ class ExternStructDecl(AST):
     """Declaration that a Trunnel structure is available elsewhere."""
     def __init__(self, name):
         self.name = str(name)
+
+class TrunnelOptionsDecl(AST):
+    """Pragma options to change the behavior of the trunnel code generator."""
+    def __init__(self, options, lineno):
+        self.options = options
+        self.lineno = lineno
 
 class StructMember(AST):
     """Abstract type. Base type for things that can be a member of a struct."""
@@ -515,6 +524,23 @@ class Parser(spark.GenericParser, object):
     def p_Decl_3(self, info):
         " Declaration ::= extern struct ID ; "
         return ExternStructDecl(info[2])
+
+    def p_Decl_4(self, info):
+        " Declaration ::= trunnel ID IDList ; "
+        _1, opt, options, _2 = info
+        if str(opt) not in ("option", "options"):
+            raise ValueError("Bad syntax for 'trunnel options' on line %d"
+                             %opt.lineno)
+        return TrunnelOptionsDecl(options, opt.lineno)
+
+    def p_IDList_1(self, info):
+        " IDList ::= ID "
+        return [ str(info[0]) ]
+    def p_IDList_2(self, info):
+        " IDList ::= IDList , ID "
+        lst, _, item = info
+        lst.append(str(item))
+        return lst
 
     def p_ConstDecl(self, info):
         " ConstDecl ::= const CONST_ID = INT ; "

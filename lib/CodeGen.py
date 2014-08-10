@@ -589,6 +589,7 @@ class DeclarationGenerationVisitor(CodeGenerator):
     def visitFile(self, f):
         for n in f.externStructs:
             self.w("struct %s_st;\n"%n)
+        self.isOpaque = "opaque" in f.options
         f.visitChildrenSorted(self.sort_order, self)
 
     def visitConstDecl(self, cd):
@@ -599,9 +600,14 @@ class DeclarationGenerationVisitor(CodeGenerator):
     def visitStructDecl(self, sd):
         if sd.annotation != None:
             self.w(sd.annotation)
-        self.format("""
-            #if !defined(TRUNNEL_OPAQUE) && !defined(TRUNNEL_OPAQUE_{upname})
-            struct {name}_st {{""", name=sd.name, upname=sd.name.upper())
+        if self.isOpaque:
+            self.format("""
+              #if defined(TRUNNEL_EXPOSE_{upname}_)
+              struct {name}_st {{""", name=sd.name, upname=sd.name.upper())
+        else:
+            self.format("""
+              #if !defined(TRUNNEL_OPAQUE) && !defined(TRUNNEL_OPAQUE_{upname})
+              struct {name}_st {{""", name=sd.name, upname=sd.name.upper())
         self.pushIndent(2)
         sd.visitChildren(self)
         self.popIndent(2)
@@ -2273,6 +2279,7 @@ MODULE_BOILERPLATE = """
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include "trunnel-impl.h"
+%(definitions)s
 #include "%(h_fname)s"
 
 #ifdef TRUNNEL_DEBUG_FAILING_ALLOC
@@ -2404,7 +2411,13 @@ if __name__ == '__main__':
     out_h.close()
 
     out_c = open(c_fname, 'w')
-    out_c.write(MODULE_BOILERPLATE % {'h_fname':os.path.split(h_fname)[1], 'c_fname':c_fname})
+    definitions = []
+    for n in c.sortedStructs:
+        definitions.append("#define TRUNNEL_EXPOSE_%s_\n"%(n.upper()))
+    out_c.write(MODULE_BOILERPLATE % {
+        'h_fname':os.path.split(h_fname)[1],
+        'c_fname':c_fname,
+        'definitions': "".join(definitions)})
     CodeGenerationVisitor(c.sortedStructs, out_c).visit(parsed)
     out_c.close()
 

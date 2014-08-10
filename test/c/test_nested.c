@@ -1,3 +1,5 @@
+#define TRUNNEL_EXPOSE_NESTED_
+#define TRUNNEL_EXPOSE_STRINGS_
 #include "test.h"
 
 static void

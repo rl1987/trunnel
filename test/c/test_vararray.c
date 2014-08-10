@@ -1,3 +1,4 @@
+#define TRUNNEL_EXPOSE_VARLEN_
 #include "test.h"
 
 static const char MINIMAL[] =

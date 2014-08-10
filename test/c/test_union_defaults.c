@@ -1,4 +1,5 @@
-
+#define TRUNNEL_EXPOSE_UNION3_
+#define TRUNNEL_EXPOSE_UNION4_
 #include "test.h"
 
 const char CASE1[] =
