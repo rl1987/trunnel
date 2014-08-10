@@ -27,7 +27,8 @@ TEST_OBJS = \
     c/test_util.o
 
 OBJS=tinytest/tinytest.o \
-    valid/basic.o \
+    valid/simple.o \
+    valid/derived.o \
     ../c/trunnel.o \
     $(TEST_OBJS)
 
@@ -43,16 +44,20 @@ reset-gcov:
 	rm -f */*.gcda ../*/*.gcda
 
 distclean: clean
-	rm -f valid/basic.[ch]
+	rm -f valid/*.[ch]
 
 test: ctest
 	./ctest
 
-valid/basic.o: valid/basic.h valid/basic.c
-$(TEST_OBJS) : tinytest/tinytest.h tinytest/tinytest_macros.h valid/basic.h
+valid/simple.o: valid/simple.h valid/simple.c
+valid/derived.o: valid/derived.h valid/derived.c
+$(TEST_OBJS) : tinytest/tinytest.h tinytest/tinytest_macros.h valid/simple.h valid/derived.h
 tinytest/tinytest.o: tinytest/tinytest.h tinytest/tinytest_macros.h
 
-valid/basic.c valid/basic.h: valid/basic.trunnel ../lib/*py
-	python ../lib/CodeGen.py valid/basic.trunnel
+valid/simple.c valid/simple.h: valid/simple.trunnel ../lib/*py
+	python ../lib/CodeGen.py valid/simple.trunnel
+
+valid/derived.c valid/derived.h: valid/derived.trunnel ../lib/*py
+	python ../lib/CodeGen.py valid/derived.trunnel
 
 
