@@ -110,9 +110,3 @@ struct union4 {
      default: ignore;
    };
 }
-
-struct extends4 {
-   nulterm a;
-   /** The rest of this thing. */
-   struct numbers remainder[];
-}

@@ -1,6 +1,6 @@
 #define TRUNNEL_EXPOSE_EXTENDS3_
-#define TRUNNEL_EXPOSE_EXTENDS4_
 #include "test.h"
+#include "valid/opaque.h"
 
 static void
 test_repeats_invalid32(void *arg)
@@ -114,7 +114,7 @@ test_repeats_invalid_struct(void *arg)
   extends4 = extends4_new();
   tt_int_op(-1, ==, extends4_encode(buf, sizeof(buf), extends4));
 
-  extends4->a = strdup("bedtime");
+  extends4_set_a(extends4, strdup("bedtime"));
   tt_int_op(8, ==, extends4_encode(buf, sizeof(buf), extends4));
   tt_str_op((char*)buf, ==, "bedtime");
 
@@ -154,7 +154,7 @@ test_repeats_encdec_struct(void *arg)
   /* Now try the full cases. */
   /* First, parse no structs */
   tt_int_op(1, ==, extends4_parse(&extends4, inp, 1));
-  tt_str_op("", ==, extends4->a);
+  tt_str_op("", ==, extends4_get_a(extends4));
   tt_int_op(0, ==, extends4_getlen_remainder(extends4));
 
   memset(buf, 0xff, sizeof(buf));
@@ -164,7 +164,7 @@ test_repeats_encdec_struct(void *arg)
 
   /* Parse one of the structs. */
   tt_int_op(16, ==, extends4_parse(&extends4, inp, 16));
-  tt_str_op("", ==, extends4->a);
+  tt_str_op("", ==, extends4_get_a(extends4));
   tt_int_op(1, ==, extends4_getlen_remainder(extends4));
   n = extends4_get_remainder(extends4, 0);
   tt_assert(n);
@@ -182,7 +182,7 @@ test_repeats_encdec_struct(void *arg)
 
   /* Parse both structs. */
   tt_int_op(31, ==, extends4_parse(&extends4, inp, 31));
-  tt_str_op("", ==, extends4->a);
+  tt_str_op("", ==, extends4_get_a(extends4));
   tt_int_op(2, ==, extends4_getlen_remainder(extends4));
   n = extends4_get_remainder(extends4, 0);
   tt_assert(n);

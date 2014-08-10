@@ -29,6 +29,7 @@ TEST_OBJS = \
 OBJS=tinytest/tinytest.o \
     valid/simple.o \
     valid/derived.o \
+    valid/opaque.o \
     ../c/trunnel.o \
     $(TEST_OBJS)
 
@@ -59,5 +60,8 @@ valid/simple.c valid/simple.h: valid/simple.trunnel ../lib/*py
 
 valid/derived.c valid/derived.h: valid/derived.trunnel ../lib/*py
 	python ../lib/CodeGen.py valid/derived.trunnel
+
+valid/opaque.c valid/opaque.h: valid/opaque.trunnel ../lib/*py
+	python ../lib/CodeGen.py valid/opaque.trunnel
 
 

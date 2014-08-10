@@ -582,14 +582,16 @@ class DeclarationGenerationVisitor(CodeGenerator):
        how we turn structure members into C.
 
     """
-    def __init__(self, sort_order, f):
+    def __init__(self, sort_order, f, inCFile=False):
         CodeGenerator.__init__(self, f.write)
         self.sort_order = sort_order
+        self.inCFile = inCFile
 
     def visitFile(self, f):
         for n in f.externStructs:
             self.w("struct %s_st;\n"%n)
-        self.isOpaque = "opaque" in f.options
+        self.isOpaque = ("opaque" in f.options) and not self.inCFile
+        self.isVeryOpaque = ("very_opaque" in f.options) and not self.inCFile
         f.visitChildrenSorted(self.sort_order, self)
 
     def visitConstDecl(self, cd):
@@ -600,6 +602,9 @@ class DeclarationGenerationVisitor(CodeGenerator):
     def visitStructDecl(self, sd):
         if sd.annotation != None:
             self.w(sd.annotation)
+        if self.isVeryOpaque:
+            self.format("typedef struct {name}_st {name}_t;",name=sd.name)
+            return
         if self.isOpaque:
             self.format("""
               #if defined(TRUNNEL_EXPOSE_{upname}_)
@@ -614,8 +619,9 @@ class DeclarationGenerationVisitor(CodeGenerator):
         self.format("""
               uint8_t trunnel_error_code_;
             }};
-            #endif
-            typedef struct {name}_st {name}_t;""",name=sd.name)
+            #endif""")
+        if not self.inCFile:
+            self.format("""typedef struct {name}_st {name}_t;""",name=sd.name)
 
     def visitSMInteger(self, smi):
         if smi.annotation != None:
@@ -2282,10 +2288,16 @@ MODULE_BOILERPLATE = """
 %(definitions)s
 #include "%(h_fname)s"
 
+#ifdef __GNUC__
+#define UNUSED_ __attribute__((unused))
+#else
+#define UNUSED_
+#endif
+
 #ifdef TRUNNEL_DEBUG_FAILING_ALLOC
 extern int trunnel_provoke_alloc_failure;
 
-static void *
+UNUSED_ static void *
 trunnel_malloc(size_t n)
 {
    if (trunnel_provoke_alloc_failure) {
@@ -2294,7 +2306,7 @@ trunnel_malloc(size_t n)
    }
    return malloc(n);
 }
-static void *
+UNUSED_ static void *
 trunnel_calloc(size_t a, size_t b)
 {
    if (trunnel_provoke_alloc_failure) {
@@ -2323,40 +2335,40 @@ trunnel_strdup(const char *s)
 
 #define trunnel_abort() abort()
 
-static void trunnel_set_uint32(void *p, uint32_t v) {
+UNUSED_ static void trunnel_set_uint32(void *p, uint32_t v) {
   memcpy(p, &v, 4);
 }
-static void trunnel_set_uint16(void *p, uint16_t v) {
+UNUSED_ static void trunnel_set_uint16(void *p, uint16_t v) {
   memcpy(p, &v, 2);
 }
-static void trunnel_set_uint8(void *p, uint8_t v) {
+UNUSED_ static void trunnel_set_uint8(void *p, uint8_t v) {
   memcpy(p, &v, 1);
 }
 
-static uint32_t trunnel_get_uint32(const void *p) {
+UNUSED_ static uint32_t trunnel_get_uint32(const void *p) {
   uint32_t x;
   memcpy(&x, p, 4);
   return x;
 }
-static uint16_t trunnel_get_uint16(const void *p) {
+UNUSED_ static uint16_t trunnel_get_uint16(const void *p) {
   uint16_t x;
   memcpy(&x, p, 2);
   return x;
 }
-static uint8_t trunnel_get_uint8(const void *p) {
+UNUSED_ static uint8_t trunnel_get_uint8(const void *p) {
   return *(const uint8_t*)p;
 }
-static uint64_t trunnel_get_uint64(const void *p) {
+UNUSED_ static uint64_t trunnel_get_uint64(const void *p) {
   uint64_t x;
   memcpy(&x, p, 8);
   return x;
 }
 
-static void trunnel_set_uint64(void *p, uint64_t v) {
+UNUSED_ static void trunnel_set_uint64(void *p, uint64_t v) {
   memcpy(p, &v, 8);
 }
 
-static uint64_t trunnel_htonll(uint64_t a)
+UNUSED_ static uint64_t trunnel_htonll(uint64_t a)
 {
 #if BYTE_ORDER == BIG_ENDIAN
   return a;
@@ -2364,7 +2376,7 @@ static uint64_t trunnel_htonll(uint64_t a)
   return htonl(a>>32) | (((uint64_t)htonl(a))<<32);
 #endif
 }
-static uint64_t trunnel_ntohll(uint64_t a)
+UNUSED_ static uint64_t trunnel_ntohll(uint64_t a)
 {
   return trunnel_htonll(a);
 }
@@ -2412,12 +2424,15 @@ if __name__ == '__main__':
 
     out_c = open(c_fname, 'w')
     definitions = []
-    for n in c.sortedStructs:
-        definitions.append("#define TRUNNEL_EXPOSE_%s_\n"%(n.upper()))
+    if "opaque" in parsed.options:
+        for n in c.sortedStructs:
+            definitions.append("#define TRUNNEL_EXPOSE_%s_\n"%(n.upper()))
     out_c.write(MODULE_BOILERPLATE % {
         'h_fname':os.path.split(h_fname)[1],
         'c_fname':c_fname,
         'definitions': "".join(definitions)})
+    if "very_opaque" in parsed.options:
+        DeclarationGenerationVisitor(c.sortedStructs, out_c, inCFile=True).visit(parsed)
     CodeGenerationVisitor(c.sortedStructs, out_c).visit(parsed)
     out_c.close()
 
