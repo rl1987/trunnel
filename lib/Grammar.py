@@ -96,17 +96,12 @@ class Lexer(spark.GenericScanner, object):
         r"(?:[;{}\[\]=,:]|\.\.\.|\.\.)"
         self.rv.append(Token(s, self.lineno))
 
-    def t_const_id(self, s):
-        r"[A-Z_][A-Z_0-9]*"
-        if s in KEYWORDS:
-            self.rv.append(Token(s, self.lineno))
-        else:
-            self.rv.append(ConstIdentifier(s, self.lineno))
-
     def t_id(self, s):
-        r"[a-z_][a-z_0-9]*"
+        r"[a-zA-Z_][a-zA-Z_0-9]*"
         if s in KEYWORDS:
             self.rv.append(Token(s, self.lineno))
+        elif s.isupper():
+            self.rv.append(ConstIdentifier(s, self.lineno))
         else:
             self.rv.append(Identifier(s, self.lineno))
 
