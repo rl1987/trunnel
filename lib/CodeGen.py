@@ -487,15 +487,12 @@ def dedent_code(s):
         del lines[0]
     if lines[-1] == "":
         del lines[-1]
-    if not lines:
-        return
     min_indentation = 10000
     for line in lines:
         indent = len(re.match(r"^ *", line).group(0))
         if indent < len(line) and indent < min_indentation:
             min_indentation = indent
-    if min_indentation == 10000:
-        raise ValueError("Didn't find any nonempty lines")
+    assert min_indentation < 10000
     result = []
     indentation = " " * min_indentation
     for line in lines:
