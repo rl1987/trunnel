@@ -599,12 +599,17 @@ class DeclarationGenerationVisitor(CodeGenerator):
     def visitStructDecl(self, sd):
         if sd.annotation != None:
             self.w(sd.annotation)
-        self.w("typedef struct %s_st {\n"%sd.name)
+        self.format("""
+            #if !defined(TRUNNEL_OPAQUE) && !defined(TRUNNEL_OPAQUE_{upname})
+            struct {name}_st {{""", name=sd.name, upname=sd.name.upper())
         self.pushIndent(2)
         sd.visitChildren(self)
         self.popIndent(2)
-        self.w("  uint8_t trunnel_error_code_;")
-        self.w("} %s_t;\n\n"%sd.name);
+        self.format("""
+              uint8_t trunnel_error_code_;
+            }};
+            #endif
+            typedef struct {name}_st {name}_t;""",name=sd.name)
 
     def visitSMInteger(self, smi):
         if smi.annotation != None:
