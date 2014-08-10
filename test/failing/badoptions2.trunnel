@@ -1,0 +1,6 @@
+
+struct x {
+  u8 foo;
+}
+
+trunnel options opaque, very_opaque;

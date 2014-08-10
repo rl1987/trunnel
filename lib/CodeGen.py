@@ -165,6 +165,10 @@ class Checker(ASTVisitor):
         self.lenFieldDepth = 0
 
     def visitFile(self, f):
+        # Check options.
+        if "opaque" in f.options and "very_opaque" in f.options:
+            raise CheckError("can't use both 'opaque' and 'very_opaque'")
+
         # Build up the sets of all constant and structure names.
         for c in f.constants:
             if c.name in self.constNames:
