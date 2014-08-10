@@ -792,7 +792,7 @@ if __name__ == '__main__':
         if o != lasto:
             print("")
             lasto = o
-        print(d)
+        print(d.rstrip())
 
     print("""
 
