@@ -5,7 +5,7 @@
  File ::= Declarations 
 
  Declaration ::= OptAnnotation ConstDecl 
- Declaration ::= OptAnnotation StructDecl 
+ Declaration ::= OptAnnotation StructDecl OptSemi 
  Declaration ::= extern struct ID ; 
 
  ConstDecl ::= const CONST_ID = INT ; 
@@ -46,6 +46,8 @@
  OptExtentSpec ::= SMRemainder ; 
  OptIntConstraint ::= 
  OptIntConstraint ::= IN [ IntList ]
+ OptSemi ::= 
+ OptSemi ::= ; 
  OptUnionLength ::= 
  OptUnionLength ::= WITH LENGTH ID
  SMFixedArray ::= ArrayBase ID [ Integer ] 

@@ -19,7 +19,7 @@ struct nested {
       nulterm nt;
    } strs;
    struct restricted res;
-}
+};
 
 /** A structure full of fixed-lenth arrays. */
 struct fixed {

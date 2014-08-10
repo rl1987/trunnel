@@ -506,8 +506,8 @@ class Parser(spark.GenericParser, object):
         return d
 
     def p_Decl_2(self, info):
-        " Declaration ::= OptAnnotation StructDecl "
-        a,d = info
+        " Declaration ::= OptAnnotation StructDecl OptSemi "
+        a,d,_1 = info
         if a:
             d.annotation = str(a)
         return d
@@ -528,6 +528,11 @@ class Parser(spark.GenericParser, object):
             members.append(ending)
 
         return StructDecl(str(name), members)
+
+    def p_OptSemi_1(self, info):
+        " OptSemi ::= "
+    def p_OptSemi_2(self, info):
+        " OptSemi ::= ; "
 
     def p_StructEnding_1(self, info):
         " StructEnding ::= "
