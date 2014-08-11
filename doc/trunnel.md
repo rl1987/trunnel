@@ -548,6 +548,13 @@ NUL-terminated result.  (It can return NULL if it fails to NUL-terminate the
 answer.)  This time the 'setstr0' function takes a new value and its length;
 the 'setstr' function just takes a value and assumes it is NUL-terminated.
 
+### Extending trunnel
+
+You can extend Trunnel using the 'extern struct' mechanism described above.
+All you need to do is provide your own structure definition, along with
+"parse", "encode", "free", and "check" functions.  The generated trunnel code
+will use those functions as appropriate to access your extended type.
+
 ### Notes on thread-safety
 
 There are no global structures and there are no locks.  It's up to you to
