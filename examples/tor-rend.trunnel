@@ -45,17 +45,12 @@ struct v2_intro_body {
    u8 dh_data[128];
 }
 
-struct v3_intro_auth_data {
-   u16 auth_len;
-   // XXXX can't recurse sensibly here.
-   u8 auth_data[auth_len];
-}
-
 struct v3_intro_body {
    u8 auth_type;
    union auth[auth_type] {
      0 : ;
-     default : struct v3_intro_auth_data authdata;
+     default : u16 auth_len;
+               u8 auth_data[auth_len];
    };
    u32 timestamp;
    u32 rp_ip;

@@ -3,7 +3,7 @@
 struct tor_ed_cert {
   u8 version IN [1];
   u8 cert_type;
-  u32 exp_field; // XXXX this is a "u24" in the spec. How silly. */
+  u32 exp_field;
   u8 cert_key_type;
   u8 certified_key[32];
   u8 n_extensions;
@@ -30,7 +30,7 @@ struct cert_revocation {
   u8 identity_key[32];
   u8 revoked_key[32];
   u64 published;
-  u8 n_extensions; // XXXX this continues until 'length of revocation-64' in the spec.
+  u8 n_extensions;
   struct cert_extension ext[n_extensions];
   u8 signature[64];
 }
@@ -53,4 +53,22 @@ struct auth02_cell {
   u8 tlssecrets[32];
   u8 rand[24];
   u8 sig[64];
+}
+
+const LS_IPV4 = 0x00;
+const LS_IPV6 = 0x01;
+const LS_LEGACY_ID = 0x02;
+const LS_ED25519_ID = 0x03;
+
+// amended from tor.trunnel
+struct link_specifier {
+  u8 ls_type;
+  u8 ls_len;
+  union un[ls_type] WITH LENGTH ls_len {
+    LS_IPV4: u32 ipv4_addr; u16 ipv4_port;
+    LS_IPV6: u8 ipv6_addr[16]; u16 ipv6_port;
+    LS_LEGACY_ID: u8 legacy_id[20];
+    LS_ED25519_ID: u8 ed25519_id[32];
+    default: u8 unrecognized[];
+  };
 }

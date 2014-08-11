@@ -1,23 +1,7 @@
 // approximate implementation of cell formats from Tor proposal 224.
 
-
-const LS_IPV4 = 0x00;
-const LS_IPV6 = 0x01;
-const LS_LEGACY_ID = 0x02;
-const LS_ED25519_ID = 0x03;
-
 // From tor-spec.txt as amended by prop220
-struct link_specifier {
-  u8 ls_type;
-  u8 ls_len;
-  union un[ls_type] WITH LENGTH ls_len {
-    LS_IPV4: u32 ipv4_addr; u16 ipv4_port;
-    LS_IPV6: u8 ipv6_addr[16]; u16 ipv6_port;
-    LS_LEGACY_ID: u8 legacy_id[20];
-    LS_ED25519_ID: u8 ed25519_id[32];
-    default: u8 unrecognized[];
-  };
-}
+extern struct link_specifier;
 
 struct establish_intro_cell_extension {
    u8 type;
@@ -31,7 +15,6 @@ struct establish_intro_cell {
   u8 auth_key_type IN [2..254];
   u8 auth_key_len;
   u8 auth_key[auth_key_len];
-// XXXX this was zero-terminated, not counted.
   u8 n_extensions;
   struct establish_intro_cell_extension exts[n_extensions];
   u8 handshake_auth[32];
@@ -48,9 +31,7 @@ struct old_establish_intro_cell {
 
 struct maint_establish_intro_cell {
   u8 prefix IN [0xFF];
-  // XXXX this field not in spec
-  u8 n_commands;
-  struct maint_cell_command cmds[n_commands];
+  struct maint_cell_command cmds[];
 }
 
 const UPDATE_KEYS = 0x0001;
@@ -84,7 +65,6 @@ struct key_update {
 struct introduce1_cell {
   u8 auth_keyid[32];
   u8 enc_keyid[8];
-// XXXX this was zero-terminated, not counted.
   u8 n_extensions;
   struct intro_cell_extension exts[n_extensions];
   u8 encrypted[];
@@ -114,11 +94,10 @@ struct intro_ack_cell_extension {
 
 struct encrypted_intro_cell {
   u8 rend_cookie[20];
-// blah blah count XXX
   u8 n_exts;
   struct intro_cell_extension exts[n_exts];
   u8 onion_key_type;
-  union onion_key[onion_key_type] { // XXXX length field?
+  union onion_key[onion_key_type] {
     1: u8 tap_key[128];
     2: u8 ntor_key[32];
     default: fail;
