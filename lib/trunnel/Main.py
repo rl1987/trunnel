@@ -6,13 +6,22 @@
 if __name__ == '__main__':
     import sys
     import trunnel.CodeGen
+    import getopt
 
-    if len(sys.argv) < 2:
-        sys.stderr.write("Syntax: CodeGen.py <fname>\n")
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "O:", ["option="])
+
+    if len(args) < 1:
+        sys.stderr.write("Syntax: python -m trunnel.Main <fname>\n")
         sys.exit(1)
 
-    for filename in sys.argv[1:]:
-        trunnel.CodeGen.generate_code(filename)
+    more_options = []
+
+    for (k,v) in opts:
+        if k in ('-O', '--option'):
+            more_options.append(v)
+
+    for filename in args:
+        trunnel.CodeGen.generate_code(filename, more_options)
 
 __license__ = """
 Copyright 2014  The Tor Project, Inc.

@@ -2393,7 +2393,7 @@ UNUSED_ static uint64_t trunnel_ntohll(uint64_t a)
 
 """
 
-def generate_code(input_fname):
+def generate_code(input_fname, extra_options=[]):
     """DOCDOC"""
     basename = input_fname
     if basename.endswith(".trunnel"):
@@ -2406,6 +2406,7 @@ def generate_code(input_fname):
     t = trunnel.Grammar.Lexer().tokenize(inp.read())
     inp.close()
     parsed = trunnel.Grammar.Parser().parse(t)
+    parsed.options.extend(extra_options)
     c = Checker()
     c.visit(parsed)
 
