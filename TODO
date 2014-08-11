@@ -1,89 +1,27 @@
 
 FOR VERSION 1
 
-  o Parse grammars
-  o check grammars
-  o Generate struct declarations
-  o Generate struct manipulators
-  o Generate struct encoders
-  o Generate struct parsers
-
-  o Finish writing code
-    o Fix all XXXX items
-
-  o real frontend.
-
-  o Enforce integer constraints when parsing.
-
-  o Pass minimal inputs to struct parsing inside length-specified unions.
-
-  o Add comments to output (passthrough)
-
-  o Identify and remove as many special cases as possible
-    o Default: stuff.
-    o At-end stuff.
-    o Allow more things in unions.
-
-  o Access functions
-    o For everything.
-    o We need to decide on union semantics RSN though.
-
-  o Set length fields for length-having unions automatically.
-
-  o Write some tests for the C code
-  o Get complete coverage for generator
-  o Get complete coverage on generated code made by complete-coverage
-    generator
-    o Initial phase
-    o Post-accessor phase
-
-  o Document it.
-    o Explain that I don't care about things that need backtracking
-    o Documentation in code
-    o Document all accessors in code; fix DOCDOC comments.
-    o Document format.
-
-  o Allow "u8 until_end[];" in eos position.
-
-  o See whether it can do everything in Tor.
-
-  o Make it do the rest of what Tor needs
-    o 'struct x until_end[];'
-
-  o Rebuild-grammar script.
-
   - Toplevel makefile?
-
-  o Put modules in correct package.
 
   - Move most generated stuff into a separate file.
 
+  - Windows support (msvc, mingw)
 
 FOR VERSION 1.1 OR LATER
 
-  o Things Tor needs
-    o variable-length items in unions, taking fields from unions
-
   - Correctness:
-    o Forbid length fields of unions to get reused as anything else.
     - Allow union case statements to contain ranges that involve named
       constants.
     - Extend checker to simplify?  Eg ranges.  C field names.
     - Restrict vararrays in unions to only use fields declared outside
       or in same case.
-    X verify that fixed arrays don't overflow size_t
 
   - Features
-    o Allow nested structures.
     - Add extra structure data fields and corresponding "clear" functions to
       output.
     - Write a thing to output nail grammars?
     - Propagate union tag restrictions to be constraints on tag field.
     - Use maxima for length fields to determine real max for vararray len
-
-  o Generality
-    o Allow length fields inside unions.
-    o Allow vararrays inside unions.
 
   - Code quality:
     - Simplify huge union case statements.
