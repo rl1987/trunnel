@@ -5,13 +5,13 @@ The grammar is in doc/GRAMMAR.
 
 A mostly-readable example is in examples/example2.trunnel.
 
+There's some markdown-formatted documentation in doc/trunnel.md.
+
 To see what it compiles into, run
 
       python lib/CodeGen.py examples/example2.trunnel
 
 That will create examples/example2.c and examples/example2.h .
-
-Better documentation to follow, I hope.
 
 
 If you want a tool that can handle sub-byte fields, backtracking,

@@ -24,9 +24,9 @@ FOR VERSION 1
     o At-end stuff.
     o Allow more things in unions.
 
-  . Access functions
+  o Access functions
     o For everything.
-    - We need to decide on union semantics RSN though.
+    o We need to decide on union semantics RSN though.
 
   o Set length fields for length-having unions automatically.
 
@@ -37,11 +37,11 @@ FOR VERSION 1
     o Initial phase
     o Post-accessor phase
 
-  . Document it.
+  o Document it.
     o Explain that I don't care about things that need backtracking
     o Documentation in code
     o Document all accessors in code; fix DOCDOC comments.
-    - Document format.
+    o Document format.
 
   o Allow "u8 until_end[];" in eos position.
 
@@ -51,6 +51,12 @@ FOR VERSION 1
     o 'struct x until_end[];'
 
   o Rebuild-grammar script.
+
+  - Toplevel makefile?
+
+  - Put modules in correct package.
+
+  - Move most generated stuff into a separate file.
 
 
 FOR VERSION 1.1 OR LATER
