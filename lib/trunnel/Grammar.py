@@ -10,7 +10,7 @@
 
 """
 
-import spark
+import trunnel.spark
 
 ######
 #
@@ -78,8 +78,8 @@ KEYWORDS = set("""
 #####
 
 
-class Lexer(spark.GenericScanner, object):
-    """Scanner class based on spark.GenericScanner.  Its job is to turn
+class Lexer(trunnel.spark.GenericScanner, object):
+    """Scanner class based on trunnel.spark.GenericScanner.  Its job is to turn
        a string into a list of Token.
 
        Note that spark does most of the work for us here: under the hood,
@@ -89,7 +89,7 @@ class Lexer(spark.GenericScanner, object):
     def tokenize(self, input):
         self.rv = []
         self.lineno = 1
-        spark.GenericScanner.tokenize(self, input)
+        trunnel.spark.GenericScanner.tokenize(self, input)
         return self.rv
 
     def t_punctuation(self, s):
@@ -464,11 +464,11 @@ class SMIgnore(StructMember):
 #
 #####
 
-class Parser(spark.GenericParser, object):
-    """A parser for trunnel's grammar.  Uses spark.GenericParser for the
+class Parser(trunnel.spark.GenericParser, object):
+    """A parser for trunnel's grammar.  Uses trunnel.spark.GenericParser for the
        heavy lifting.
 
-       (spark.GenericParser is an Earley parse, with O(n^3) worst-case
+       (trunnel.spark.GenericParser is an Earley parse, with O(n^3) worst-case
        performance, but we don't care.)
 
        Each p_* method represents a single grammar rule in its docstring;
@@ -481,7 +481,7 @@ class Parser(spark.GenericParser, object):
     #    corresponding structs and treated as top-level when we
     #    build the File object.
     def __init__(self):
-        spark.GenericParser.__init__(self, "File")
+        trunnel.spark.GenericParser.__init__(self, "File")
         self.lingering_structs = []
 
     def typestring(self, token):

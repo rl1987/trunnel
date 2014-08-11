@@ -64,9 +64,10 @@
 
 """
 
+import os
 import re
 import textwrap
-import Grammar
+import trunnel.Grammar
 
 class ASTVisitor(object):
     """Visitor pattern for an AST object.  When you call
@@ -344,7 +345,7 @@ class Checker(ASTVisitor):
                              (self.structName,smu.name))
         elif self.foundDefaults == 0:
             # If no default was given, the default is 'fail'
-            smu.members.append(Grammar.UnionMember(None, [ Grammar.SMFail() ]))
+            smu.members.append(trunnel.Grammar.UnionMember(None, [ trunnel.Grammar.SMFail() ]))
 
         self.memberPrefix = ""
         self.unionName = None
@@ -763,7 +764,7 @@ class CodeGenerationVisitor(CodeGenerator):
                             EncodeFnGenerator, ParseFnGenerator ]
     def visitFile(self, f):
         for n in f.externStructs:
-            fakeStruct = Grammar.StructDecl(n, [])
+            fakeStruct = trunnel.Grammar.StructDecl(n, [])
             self.w("typedef struct %s_st %s_t;"%(n,n))
             PrototypeGenerationVisitor(self.sort_order,self.f,docstrings=False).visit(fakeStruct)
         f.visitChildrenSorted(self.sort_order, self)
@@ -1558,7 +1559,7 @@ def arrayIsBytes(arry):
     tp = arry.basetype
     if str(tp) == 'char':
         return True
-    elif type(tp) == Grammar.IntType and tp.width == 8:
+    elif type(tp) == trunnel.Grammar.IntType and tp.width == 8:
         return True
     else:
         return False
@@ -2034,7 +2035,7 @@ class ParseFnGenerator(CodeGenerator):
             self.needLabels.add(self.truncatedLabel)
             bytesPerElt = 1
             multiplier = ""
-            if type(sfa.basetype) == Grammar.IntType:
+            if type(sfa.basetype) == trunnel.Grammar.IntType:
                 bytesPerElt = sfa.basetype.width // 8
                 if bytesPerElt > 1:
                     multiplier = "%s * "%bytesPerElt
@@ -2044,7 +2045,7 @@ class ParseFnGenerator(CodeGenerator):
                         memcpy(obj->{c_name}, ptr, {multiplier}{width});
                         """, c_name=sfa.c_name, multiplier=multiplier,
                         width=sfa.width, truncated=self.truncatedLabel)
-            if type(sfa.basetype) == Grammar.IntType:
+            if type(sfa.basetype) == trunnel.Grammar.IntType:
                 self.format("""
                          {{
                            unsigned idx;
@@ -2392,16 +2393,8 @@ UNUSED_ static uint64_t trunnel_ntohll(uint64_t a)
 
 """
 
-if __name__ == '__main__':
-    # Implements the command-line interface for trunnel.
-    import sys
-    import os
-
-    if len(sys.argv) != 2:
-        sys.stderr.write("Syntax: CodeGen.py <fname>\n")
-        sys.exit(1)
-
-    input_fname = sys.argv[1]
+def generate_code(input_fname):
+    """DOCDOC"""
     basename = input_fname
     if basename.endswith(".trunnel"):
         basename = basename[:-len(".trunnel")]
@@ -2410,9 +2403,9 @@ if __name__ == '__main__':
     h_fname = basename + ".h"
 
     inp = open(input_fname, 'r')
-    t = Grammar.Lexer().tokenize(inp.read())
+    t = trunnel.Grammar.Lexer().tokenize(inp.read())
     inp.close()
-    parsed = Grammar.Parser().parse(t)
+    parsed = trunnel.Grammar.Parser().parse(t)
     c = Checker()
     c.visit(parsed)
 
@@ -2439,7 +2432,6 @@ if __name__ == '__main__':
         DeclarationGenerationVisitor(c.sortedStructs, out_c, inCFile=True).visit(parsed)
     CodeGenerationVisitor(c.sortedStructs, out_c).visit(parsed)
     out_c.close()
-
 
 __license__ = """
 Copyright 2014  The Tor Project, Inc.

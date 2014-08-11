@@ -60,7 +60,7 @@ trunnel file.  It can look something like:
     }
 
 Then you save that file with a name like "myformat.trunnel" and run trunnel
-on it.  (Right now, that's "python lib/CodeGen.py myformat.trunnel".)  If the
+on it.  (Right now, that's "python -m trunnel.Main myformat.trunnel".)  If the
 input file is well-formatted, Trunnel will generate a header file
 ("myformat.h") and an implementation file ("myformat.c").
 

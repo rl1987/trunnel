@@ -54,7 +54,7 @@ FOR VERSION 1
 
   - Toplevel makefile?
 
-  - Put modules in correct package.
+  o Put modules in correct package.
 
   - Move most generated stuff into a separate file.
 

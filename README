@@ -9,7 +9,7 @@ There's some markdown-formatted documentation in doc/trunnel.md.
 
 To see what it compiles into, run
 
-      python lib/CodeGen.py examples/example2.trunnel
+      python -m trunnel.Main examples/example2.trunnel
 
 That will create examples/example2.c and examples/example2.h .
 
