@@ -1,4 +1,4 @@
-# Main.py -- CLI for trunnel
+# __main__.py -- CLI for trunnel
 #
 # Copyright 2014, The Tor Project, Inc.
 # See license at the end of this file for copying information.

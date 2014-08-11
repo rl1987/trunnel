@@ -52,15 +52,16 @@ test: ctest
 
 valid/simple.o: valid/simple.h valid/simple.c
 valid/derived.o: valid/derived.h valid/derived.c
+valid/opaque.o: valid/opaque.h valid/opaque.h
 $(TEST_OBJS) : tinytest/tinytest.h tinytest/tinytest_macros.h valid/simple.h valid/derived.h
 tinytest/tinytest.o: tinytest/tinytest.h tinytest/tinytest_macros.h
 
 valid/simple.c valid/simple.h: valid/simple.trunnel ../lib/trunnel/*py
-	PYTHONPATH=../lib:${PYTHONPATH} python -m trunnel.Main valid/simple.trunnel
+	PYTHONPATH=../lib:${PYTHONPATH} python -m trunnel valid/simple.trunnel
 
 valid/derived.c valid/derived.h: valid/derived.trunnel ../lib/trunnel/*py
-	PYTHONPATH=../lib:${PYTHONPATH} python -m trunnel.Main valid/derived.trunnel
+	PYTHONPATH=../lib:${PYTHONPATH} python -m trunnel valid/derived.trunnel
 
 valid/opaque.c valid/opaque.h: valid/opaque.trunnel ../lib/trunnel/*py
-	PYTHONPATH=../lib:${PYTHONPATH} python -m trunnel.Main valid/opaque.trunnel
+	PYTHONPATH=../lib:${PYTHONPATH} python -m trunnel valid/opaque.trunnel
 
