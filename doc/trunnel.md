@@ -1,3 +1,14 @@
+<head>
+<title>Trunnel manual</title>
+   <style>
+     <!--
+        body { padding: 0 10% 0 15%; }
+        h1 { text-indent: -10%; }
+        h2 { text-indent: -7%; }
+        h3,h4,h5,h6 {text-indent: -3%; }
+     -->
+   </style>
+</head>
 
 # Trunnel: a simple binary-format parser/encoder.
 
@@ -31,14 +42,14 @@ Here are some non-goals for Trunnel:
    * Support pre-ANSI C with the code generator.
 
 
-## About this document
+## 1. About this document
 
 I'll start with a quick example of the Trunnel workflow, and then move on to
 document the format of the files that Trunnel uses to define binary formats.
 After that, I'll briefly discuss the C functions that Trunnel exposes to the
 outside world.
 
-## Working with Trunnel
+## 2. Working with Trunnel
 
 Here's a quick overview of what Trunnel can do for you.
 
@@ -59,10 +70,10 @@ trunnel file.  It can look something like:
        u8 digest[SHA256_LEN];
     }
 
-Then you save that file with a name like "myformat.trunnel" and run trunnel
-on it.  (Right now, that's "python -m trunnel myformat.trunnel".)  If the
+Then you save that file with a name like `myformat.trunnel` and run trunnel
+on it.  (Right now, that's `python -m trunnel myformat.trunnel` .)  If the
 input file is well-formatted, Trunnel will generate a header file
-("myformat.h") and an implementation file ("myformat.c").
+(`myformat.h`) and an implementation file (`myformat.c`).
 
 To use this code in your program, include the header file and build and link
 with the C file.  You'll also need to distribute both generated code files,
@@ -71,14 +82,14 @@ along with trunnel-impl.h, trunnel.h, and trunnel.c.
 Then you can write code that uses the generated functions documented in
 myformat.h.
 
-## Writing trunnel definitions
+## 3. Writing trunnel definitions
 
 A trunnel definition file can contain any number of three types of
 definitions: constants, structure declarations, and extern declarations.
 
 Both kinds of C comments are allowed: C99 comments that start with a
-"//", and the C comments that start with a "/\*".  Additionally, you
-can insert doxygen-style comments that start with "/\*\*" before any
+`//`, and the C comments that start with a `/*`.  Additionally, you
+can insert doxygen-style comments that start with `/**` before any
 structure, constant, or structure member.  These will be included
 verbatim in the output file.
 
@@ -105,11 +116,11 @@ the form of:
 
 As in:
 
-   struct rgb {
-      u8 r;
-      u8 g;
-      u8 b;
-   }
+    struct rgb {
+       u8 r;
+       u8 g;
+       u8 b;
+    }
 
 The names of structures and their members may be any valid C
 identifier containing at least one lowercase letter.  Structures can
@@ -118,11 +129,11 @@ below.
 
 An extern structure definition takes the form of:
 
-   extern struct <ID>;
+    extern struct <ID>;
 
 As in:
 
-   extern struct message;
+    extern struct message;
 
 An extern struct definition declares that a structure will be defined in
 another trunnel file, and that it's okay to use it in this trunnel file.
@@ -149,8 +160,8 @@ All integers are given as 8, 16, 32, or 64-bit values:
     u32 value_d;
 
 These values are encoded and parsed in network (big-endian) order.  The
-corresponding values in C are generated as uint8\_t, uint16\_t, uint32\_t, and
-uint64\_t.
+corresponding values in C are generated as `uint8_t`, `uint16_t`, `uint32_t`,
+and `uint64_t`.
 
 (Signed values and little-endian values aren't supported.)
 
@@ -221,7 +232,7 @@ representation of the array always ends with NUL -- internal NULs are
 permitted, however.
 
 In newly constructed structures, as before, integers are initialized to 0 and
-structures are initialized to NUL.  Character arrays are initialized to be
+structures are initialized to `NUL`.  Character arrays are initialized to be
 filled with 0-valued bytes.
 
 ### Structure members: variable-length arrays
@@ -253,8 +264,8 @@ containing structure or union by leaving its length field empty:
 
 Of course, you couldn't end a structure with all four of those: they can't
 _all_ extend to the end of a structure.  We also require that these "greedy"
-arrays consume their input completely: If you specify "u32
-remaining_words[];", then the input must contain a multiple of 4 bytes, or it
+arrays consume their input completely: If you specify `u32
+remaining_words[];`, then the input must contain a multiple of 4 bytes, or it
 will be invalid.
 
 Variable-length arrays are represented internally with a dynamic array type
@@ -286,14 +297,14 @@ Only one variant of the union, depending on the given tag value, is parsed
 or encoded.
 
 You can specify the behavior of the union when no tag value is matched using
-the "default:" label.  The "fail" production is a special value that causes
-parsing and encoding to always fail for a given tag value. The "default: fail;"
+the `default:` label.  The `fail` production is a special value that causes
+parsing and encoding to always fail for a given tag value. The `default: fail;`
 case is understood unless some other behavior for default is given.
 
 The fields in a union are represented by storing them in the generated
 structure.  (To avoid user errors, no C union is generated.)  Their names are
-prefixed with the name of the union, so ipv4\_addr would be stored as
-addr\_ipv4\_adr, and so on.
+prefixed with the name of the union, so `ipv4_addr` would be stored as
+`addr_ipv4_addr`, and so on.
 
 When encoding a union, only the fields referenced by the actual tag value are
 inspected: it's okay to encode if the other fields are invalid.
@@ -319,9 +330,9 @@ themselves against later extensions.  You can do this as:
     };
 
 Here, the union is required to take up a number of bytes dependent on the
-value of 'length'.  The 'hostname' and 'unrecognized' cases extend to the end
-of the union.  The "..." in the 0xEE case indicates that extra bytes are
-accepted and ignored, whereas in the 0xEF case, extra bytes are accepted and
+value of `length`.  The `hostname` and `unrecognized` cases extend to the end
+of the union.  The `...` in the `0xEE` case indicates that extra bytes are
+accepted and ignored, whereas in the `0xEF` case, extra bytes are accepted and
 stored.  Unless otherwise specified, the length field must match the length
 of the fields in the union exactly.
 
@@ -347,39 +358,39 @@ for a given structure, you can give an end-of-string constraint:
 (*This feature might go away in a future version if it doesn't turn
 out to be useful.)
 
-## Controlling code generation with options
+## 4. Controlling code generation with options
 
 Two options are supported in Trunnel right now:
 
     trunnel option opaque;
     trunnel option very_opaque;
 
-The *opaque* option makes the generated structures not get exposed in the
+The `opaque` option makes the generated structures not get exposed in the
 generated header files by default.  You can override this and expose a single
-structure name by defining TRUNNEL_EXPOSE_<STRUCTNAME>_ in your C before
+structure name by defining `TRUNNEL_EXPOSE_<STRUCTNAME>_` in your C before
 including the generated header.
 
-The *very_opaque* option prevents the generated structures from being put
+The `very_opaque` option prevents the generated structures from being put
 into the generated header files at all: you will only be able to access their
 fields with the generated accessor functions.
 
-## Using Trunnel's generated code
- 
-When you run Trunnel on "module.trunnel", it generates "module.c" and
-"module.h".  Your program should include module.h, and compile and link
-module.c.
+## 5. Using Trunnel's generated code
+
+When you run Trunnel on `module.trunnel`, it generates `module.c` and
+`module.h`.  Your program should include `module.h`, and compile and link
+`module.c`.
 
 For each structure you define in your trunnel file, Trunnel will generate a
-structure with an "\_st" suffix and a typedef with a "\_t" suffix.  For
-example, "struct rgb" in your definition file wile generate "struct rgb\_st;"
-and "typedef struct rgb\_st rgb\_t;" in C.
+structure with an `_st` suffix and a typedef with a `_t` suffix.  For
+example, `struct rgb` in your definition file wile generate `struct rgb_st;`
+and `typedef struct rgb_st rgb_t;` in C.
 
 In addition to consulting the documentation below, you can also read the
 comments in the generated header file to learn how to use the generated
 functions.
 
-In the examples below, I'll be assuming a structure called "example", defined
-owith something like:
+In the examples below, I'll be assuming a structure called `example`, defined
+with something like:
 
     struct example {
        u16 shortword;
@@ -388,16 +399,16 @@ owith something like:
 
 ### Generated code: creating and destroying objects
 
-Every object gets a new and a free function:
+Every object gets a `new` and a `free` function:
 
      example_t *example_new(void);
      void example_free(example_t *obj);
 
-The example\_new() function creates a new example\_t, with its fields
+The `example_new()` function creates a new `example_t`, with its fields
 initialized to 0, NULL, or to their lowest legal value (in the cases of
 constrained integers).
 
-The example\_free() function frees the provided object, along with all the
+The `example_free()` function frees the provided object, along with all the
 objects inside it.  It's okay to call it with NULL.
 
 ### Generated code: encoding an object
@@ -406,10 +417,10 @@ If you have a filled-in object, you can encode it into a buffer:
 
    ssize_t example_encode(uint8_t *buf, size_t buf_len, example_t *obj);
 
-The 'buf\_len' parameter describes the number of available bytes in 'buf' to
-use for encoding 'obj'.  On success, this function will return the number of
+The `buf_len` parameter describes the number of available bytes in `buf` to
+use for encoding `obj`.  On success, this function will return the number of
 bytes that it used.  On failure, the function will return -2 on a truncated
-result, where providing a longer buf\_len might make it succeed, and will
+result, where providing a longer `buf_len` might make it succeed, and will
 return -1 if there is an error that prevents encoding the object entirely.
 
 ### Generated code: checking an object for correctness
@@ -419,7 +430,7 @@ encode operation has just failed, you can call:
 
     const char *example_check(const example_t *obj);
 
-This function returns NULL if the object is correct and encodeable, and
+This function returns `NULL` if the object is correct and encodeable, and
 returns a string explaining what has gone wrong otherwise.
 
 ### Generated code: parsing an object
@@ -428,25 +439,25 @@ Here's the big one: parsing an object form a binary string.
 
     ssize_t example_parse(example_t **out, const uint8_t *inp, size_t inp_len);
 
-Here we take up to 'inp\_len' bytes from the buffer 'inp'.  On success, this
-function returns the number of bytes actually consumed, and sets \*out to a
-newly allocated example\_t holding the parsed object.  On failure, it returns
+Here we take up to `inp_len` bytes from the buffer `inp`.  On success, this
+function returns the number of bytes actually consumed, and sets `*out` to a
+newly allocated `example_t` holding the parsed object.  On failure, it returns
 -1 if the input was completely invalid, and -2 if it was possibly truncated.
 
 ### Generated code: accessor functions
 
 For each struct member, Trunnel creates a set of set and get functions to
-inspect and change its value.  If you've specified the opaque or very\_opaque
+inspect and change its value.  If you've specified the `opaque` or `very_opaque`
 option, these are the only (recommended) way to view or modify a structure.
 
 Each type has its own set of accessors.
 
-By convention, the set accessors (the ones that modify the objects) return 0
-on success and -1 on failure.  Additionally on failure, they set an error
+By convention, the set accessors (the ones that modify the objects) return `0`
+on success and `-1` on failure.  Additionally on failure, they set an error
 code on the object that prevents the object from being encoded unless the
 error code is cleared.
 
-**Integers** and **nul-terminated strings** have a get and set function:
+**Integers** and **nul-terminated strings** have a` get` and `set` function:
 
      struct example {
         u8 a;
@@ -477,7 +488,7 @@ becomes:
      int example_set_xyz(example_t *ex, rgb_t *val);
      int example_set0_xyz(example_t *ex, rgb_t *val);
 
-The set and set0 functions behave identically, except that the set function
+The `set` and `set0` functions behave identically, except that the set function
 frees the previous value of the xyz field (if any), whereas the set0 function
 will overwrite it.
 
@@ -502,11 +513,11 @@ will both produce:
     int example_set0_colors(example_t *example, size_t idx, rgb_t *val);
 
 In this case, the getlen function returns the length of the array, the
-getarray function returns a pointer to the array itself, and the 'get' and
-'set' and 'set0' functions access or replace the value of the array at a
+getarray function returns a pointer to the array itself, and the `get` and
+`set` and `set0` functions access or replace the value of the array at a
 given index.  The set0 function is only generated in the case of an array of
-structures: when it is generated, 'set' frees the old value of the array at
-that index (if any), and 'set0' does not.
+structures: when it is generated, `set` frees the old value of the array at
+that index (if any), and `set0` does not.
 
 **Variable-length arrays** additionally have functions that adjust their
 lengths, so that :
@@ -521,13 +532,13 @@ will also produce:
      int example_add_colors(example_t *example, rgb_t *val);
      int example_setlen_colors(example_t *example, size_t newlen);
 
-The 'add' function appends a new item to the end of the array.  The 'setlen'
+The `add` function appends a new item to the end of the array.  The `setlen`
 function changes the current length of the array.  (If the length increases,
-the new fields are padded with 0 or NULL as appropriate.  If the length
+the new fields are padded with `0` or `NULL` as appropriate.  If the length
 decreases, the removed members are freed if necessary.)
 
-Note that the length field 'n' is not automatically kept in sync with the
-length of the dynamic array 'colors'.
+Note that the length field `n` is not automatically kept in sync with the
+length of the dynamic array `colors`.
 
 Finally, **variable-length arrays of char** have extra functions to help you
 access them as variable-length strings:
@@ -543,16 +554,16 @@ produces:
     int example_setstr_value(example_t *obj, const char *val);
     int example_setstr0_value(example_t *obj, const char *val, size_t len);
 
-The 'getstr' function is identical to 'getarray', except that it guarantees a
-NUL-terminated result.  (It can return NULL if it fails to NUL-terminate the
-answer.)  This time the 'setstr0' function takes a new value and its length;
-the 'setstr' function just takes a value and assumes it is NUL-terminated.
+The `getstr` function is identical to `getarray`, except that it guarantees a
+NUL-terminated result.  (It can return `NULL` if it fails to NUL-terminate the
+answer.)  This time the `setstr0` function takes a new value and its length;
+the `setstr` function just takes a value and assumes it is NUL-terminated.
 
 ### Extending trunnel
 
 You can extend Trunnel using the 'extern struct' mechanism described above.
 All you need to do is provide your own structure definition, along with
-"parse", "encode", "free", and "check" functions.  The generated trunnel code
+`parse`, `encode`, `free`, and `check` functions.  The generated trunnel code
 will use those functions as appropriate to access your extended type.
 
 ### Notes on thread-safety
@@ -560,4 +571,3 @@ will use those functions as appropriate to access your extended type.
 There are no global structures and there are no locks.  It's up to you to
 avoid calling multiple functions at once on the same structure.  If you
 manage to avoid that, Trunnel should be thread-safe.
-
