@@ -1,8 +1,6 @@
 #include "test.h"
 #include "trunnel-impl.h"
 
-#define trunnel_free free
-
 static void
 test_reallocarray(void *arg)
 {

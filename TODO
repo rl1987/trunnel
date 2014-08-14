@@ -3,9 +3,9 @@ FOR VERSION 1
 
   - Toplevel makefile?
 
-  - Move most generated stuff into a separate file.
+  o Move most generated stuff into a separate file.
 
-  - Windows support (msvc, mingw)
+  o Windows support (msvc, mingw)
 
 FOR VERSION 1.1 OR LATER
 

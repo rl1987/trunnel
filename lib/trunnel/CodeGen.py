@@ -2303,53 +2303,6 @@ MODULE_BOILERPLATE = """
 %(expose_definitions)s
 #include "%(h_fname)s"
 
-#ifdef __GNUC__
-#define UNUSED_ __attribute__((unused))
-#else
-#define UNUSED_
-#endif
-
-#ifdef TRUNNEL_DEBUG_FAILING_ALLOC
-extern int trunnel_provoke_alloc_failure;
-
-UNUSED_ static void *
-trunnel_malloc(size_t n)
-{
-   if (trunnel_provoke_alloc_failure) {
-     if (--trunnel_provoke_alloc_failure == 0)
-       return NULL;
-   }
-   return malloc(n);
-}
-UNUSED_ static void *
-trunnel_calloc(size_t a, size_t b)
-{
-   if (trunnel_provoke_alloc_failure) {
-     if (--trunnel_provoke_alloc_failure == 0)
-       return NULL;
-   }
-   return calloc(a,b);
-}
-static char *
-trunnel_strdup(const char *s)
-{
-   if (trunnel_provoke_alloc_failure) {
-     if (--trunnel_provoke_alloc_failure == 0)
-       return NULL;
-   }
-   return strdup(s);
-}
-#else
-#define trunnel_malloc(x) (malloc((x)))
-#define trunnel_calloc(a,b) (calloc(a,b))
-#define trunnel_strdup(s) (strdup((s)))
-#endif
-
-#define trunnel_free_(x) (free(x))
-#define trunnel_free(x) ((x) ? (free(x),0) : (0))
-
-#define trunnel_abort() abort()
-
 #define TRUNNEL_SET_ERROR_CODE(obj) \\
   do {                              \\
     (obj)->trunnel_error_code_ = 1; \\
