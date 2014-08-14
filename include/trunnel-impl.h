@@ -9,12 +9,14 @@
 #define TRUNNEL_IMPL_H_INCLUDED_
 #include "trunnel.h"
 #include <assert.h>
+#include <string.h>
 
 #ifdef _MSC_VER
 #define uint8_t unsigned char
 #define uint16_t unsigned short
 #define uint32_t unsigned int
 #define uint64_t unsigned __int64
+#define inline __inline
 #else
 #include <stdint.h>
 #endif
@@ -35,6 +37,46 @@ uint64_t trunnel_htonll(uint64_t a);
 uint64_t trunnel_ntohll(uint64_t a);
 
 #define trunnel_assert(x) assert(x)
+
+static inline void
+trunnel_set_uint64(void *p, uint64_t v) {
+  memcpy(p, &v, 8);
+}
+static inline void
+trunnel_set_uint32(void *p, uint32_t v) {
+  memcpy(p, &v, 4);
+}
+static inline void
+trunnel_set_uint16(void *p, uint16_t v) {
+  memcpy(p, &v, 2);
+}
+static inline void
+trunnel_set_uint8(void *p, uint8_t v) {
+  memcpy(p, &v, 1);
+}
+
+static inline uint64_t
+trunnel_get_uint64(const void *p) {
+  uint64_t x;
+  memcpy(&x, p, 8);
+  return x;
+}
+static inline uint32_t
+trunnel_get_uint32(const void *p) {
+  uint32_t x;
+  memcpy(&x, p, 4);
+  return x;
+}
+static inline uint16_t
+trunnel_get_uint16(const void *p) {
+  uint16_t x;
+  memcpy(&x, p, 2);
+  return x;
+}
+static inline uint8_t
+trunnel_get_uint8(const void *p) {
+  return *(const uint8_t*)p;
+}
 
 /* ====== dynamic arrays ======== */
 
