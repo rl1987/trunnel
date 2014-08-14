@@ -308,14 +308,18 @@ class SMInteger(StructMember):
         return "%s %s%s"%(self.inttype, self.getName(), cstr)
 
     def minimum(self):
-        """DOCDOC"""
+        """Return the lowest possible value for this inttype conforming
+           with its constraints."""
         if self.constraints is None:
             return 0
         else:
             return self.constraints.ranges[0][0]
 
     def maximum(self):
-        """DOCDOC"""
+        """Return the highest possible value for this inttype conforming with
+           its constraints.  Return a string with a 'UINT*_MAX'
+           constants if appropriate.
+        """
         if self.constraints is None:
             return "UINT%d_MAX"%self.intttype.width
         else:

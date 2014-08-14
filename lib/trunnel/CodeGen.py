@@ -491,7 +491,10 @@ class Annotator(ASTVisitor):
         pass
 
 def dedent_code(s):
-    """DOCDOC"""
+    """Given a string 's', see whether all nonblank lines in 's' are prefixed
+       with some number of spaces.  If so, remove that number of spaces from
+       the front of every line (except possibly blank lines).
+    """
     lines = s.split("\n")
     if lines[0] == "":
         del lines[0]
@@ -542,11 +545,16 @@ class CodeGenerator(ASTVisitor):
                 self.w_("%s%s\n"%(self.indent, line))
 
     def format(self, fmt, *args, **kwargs):
-        """DOCDOC"""
+        """Write code from 'fmt' with the current indentation level added to
+           the block as a whole.  If the code is indented to some
+           level already, remove the code's indentation before
+           indenting it.  Fill in variables in the string using
+           'str.format', and the arguments from 'args' and 'kwargs'.
+        """
         self.w(self.format_s(fmt, *args, **kwargs))
 
     def format_s(self, fmt, *args, **kwargs):
-        """DOCDOC"""
+        """As format, but return a string rather writing to the file."""
         fmt = dedent_code(fmt)
         return fmt.format(*args, **kwargs)
 
@@ -2394,7 +2402,11 @@ UNUSED_ static uint64_t trunnel_ntohll(uint64_t a)
 """
 
 def generate_code(input_fname, extra_options=[]):
-    """DOCDOC"""
+    """Read a trunnel file from 'input_fname' and write the result to
+       appropriate output files.  If 'extra_options' is set, add those
+       options as though they had been specified in the file with
+       "trunnel options ..."
+    """
     basename = input_fname
     if basename.endswith(".trunnel"):
         basename = basename[:-len(".trunnel")]
