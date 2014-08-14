@@ -7,9 +7,81 @@
  */
 
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
 #include "trunnel-impl.h"
+
+#if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
+	__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#  define IS_LITTLE_ENDIAN 1
+#elif defined(BYTE_ORDER) && defined(ORDER_LITTLE_ENDIAN) &&     \
+	BYTE_ORDER == __ORDER_LITTLE_ENDIAN
+#  define IS_LITTLE_ENDIAN 1
+#elif defined(_WIN32)
+#  define IS_LITTLE_ENDIAN 1
+#elif defined(__APPLE__)
+#  include <libkern/OSByteOrder.h>
+#  define BSWAP64(x) OSSwapLittleToHostInt64(x)
+#elif defined(sun) || defined(__sun)
+#  include <sys/byteorder.h>
+#  ifndef _BIG_ENDIAN
+#    define IS_LITTLE_ENDIAN
+#  endif
+#else
+# if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#  include <sys/endian.h>
+# else
+#  include <endian.h>
+# endif
+#  if defined(__BYTE_ORDER) && defined(__LITTLE_ENDIAN) && \
+	__BYTE_ORDER == __LITTLE_ENDIAN
+#    define IS_LITTLE_ENDIAN
+#  endif
+#endif
+
+#ifdef _WIN32
+uint16_t
+trunnel_htons(uint16_t s)
+{
+  return (s << 8) | (s >> 8);
+}
+uint16_t
+trunnel_ntohs(uint16_t s)
+{
+  return (s << 8) | (s >> 8);
+}
+uint32_t
+trunnel_htonl(uint32_t s)
+{
+  return (s << 24) |
+         ((s << 8)&0xff0000) |
+         ((s >> 8)&0xff00) |
+         (s >> 24);
+}
+uint32_t
+trunnel_ntohl(uint32_t s)
+{
+  return (s << 24) |
+         ((s << 8)&0xff0000) |
+         ((s >> 8)&0xff00) |
+         (s >> 24);
+}
+#endif
+
+uint64_t
+trunnel_htonll(uint64_t a)
+{
+#ifdef IS_LITTLE_ENDIAN
+  return trunnel_htonl(a>>32) | (((uint64_t)trunnel_htonl(a))<<32);
+#else
+  return a;
+#endif
+}
+
+uint64_t
+trunnel_ntohll(uint64_t a)
+{
+  return trunnel_htonll(a);
+}
 
 #ifdef TRUNNEL_DEBUG_FAILING_ALLOC
 /** Used for debugging and running tricky test cases: Makes the nth

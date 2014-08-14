@@ -10,6 +10,30 @@
 #include "trunnel.h"
 #include <assert.h>
 
+#ifdef _MSC_VER
+#define uint8_t unsigned char
+#define uint16_t unsigned short
+#define uint32_t unsigned int
+#define uint64_t unsigned __int64
+#else
+#include <stdint.h>
+#endif
+
+#ifdef _WIN32
+uint32_t trunnel_htonl(uint32_t a);
+uint32_t trunnel_ntohl(uint32_t a);
+uint16_t trunnel_htons(uint16_t a);
+uint16_t trunnel_ntohs(uint16_t a);
+#else
+#include <arpa/inet.h>
+#define trunnel_htonl(x) htonl(x)
+#define trunnel_htons(x) htons(x)
+#define trunnel_ntohl(x) ntohl(x)
+#define trunnel_ntohs(x) ntohs(x)
+#endif
+uint64_t trunnel_htonll(uint64_t a);
+uint64_t trunnel_ntohll(uint64_t a);
+
 #define trunnel_assert(x) assert(x)
 
 /* ====== dynamic arrays ======== */
