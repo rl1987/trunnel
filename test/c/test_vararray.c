@@ -456,7 +456,7 @@ test_varlen_accessors_oob(void *arg)
   var->a32.n_ = 0;
   tt_int_op(1, ==, varlen_clear_errors(var));
 
-#if UINT64_MAX >= SIZE_MAX
+#if UINT64_MAX <= SIZE_MAX
   var->a64.n_ = UINT64_MAX;
   tt_int_op(-1, ==, varlen_add_a64(var, 33));
   var->a64.n_ = 0;

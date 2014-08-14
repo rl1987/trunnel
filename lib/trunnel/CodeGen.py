@@ -1215,8 +1215,12 @@ class AccessorFnGenerator(CodeGenerator):
         self.w("{\n")
 
         if maxlen is not None:
-            self.w("  if (inp->%s.n_ == (%s))\n"
-                   "    goto trunnel_alloc_failed;\n"%(sva.c_name,maxlen))
+            self.format("""
+               #if SIZE_MAX >= {maxlen}
+                 if (inp->{c_name}.n_ == {maxlen})
+                   goto trunnel_alloc_failed;
+               #endif""",
+                   c_name=sva.c_name,maxlen=maxlen)
 
         self.w("  TRUNNEL_DYNARRAY_ADD(%s, &inp->%s, elt, {});\n"
                "  return 0;\n"
