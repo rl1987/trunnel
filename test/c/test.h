@@ -30,7 +30,7 @@ const uint8_t *ux(const char *in);
 
 #ifdef TRUNNEL_DEBUG_FAILING_ALLOC
 #define ALLOCFAIL
-extern int trunnel_provoke_alloc_failure;
+#include "trunnel-impl.h"
 #define set_alloc_fail(n)                       \
   do {                                          \
     trunnel_provoke_alloc_failure = (n);        \
