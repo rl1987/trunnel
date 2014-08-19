@@ -114,7 +114,7 @@ test_repeats_invalid_struct(void *arg)
   extends4 = extends4_new();
   tt_int_op(-1, ==, extends4_encode(buf, sizeof(buf), extends4));
 
-  extends4_set_a(extends4, strdup("bedtime"));
+  extends4_set_a(extends4, "bedtime");
   tt_int_op(8, ==, extends4_encode(buf, sizeof(buf), extends4));
   tt_str_op((char*)buf, ==, "bedtime");
 
