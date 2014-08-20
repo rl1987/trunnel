@@ -1638,6 +1638,8 @@ class EncodeFnGenerator(CodeGenerator):
         sd.visitChildren(self)
 
         self.w('\n'
+               '\ntrunnel_assert(ptr == output + written);\n'
+               '\n'
                'return written;\n\n')
 
         self.popIndent(2)
@@ -1939,6 +1941,8 @@ class ParseFnGenerator(CodeGenerator):
         self.truncatedLabel = "truncated"
         self.structFailLabel = "relay_fail"
         sd.visitChildren(self)
+
+        self.w('trunnel_assert(ptr + remaining == input + len_in);\n')
 
         self.w('return len_in - remaining;\n\n')
 
