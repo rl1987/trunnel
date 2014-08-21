@@ -1848,7 +1848,6 @@ class EncodeFnGenerator(CodeGenerator):
 
         self.eltHeader(sva)
         if arrayIsBytes(sva):
-            arry = "obj->%s.elts_" % sva.c_name
             self.needTruncated = True
             self.format("""
                    {{
