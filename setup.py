@@ -7,8 +7,7 @@ setup(name='Trunnel',
       author='Nick Mathewson',
       author_email='nickm@torproject.org',
       url='https://gitweb.torproject.org/trunnel.git/',
-      package_dir = { '' : 'lib' },
+      package_dir={'': 'lib'},
       packages=['trunnel'],
       license='3-clause BSD'
-     )
-
+      )

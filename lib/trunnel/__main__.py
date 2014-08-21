@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
     more_options = []
 
-    for (k,v) in opts:
+    for (k, v) in opts:
         if k in ('-O', '--option'):
             more_options.append(v)
 

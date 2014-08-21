@@ -69,13 +69,17 @@ import re
 import textwrap
 import trunnel.Grammar
 
+
 class ASTVisitor(object):
+
     """Visitor pattern for an AST object.  When you call
        ASTVisitor.visit(foo) on an object of type X, it calls the
        appropriate visitX method on the visitor.
     """
+
     def __init__(self):
         pass
+
     def visit(self, ast, *args):
         name = "visit" + ast.__class__.__name__
         method = getattr(self, name, self.visit_other)
@@ -85,41 +89,43 @@ class ASTVisitor(object):
         """Invoked when there is no visitor method for a given AST node"""
         raise ValueError("visit" + ast.__class__.__name__)
 
+
 class CheckError(Exception):
     pass
 
 # Map from integer field width to the maximum for that field.
 TYPE_MAXIMA = {
-    8  : (1<<8) -1,
-    16 : (1<<16)-1,
-    32 : (1<<32)-1,
-    64 : (1<<64)-1,
+    8: (1 << 8) - 1,
+    16: (1 << 16) - 1,
+    32: (1 << 32) - 1,
+    64: (1 << 64) - 1,
 }
 
 # Map from integer field width to the function (if any) that you call
 # to put network-order fields of that width into host-order fields.
 HTON_FN = {
-    8 : '',
-    16 : 'trunnel_htons',
-    32 : 'trunnel_htonl',
-    64 : 'trunnel_htonll'
+    8: '',
+    16: 'trunnel_htons',
+    32: 'trunnel_htonl',
+    64: 'trunnel_htonll'
 }
 
 # Map from integer field width to the function (if any) that you call
 # to put host-order fields of that width into network-order fields.
 NTOH_FN = {
-    8 : '',
-    16 : 'trunnel_ntohs',
-    32 : 'trunnel_ntohl',
-    64 : 'trunnel_ntohll'
+    8: '',
+    16: 'trunnel_ntohs',
+    32: 'trunnel_ntohl',
+    64: 'trunnel_ntohll'
 }
 
 
 class Checker(ASTVisitor):
+
     """Validation visitor for a Trunnel AST.  Ensures consistency and
        well-formedness for the AST.
     """
-    ####
+    #
     # structNames -- a set of all the identifiers used as structure names.
     # constNames -- a set of all the identifiers used as constant names.
     # constValues -- a map from constant name to integer constant value.
@@ -173,16 +179,16 @@ class Checker(ASTVisitor):
         # Build up the sets of all constant and structure names.
         for c in f.constants:
             if c.name in self.constNames:
-                raise CheckError("duplicate constant name %s"%c.name)
+                raise CheckError("duplicate constant name %s" % c.name)
             self.constNames.add(c.name)
         for n in f.externStructs:
             if n in self.structNames:
-                raise CheckError("duplicate structure name %s"%n)
+                raise CheckError("duplicate structure name %s" % n)
             self.structNames.add(n)
             self.structUses[n] = set()
         for d in f.declarations:
             if d.name in self.structNames:
-                raise CheckError("duplicate structure name %s"%d.name)
+                raise CheckError("duplicate structure name %s" % d.name)
             self.structNames.add(d.name)
 
         # Recurse through all the constants and structures.
@@ -206,7 +212,8 @@ class Checker(ASTVisitor):
         # check for cycles
         for structname, uses in self.structUses.items():
             if structname in uses:
-                raise CheckError("There is a cycle in the %s structure"%structname)
+                raise CheckError(
+                    "There is a cycle in the %s structure" % structname)
 
         # Perform a topological sort.
         sorted_structs = []
@@ -225,15 +232,16 @@ class Checker(ASTVisitor):
             for s in removed_this_time:
                 del self.structUses[s]
 
-        self.sortedStructs = [ s for s in sorted_structs if s not in f.externStructs ]
+        self.sortedStructs = [
+            s for s in sorted_structs if s not in f.externStructs]
 
     def visitConstDecl(self, cd):
         self.constValues[cd.name] = cd.value.value
 
     def visitStructDecl(self, sd):
         self.structFieldNames = set()
-        self.structIntFieldNames = { }
-        self.structIntFieldUsage = { }
+        self.structIntFieldNames = {}
+        self.structIntFieldUsage = {}
         self.structName = sd.name
         self.structUses[sd.name] = set()
         sd.visitChildren(self)
@@ -245,21 +253,21 @@ class Checker(ASTVisitor):
         """Add m as a name of a member of the current structure, checking for
            duplicates."""
         if m in self.structFieldNames:
-            raise CheckError("duplicate field %s.%s"%(self.structName,m))
+            raise CheckError("duplicate field %s.%s" % (self.structName, m))
         self.structFieldNames.add(m)
 
     def addMemberName(self, m):
         self.addMemberName_(m)
 
         if self.memberPrefix != "":
-            m = self.addMemberName_("%s%s"%(self.memberPrefix, m))
+            m = self.addMemberName_("%s%s" % (self.memberPrefix, m))
 
     def visitSMInteger(self, smi):
         self.addMemberName(smi.name)
 
         self.structIntFieldNames[smi.name] = smi.inttype.width
 
-        self.containing = "%s.%s"%(self.structName,smi.name)
+        self.containing = "%s.%s" % (self.structName, smi.name)
         self.containingType = smi.inttype
         smi.visitChildren(self)
         self.containing = None
@@ -274,8 +282,8 @@ class Checker(ASTVisitor):
         self.addMemberName(sms.name)
 
         if sms.structname not in self.structNames:
-            raise CheckError("Unrecognized structure %s used in %s"%(
-                sms.structname,self.structName))
+            raise CheckError("Unrecognized structure %s used in %s" % (
+                sms.structname, self.structName))
 
         self.structUses[self.structName].add(sms.structname)
 
@@ -287,8 +295,8 @@ class Checker(ASTVisitor):
 
         if type(sfa.basetype) == str:
             if sfa.basetype not in self.structNames:
-                raise CheckError("Unrecognized structure %s used in %s.%s"%(
-                    sfa.basetype,self.structName,sfa.name))
+                raise CheckError("Unrecognized structure %s used in %s.%s" % (
+                    sfa.basetype, self.structName, sfa.name))
 
             self.structUses[self.structName].add(sfa.basetype)
 
@@ -296,13 +304,13 @@ class Checker(ASTVisitor):
         self.addMemberName(sva.name)
 
         if sva.widthfield is not None:
-            self.checkIntField(sva.widthfield, "array length", "%s.%s"%
-                               (self.structName,sva.name))
+            self.checkIntField(sva.widthfield, "array length", "%s.%s" %
+                               (self.structName, sva.name))
 
         if type(sva.basetype) == str:
             if sva.basetype not in self.structNames:
-                raise CheckError("Unrecognized structure %s used in %s.%s"%(
-                    sva.basetype,self.structName,sva.name))
+                raise CheckError("Unrecognized structure %s used in %s.%s" % (
+                    sva.basetype, self.structName, sva.name))
 
             self.structUses[self.structName].add(sva.basetype)
 
@@ -318,34 +326,35 @@ class Checker(ASTVisitor):
     def visitSMUnion(self, smu):
         self.addMemberName(smu.name)
 
-        self.checkIntField(smu.tagfield, "tag", "%s.%s"%
-                           (self.structName,smu.name))
+        self.checkIntField(smu.tagfield, "tag", "%s.%s" %
+                           (self.structName, smu.name))
 
         self.curunion = smu
         self.unionName = smu.name
         self.unionMatching = []
         self.unionTagMax = TYPE_MAXIMA[self.structIntFieldNames[smu.tagfield]]
-        self.containing = "%s.%s"%(self.structName,smu.name)
-        self.memberPrefix = smu.name+"_"
+        self.containing = "%s.%s" % (self.structName, smu.name)
+        self.memberPrefix = smu.name + "_"
         self.foundDefaults = 0
         smu.visitChildren(self)
         self.curunion = None
 
         self.unionMatching.sort()
         lasthi = -1
-        for lo,hi in self.unionMatching:
+        for lo, hi in self.unionMatching:
             if lo <= lasthi:
-                raise CheckError("Duplicate tag values in %s.%s"%
-                                 (self.structName,smu.name))
+                raise CheckError("Duplicate tag values in %s.%s" %
+                                 (self.structName, smu.name))
             assert hi >= lo
             lasthi = hi
 
         if self.foundDefaults > 1:
-            raise CheckError("Multiple default cases in %s.%s"%
-                             (self.structName,smu.name))
+            raise CheckError("Multiple default cases in %s.%s" %
+                             (self.structName, smu.name))
         elif self.foundDefaults == 0:
             # If no default was given, the default is 'fail'
-            smu.members.append(trunnel.Grammar.UnionMember(None, [ trunnel.Grammar.SMFail() ]))
+            smu.members.append(
+                trunnel.Grammar.UnionMember(None, [trunnel.Grammar.SMFail()]))
 
         self.memberPrefix = ""
         self.unionName = None
@@ -355,7 +364,8 @@ class Checker(ASTVisitor):
 
     def visitUnionMember(self, um):
         if um.tagvalue is not None:
-            self.checkIntegerList(um.tagvalue, self.unionTagMax, self.unionMatching)
+            self.checkIntegerList(
+                um.tagvalue, self.unionTagMax, self.unionMatching)
         else:
             self.foundDefaults += 1
 
@@ -367,11 +377,14 @@ class Checker(ASTVisitor):
 
     def visitSMEos(self, eos):
         pass
+
     def visitSMFail(self, fail):
         pass
+
     def visitSMIgnore(self, ignore):
         if self.lenFieldDepth == 0:
-            raise CheckError("'...' found outside of a length-constrained element")
+            raise CheckError(
+                "'...' found outside of a length-constrained element")
 
     def checkIntegerList(self, lst, maximum, expandInto=None):
         """Given a list of (lo,hi) integer ranges, check it for correctness."""
@@ -384,13 +397,13 @@ class Checker(ASTVisitor):
                 raise CheckError("Bad range in %s", self.containing)
             if lo > maximum:
                 raise CheckError("Tag value %s out of range in %s",
-                                 lo,self.containing)
+                                 lo, self.containing)
             if hi > maximum:
                 raise CheckError("Tag value %s out of range in %s",
-                                 hi,self.containing)
+                                 hi, self.containing)
 
             if expandInto != None:
-                expandInto.append( (lo, hi) )
+                expandInto.append((lo, hi))
 
     def expandConstant(self, const):
         """Given a constant name, return its value or give an error if it
@@ -398,38 +411,42 @@ class Checker(ASTVisitor):
         try:
             return self.constValues[const]
         except KeyError:
-            raise CheckError("Unrecognized constant %s in %s"%(
+            raise CheckError("Unrecognized constant %s in %s" % (
                 const, self.containing))
 
     def checkIntField(self, fieldname, ftype, inside):
         """Check whether a reference to an integer field is correct."""
         if fieldname not in self.structFieldNames:
-            raise CheckError("Unrecognized %s field %s for %s"%(
-                ftype,fieldname,inside))
+            raise CheckError("Unrecognized %s field %s for %s" % (
+                ftype, fieldname, inside))
 
         if fieldname not in self.structIntFieldNames:
-            raise CheckError("Non-integer %s field %s for %s"%(
-                ftype,fieldname,inside))
+            raise CheckError("Non-integer %s field %s for %s" % (
+                ftype, fieldname, inside))
 
-        note = { 'tag' : 'TL', 'array length' : 'TL',
-                 'union length' : 'CL' }[ftype]
+        note = {'tag': 'TL', 'array length': 'TL',
+                'union length': 'CL'}[ftype]
         try:
             curUsage = self.structIntFieldUsage[fieldname]
             if curUsage != note:
-                raise CheckError("Invalid mixed usage for field %s"%fieldname)
+                raise CheckError(
+                    "Invalid mixed usage for field %s" % fieldname)
         except KeyError:
             self.structIntFieldUsage[fieldname] = note
 
+
 class Annotator(ASTVisitor):
+
     """Annotating visitor for a Trunnel AST.  This visitor's job is to
        annotate struct members with cross-references to other struct
        members, and to set everything's C name.
     """
-    ####
+    #
     # prefix -- as Checker.memberPrefix
     # memberByName -- a map from member name to StructMember
     # cur_struct -- the name of the current StructDecl we're annotating
     # cur_struct_obj -- the current StructDecl we're annotating
+
     def __init__(self):
         ASTVisitor.__init__(self)
         self.prefix = ""
@@ -445,7 +462,7 @@ class Annotator(ASTVisitor):
         self.cur_struct_obj = sd
         self.cur_struct = sd.name
         self.memberByName = {}
-        sd.lengthFields = { }
+        sd.lengthFields = {}
         sd.visitChildren(self)
         self.cur_struct = None
         self.cur_struct_obj = None
@@ -460,35 +477,46 @@ class Annotator(ASTVisitor):
 
     def visitSMInteger(self, smi):
         self.annotateMember(smi)
+
     def visitSMStruct(self, sms):
         self.annotateMember(sms)
+
     def visitSMFixedArray(self, sfa):
         self.annotateMember(sfa)
+
     def visitSMVarArray(self, sva):
         self.annotateMember(sva)
         if sva.widthfield is not None:
             sva.widthfieldmember = self.memberByName[sva.widthfield]
+
     def visitSMString(self, ss):
         self.annotateMember(ss)
+
     def visitSMLenConstrained(self, sml):
         m = self.memberByName[sml.lengthfield]
         self.cur_struct_obj.lengthFields[m.c_name] = m
         sml.lengthfieldmember = m
         sml.visitChildren(self)
+
     def visitSMUnion(self, smu):
         self.annotateMember(smu)
         self.prefix = smu.name + "_"
         smu.visitChildren(self)
         self.prefix = ""
         smu.tagfieldmember = self.memberByName[smu.tagfield]
+
     def visitUnionMember(self, um):
         um.visitChildren(self)
+
     def visitSMFail(self, fail):
         pass
+
     def visitSMEos(self, eos):
         pass
+
     def visitSMIgnore(self, ignore):
         pass
+
 
 def dedent_code(s):
     """Given a string 's', see whether all nonblank lines in 's' are prefixed
@@ -515,15 +543,18 @@ def dedent_code(s):
             result.append(line)
     return "\n".join(result)
 
+
 class CodeGenerator(ASTVisitor):
+
     """Helper class for code-generating visitors: tracks current indentation
        level and writes blocks of code.
     """
-    ####
+    #
     # w_ -- a function to use to emit code.  Writes strings.
     # indent -- The current indentation prefix
     # action -- The verb to use in code-documentation when saying what
     #   we're about to do to a struct member
+
     def __init__(self, writefn):
         self.w_ = writefn
         self.w_real = self.w
@@ -540,9 +571,9 @@ class CodeGenerator(ASTVisitor):
             if line.isspace() or not line:
                 self.w_('\n')
             elif line.startswith("#"):
-                self.w_("%s\n"%line)
+                self.w_("%s\n" % line)
             else:
-                self.w_("%s%s\n"%(self.indent, line))
+                self.w_("%s%s\n" % (self.indent, line))
 
     def format(self, fmt, *args, **kwargs):
         """Write code from 'fmt' with the current indentation level added to
@@ -560,7 +591,7 @@ class CodeGenerator(ASTVisitor):
 
     def pushIndent(self, n):
         """Increase the current indentation level by 'n' spaces"""
-        self.indent += " "*n
+        self.indent += " " * n
 
     def popIndent(self, n):
         """Decrease the current indentation level by 'n' spaces"""
@@ -568,13 +599,13 @@ class CodeGenerator(ASTVisitor):
 
     def comment(self, string):
         """Write a comment containing 'string'."""
-        self.w('/* %s */\n'%string)
+        self.w('/* %s */\n' % string)
 
     def eltHeader(self, element, skipLine=True):
         """Write a comment saying we're about to do something to a struct
            member named 'element'"""
         nl = ("\n" if skipLine else "")
-        self.w('%s/* %s %s */\n'%(nl, self.action, element))
+        self.w('%s/* %s %s */\n' % (nl, self.action, element))
 
     def docstring(self, string):
         """Emit a docstring for a function, wrapped to a nice readable format.
@@ -584,10 +615,12 @@ class CodeGenerator(ASTVisitor):
                               initial_indent="/** ",
                               subsequent_indent=" * ")
         for line in lines:
-            self.w_real(line+"\n")
+            self.w_real(line + "\n")
         self.w_real(" */\n")
 
+
 class DeclarationGenerationVisitor(CodeGenerator):
+
     """Code generating visitor: emit a structure declaration for all of the
        structure types in a file.
 
@@ -595,6 +628,7 @@ class DeclarationGenerationVisitor(CodeGenerator):
        how we turn structure members into C.
 
     """
+
     def __init__(self, sort_order, f, inCFile=False):
         CodeGenerator.__init__(self, f.write)
         self.sort_order = sort_order
@@ -602,7 +636,7 @@ class DeclarationGenerationVisitor(CodeGenerator):
 
     def visitFile(self, f):
         for n in f.externStructs:
-            self.w("struct %s_st;\n"%n)
+            self.w("struct %s_st;\n" % n)
         self.isOpaque = ("opaque" in f.options) and not self.inCFile
         self.isVeryOpaque = ("very_opaque" in f.options) and not self.inCFile
         f.visitChildrenSorted(self.sort_order, self)
@@ -610,13 +644,13 @@ class DeclarationGenerationVisitor(CodeGenerator):
     def visitConstDecl(self, cd):
         if cd.annotation != None:
             self.w(cd.annotation)
-        self.w("#define %s %s\n"%(cd.name,cd.value.value))
+        self.w("#define %s %s\n" % (cd.name, cd.value.value))
 
     def visitStructDecl(self, sd):
         if sd.annotation != None:
             self.w(sd.annotation)
         if self.isVeryOpaque:
-            self.format("typedef struct {name}_st {name}_t;",name=sd.name)
+            self.format("typedef struct {name}_st {name}_t;", name=sd.name)
             return
         if self.isOpaque:
             self.format("""
@@ -634,23 +668,23 @@ class DeclarationGenerationVisitor(CodeGenerator):
             }};
             #endif""")
         if not self.inCFile:
-            self.format("""typedef struct {name}_st {name}_t;""",name=sd.name)
+            self.format("""typedef struct {name}_st {name}_t;""", name=sd.name)
 
     def visitSMInteger(self, smi):
         if smi.annotation != None:
             self.w(smi.annotation)
-        self.w("uint%d_t %s;\n"%(smi.inttype.width,smi.c_name))
+        self.w("uint%d_t %s;\n" % (smi.inttype.width, smi.c_name))
 
     def visitSMStruct(self, sms):
         if sms.annotation != None:
             self.w(sms.annotation)
 
-        self.w("struct %s_st *%s;\n"%(sms.structname,sms.c_name))
+        self.w("struct %s_st *%s;\n" % (sms.structname, sms.c_name))
 
     def visitSMFixedArray(self, sfa):
         if sfa.annotation != None:
             self.w(sfa.annotation)
-        fields = {'base' : sfa.basetype, 'c_name' : sfa.c_name, 'w': sfa.width}
+        fields = {'base': sfa.basetype, 'c_name': sfa.c_name, 'w': sfa.width}
         if type(sfa.basetype) == str:
             self.format("struct {base}_st *{c_name}[{w}];", **fields)
         elif str(sfa.basetype) == "char":
@@ -662,21 +696,23 @@ class DeclarationGenerationVisitor(CodeGenerator):
         if sva.annotation != None:
             self.w(sva.annotation)
 
-        fields = {'base' : sva.basetype, 'c_name' : sva.c_name }
+        fields = {'base': sva.basetype, 'c_name': sva.c_name}
         if str(sva.basetype) == "char":
             self.format("trunnel_string_t {c_name};", **fields)
         elif type(sva.basetype) == str:
-            self.format("TRUNNEL_DYNARRAY_HEAD(, struct {base}_st *) {c_name};",
+            self.format(
+                "TRUNNEL_DYNARRAY_HEAD(, struct {base}_st *) {c_name};",
                         **fields)
         else:
-            self.format("TRUNNEL_DYNARRAY_HEAD(, uint{base.width}_t) {c_name};",
+            self.format(
+                "TRUNNEL_DYNARRAY_HEAD(, uint{base.width}_t) {c_name};",
                         **fields)
 
     def visitSMString(self, ss):
         if ss.annotation != None:
             self.w(ss.annotation)
 
-        self.w("char *%s;\n"%(ss.c_name))
+        self.w("char *%s;\n" % (ss.c_name))
 
     def visitSMLenConstrained(self, sml):
         sml.visitChildren(self)
@@ -692,12 +728,16 @@ class DeclarationGenerationVisitor(CodeGenerator):
 
     def visitSMFail(self, fail):
         pass
+
     def visitSMEos(self, eos):
         pass
+
     def visitSMIgnore(self, ignore):
         pass
 
+
 class PrototypeGenerationVisitor(CodeGenerator):
+
     """Code-generating visitor that generates prototypes and documentation
        for the code manipulation functions that are generated in the header
        files.
@@ -710,22 +750,25 @@ class PrototypeGenerationVisitor(CodeGenerator):
         CodeGenerator.__init__(self, f.write)
         self.sort_order = sort_order
         if not docstrings:
-            self.docstring = lambda *a:None
+            self.docstring = lambda *a: None
+
     def visitFile(self, f):
         f.visitChildrenSorted(self.sort_order, self)
+
     def visitConstDecl(self, cd):
         pass
+
     def visitStructDecl(self, sd):
         name = sd.name
         self.docstring("""Return a newly allocated %s with all elements set
                           to zero.""" % name)
-        self.w("%s_t *%s_new(void);\n"%(name,name))
+        self.w("%s_t *%s_new(void);\n" % (name, name))
 
         self.docstring("""Release all storage held by the %s in 'victim'.
                           (Do nothing if 'victim' is NULL.)
                        """
-                       %name)
-        self.w("void %s_free(%s_t *victim);\n"%(name, name))
+                       % name)
+        self.w("void %s_free(%s_t *victim);\n" % (name, name))
 
         self.docstring("""Try to parse a %s from the buffer in 'input',
                           using up to 'len_in' bytes from the input buffer.
@@ -733,58 +776,71 @@ class PrototypeGenerationVisitor(CodeGenerator):
                           set *output to the newly allocated %s_t. On failure,
                           return -2 if the input appears truncated, and -1
                           if the input is otherwise invalid.
-                       """%(name, name))
-        self.w("ssize_t %s_parse(%s_t **output, const uint8_t *input, const size_t len_in);\n"%(name,name))
+                       """ % (name, name))
+        self.w(
+            "ssize_t %s_parse(%s_t **output, const uint8_t *input, const size_t len_in);\n" %
+               (name, name))
 
         self.docstring("""Try to encode the %s from 'input' into the buffer
                           at 'output', using up to 'avail' bytes of the
                           output buffer. On success, return the number of
                           bytes used. On failure, return -2 if the buffer
                           was not long enough, and -1 if the input was
-                          invalid."""%(name))
-        self.w("ssize_t %s_encode(uint8_t *output, const size_t avail, const %s_t *input);\n"%(name,name))
+                          invalid.""" % (name))
+        self.w(
+            "ssize_t %s_encode(uint8_t *output, const size_t avail, const %s_t *input);\n" %
+               (name, name))
 
         self.docstring("""Check whether the internal state of the %s in
                           'obj' is consistent. Return NULL if it is, and a
-                          short message if it is not."""%name)
-        self.w("const char *%s_check(const %s_t *obj);\n"%(name,name))
+                          short message if it is not.""" % name)
+        self.w("const char *%s_check(const %s_t *obj);\n" % (name, name))
 
         self.docstring("""Clear any errors that were set on the object 'obj'
                           by its setter functions.  Return true iff errors
                           were cleared.""")
-        self.w("int %s_clear_errors(%s_t *obj);\n"%(name,name))
+        self.w("int %s_clear_errors(%s_t *obj);\n" % (name, name))
 
         AccessorFnGenerator(self.w_, True).visit(sd)
 
+
 class CodeGenerationVisitor(CodeGenerator):
+
     """Code-generating visitor to produce all the code for a file.
 
        Iterates over all the structures in a file in a provided
        topologically sorted order, and then generates the functions
        for each.
     """
+
     def __init__(self, sort_order, f):
         CodeGenerator.__init__(self, f.write)
         self.f = f
         self.sort_order = sort_order
-        self.generators = [ NewFnGenerator, FreeFnGenerator,
-                            AccessorFnGenerator, CheckFnGenerator,
-                            EncodeFnGenerator, ParseFnGenerator ]
+        self.generators = [NewFnGenerator, FreeFnGenerator,
+                           AccessorFnGenerator, CheckFnGenerator,
+                           EncodeFnGenerator, ParseFnGenerator]
+
     def visitFile(self, f):
         for n in f.externStructs:
             fakeStruct = trunnel.Grammar.StructDecl(n, [])
-            self.w("typedef struct %s_st %s_t;"%(n,n))
-            PrototypeGenerationVisitor(self.sort_order,self.f,docstrings=False).visit(fakeStruct)
+            self.w("typedef struct %s_st %s_t;" % (n, n))
+            PrototypeGenerationVisitor(
+                self.sort_order, self.f, docstrings=False).visit(fakeStruct)
         f.visitChildrenSorted(self.sort_order, self)
+
     def visitConstDecl(self, cd):
         pass
+
     def visitStructDecl(self, sd):
         # We invoke these sub-visitors for each structure independently, so
         # that all the methdos for a structure are produced together.
         for g in self.generators:
             g(self.w).visit(sd)
 
+
 class NewFnGenerator(CodeGenerator):
+
     """Code-generating visitor to construct the 'typename_new' function
        for a structure.
 
@@ -792,8 +848,10 @@ class NewFnGenerator(CodeGenerator):
        its fields initialized to 0.  (This sets dynamic arrays to be
        empty, and we require that this sets pointers to NULL.)
     """
+
     def __init__(self, writefn):
         CodeGenerator.__init__(self, writefn)
+
     def visitStructDecl(self, sd):
         name = sd.name
         self.format("""
@@ -807,7 +865,7 @@ class NewFnGenerator(CodeGenerator):
         sd.visitChildren(self)
         self.popIndent(2)
         self.w("  return val;")
-        self.w("}\n\n");
+        self.w("}\n\n")
 
     def visit_other(self, arg):
         pass
@@ -815,9 +873,11 @@ class NewFnGenerator(CodeGenerator):
     def visitSMInteger(self, smi):
         minval = smi.minimum()
         if minval != 0:
-            self.w("val->%s = %s;\n"%(smi.c_name,minval))
+            self.w("val->%s = %s;\n" % (smi.c_name, minval))
+
 
 class FreeFnGenerator(CodeGenerator):
+
     """Code-generating visitor to construct the 'typename_clear' and
        'typename_free' functions for a structure.
 
@@ -828,6 +888,7 @@ class FreeFnGenerator(CodeGenerator):
        The 'typename_free' function handles NULL, invokes typename_clear,
        and then frees the space held by the object itself.
     """
+
     def __init__(self, writefn):
         CodeGenerator.__init__(self, writefn)
 
@@ -858,11 +919,12 @@ class FreeFnGenerator(CodeGenerator):
     def visitSMInteger(self, smi):
         # We don't need to do anything to clear an integer.
         pass
+
     def visitSMFixedArray(self, sfa):
         # To clear a fixed array of structures, we must free every element
         # of the array.
         if type(sfa.basetype) == str:
-            body = "%s_free(obj->%s[idx]);\n"%(sfa.basetype,sfa.c_name)
+            body = "%s_free(obj->%s[idx]);\n" % (sfa.basetype, sfa.c_name)
             iterateOverFixedArray(self, sfa, body)
 
     def visitSMStruct(self, sms):
@@ -878,30 +940,38 @@ class FreeFnGenerator(CodeGenerator):
         # Then, we call TRUNNEL_DYNARRAY_CLEAR on the array.
 
         if type(sva.basetype) == str:
-            body = "%s_free(TRUNNEL_DYNARRAY_GET(&obj->%s, idx));\n"%(sva.basetype,sva.c_name)
+            body = "%s_free(TRUNNEL_DYNARRAY_GET(&obj->%s, idx));\n" % (
+                sva.basetype, sva.c_name)
             iterateOverVarArray(self, sva, body)
 
-        self.w("TRUNNEL_DYNARRAY_CLEAR(&obj->%s);\n"%(sva.c_name))
+        self.w("TRUNNEL_DYNARRAY_CLEAR(&obj->%s);\n" % (sva.c_name))
 
     def visitSMString(self, ss):
         # To clear a string, we call trunnel_free() on it.  (We require that
         # trunnel_free must handle NULL.)
-        self.w("trunnel_free(obj->%s);\n"%(ss.c_name))
+        self.w("trunnel_free(obj->%s);\n" % (ss.c_name))
+
     def visitSMLenConstrained(self, sml):
         sml.visitChildren(self)
+
     def visitSMUnion(self, smu):
         smu.visitChildren(self)
+
     def visitUnionMember(self, um):
         um.visitChildren(self)
 
     def visitSMEos(self, eos):
         pass
+
     def visitSMFail(self, fail):
         pass
+
     def visitSMIgnore(self, ignore):
         pass
 
+
 class AccessorFnGenerator(CodeGenerator):
+
     """Code-generating visitor that generates the accessors for structure
        members.  See function documentation for a description of every
        function we generate.
@@ -918,6 +988,7 @@ class AccessorFnGenerator(CodeGenerator):
        modify a structure directly.  It should be quite hard to shoot
        yourself in the foot.
     """
+
     def __init__(self, writefn, prototypes_only=False):
         CodeGenerator.__init__(self, writefn)
         self.prototypes_only = prototypes_only
@@ -928,9 +999,9 @@ class AccessorFnGenerator(CodeGenerator):
 
     def declaration(self, rv, decl):
         if self.prototypes_only:
-            self.w_real('%s %s;\n'%(rv, decl))
+            self.w_real('%s %s;\n' % (rv, decl))
         else:
-            self.w_real('%s\n%s\n'%(rv, decl))
+            self.w_real('%s\n%s\n' % (rv, decl))
 
     def visitStructDecl(self, sd):
         self.structName = sd.name
@@ -950,28 +1021,31 @@ class AccessorFnGenerator(CodeGenerator):
         """
         st = self.structName
         nm = smi.c_fn_name
-        tp = "uint%d_t"%smi.inttype.width
+        tp = "uint%d_t" % smi.inttype.width
 
-        self.docstring("Return the value of the %s field of the %s_t in 'inp'"%(nm,st))
-        self.declaration(tp, "%s_get_%s(%s_t *inp)"%(st,nm,st))
+        self.docstring(
+            "Return the value of the %s field of the %s_t in 'inp'" % (nm, st))
+        self.declaration(tp, "%s_get_%s(%s_t *inp)" % (st, nm, st))
         self.w("{\n"
                "  return inp->%s;\n"
-               "}\n"%smi.c_name)
+               "}\n" % smi.c_name)
 
         self.docstring("Set the value of the %s field of the %s_t in 'inp' to "
                        "'val'.  Return 0 on success; return -1 and set the "
-                       "error code on 'inp' on failure."%(nm,st))
-        self.declaration("int", "%s_set_%s(%s_t *inp, %s val)"%(st,nm,st,tp))
+                       "error code on 'inp' on failure." % (nm, st))
+        self.declaration(
+            "int", "%s_set_%s(%s_t *inp, %s val)" % (st, nm, st, tp))
         self.w("{\n")
         self.pushIndent(2)
         if smi.constraints is not None:
-            expr = intConstraintExpression("val", smi.constraints.ranges, smi.inttype.width)
+            expr = intConstraintExpression(
+                "val", smi.constraints.ranges, smi.inttype.width)
             self.w("if (! (%s)) {\n"
                    "   TRUNNEL_SET_ERROR_CODE(inp);\n"
                    "   return -1;\n"
-                   "}\n"%expr)
+                   "}\n" % expr)
 
-        self.w("inp->%s = val;\n"%smi.c_name)
+        self.w("inp->%s = val;\n" % smi.c_name)
         self.w("return 0;")
         self.popIndent(2)
         self.w("}\n")
@@ -989,20 +1063,22 @@ class AccessorFnGenerator(CodeGenerator):
         """
         st = self.structName
         nm = sms.c_fn_name
-        tp = "struct %s_st *"%sms.structname
+        tp = "struct %s_st *" % sms.structname
 
-        self.docstring("Return the value of the %s field of the %s_t in 'inp'"%(nm,st))
-        self.declaration(tp, "%s_get_%s(%s_t *inp)"%(st,nm,st))
+        self.docstring(
+            "Return the value of the %s field of the %s_t in 'inp'" % (nm, st))
+        self.declaration(tp, "%s_get_%s(%s_t *inp)" % (st, nm, st))
         self.w("{\n"
                "  return inp->%s;\n"
-               "}\n"%sms.c_name)
+               "}\n" % sms.c_name)
 
         self.docstring("Set the value of the %s field of the %s_t in 'inp' to "
                        "'val'.  Free the old value if any.  Steals the reference"
                        "to 'val'."
                        "Return 0 on success; return -1 and set the "
-                       "error code on 'inp' on failure."%(nm,st))
-        self.declaration("int", "%s_set_%s(%s_t *inp, %sval)"%(st,nm,st,tp))
+                       "error code on 'inp' on failure." % (nm, st))
+        self.declaration(
+            "int", "%s_set_%s(%s_t *inp, %sval)" % (st, nm, st, tp))
         self.format("""
              {{
                if (inp->{c_name} && inp->{c_name} != val)
@@ -1010,10 +1086,10 @@ class AccessorFnGenerator(CodeGenerator):
                return {st}_set0_{nm}(inp, val);
              }}""", c_name=sms.c_name, structname=sms.structname, st=st, nm=nm)
 
-
         self.docstring("As %s_set_%s, but does not free the previous value."
-                       %(st,nm))
-        self.declaration("int", "%s_set0_%s(%s_t *inp, %sval)"%(st,nm,st,tp))
+                       % (st, nm))
+        self.declaration(
+            "int", "%s_set0_%s(%s_t *inp, %sval)" % (st, nm, st, tp))
 
         self.format("""
              {{
@@ -1047,41 +1123,42 @@ class AccessorFnGenerator(CodeGenerator):
         if str(sfa.basetype) == 'char':
             elttype = 'char'
         elif type(sfa.basetype) == str:
-            elttype = "struct %s_st *"%sfa.basetype
+            elttype = "struct %s_st *" % sfa.basetype
         else:
-            elttype = "uint%d_t"%sfa.basetype.width
+            elttype = "uint%d_t" % sfa.basetype.width
 
         self.docstring(
 
-        """Return the (constant) length of the array holding the
-                          %s field of the %s_t in 'inp'."""%(nm,st))
-        self.declaration("size_t", "%s_getlen_%s(const %s_t *inp)"%(st,nm,st))
+            """Return the (constant) length of the array holding the
+                          %s field of the %s_t in 'inp'.""" % (nm, st))
+        self.declaration(
+            "size_t", "%s_getlen_%s(const %s_t *inp)" % (st, nm, st))
         self.w("{\n"
                "  (void)inp;"
                "  return %s;\n"
-               "}\n\n"%sfa.width)
+               "}\n\n" % sfa.width)
 
         self.docstring("""Return the element at position 'idx' of the
-                          fixed array field %s of the %s_t in 'inp'."""%
-                       (nm,st))
+                          fixed array field %s of the %s_t in 'inp'.""" %
+                       (nm, st))
         self.declaration(elttype, '%s_get_%s(const %s_t *inp, size_t idx)'
-               %(st,nm,st))
+                         % (st, nm, st))
         self.w("{\n"
                "  trunnel_assert(idx < %s);\n"
                "  return inp->%s[idx];\n"
-               "}\n\n"%(sfa.width, sfa.c_name))
+               "}\n\n" % (sfa.width, sfa.c_name))
 
         freestr = ""
         if type(sfa.basetype) == str:
             freestr = "  Free the previous value, if any."
         self.docstring("""Change the element at position 'idx' of the
                           fixed array field %s of the %s_t in 'inp', so
-                          that it will hold the value 'elt'.%s"""%
-                       (nm,st,freestr))
+                          that it will hold the value 'elt'.%s""" %
+                       (nm, st, freestr))
         self.declaration("int", "%s_set_%s(%s_t *inp, size_t idx, %s elt)"
-               %(st,nm,st,elttype))
+                         % (st, nm, st, elttype))
         self.w("{\n"
-               "  trunnel_assert(idx < %s);\n"%sfa.width)
+               "  trunnel_assert(idx < %s);\n" % sfa.width)
 
         if type(sfa.basetype) == str:
             self.format("""
@@ -1091,24 +1168,23 @@ class AccessorFnGenerator(CodeGenerator):
               }}""", c_name=sfa.c_name, basetype=sfa.basetype, st=st, nm=nm)
 
             self.docstring("As %s_set_%s, but does not free the previous value."
-                           %(st,nm))
+                           % (st, nm))
             self.declaration("int", "%s_set0_%s(%s_t *inp, size_t idx, %s elt)"
-                             %(st,nm,st,elttype))
+                             % (st, nm, st, elttype))
             self.w("{\n"
-                   "  trunnel_assert(idx < %s);\n"%sfa.width)
+                   "  trunnel_assert(idx < %s);\n" % sfa.width)
 
         self.w(("  inp->%s[idx] = elt;\n"
                 "  return 0;\n"
-                "}\n\n")%(sfa.c_name))
+                "}\n\n") % (sfa.c_name))
 
         self.docstring("""Return a pointer to the %s-element array field %s of
-                          'inp'."""%(sfa.width,nm))
-        self.declaration("%s *"%elttype,
-                         "%s_getarray_%s(%s_t *inp)"%(st,nm,st))
+                          'inp'.""" % (sfa.width, nm))
+        self.declaration("%s *" % elttype,
+                         "%s_getarray_%s(%s_t *inp)" % (st, nm, st))
         self.w(("{\n"
                 "  return inp->%s;\n"
-                "}\n")%(sfa.c_name))
-
+                "}\n") % (sfa.c_name))
 
     def visitSMLenConstrained(self, sml):
         sml.visitChildren(self)
@@ -1151,43 +1227,44 @@ class AccessorFnGenerator(CodeGenerator):
         st = self.structName
         nm = sva.c_fn_name
         if type(sva.basetype) == str:
-            elttype = "struct %s_st *"%sva.basetype
+            elttype = "struct %s_st *" % sva.basetype
         elif str(sva.basetype) == 'char':
             elttype = 'char'
         else:
-            elttype = "uint%d_t"%sva.basetype.width
+            elttype = "uint%d_t" % sva.basetype.width
 
         maxlen = if_overflow_possible = endif_overflow_possible = None
         if sva.widthfield is not None:
-            maxlen = "UINT%s_MAX"%sva.widthfieldmember.inttype.width
-            if_overflow_possible = "#if %s < SIZE_MAX\n"%maxlen
+            maxlen = "UINT%s_MAX" % sva.widthfieldmember.inttype.width
+            if_overflow_possible = "#if %s < SIZE_MAX\n" % maxlen
             endif_overflow_possible = "#endif"
 
         self.docstring("""Return the length of the dynamic array holding the
-                          %s field of the %s_t in 'inp'."""%(nm,st))
-        self.declaration("size_t", "%s_getlen_%s(const %s_t *inp)"%(st,nm,st))
+                          %s field of the %s_t in 'inp'.""" % (nm, st))
+        self.declaration(
+            "size_t", "%s_getlen_%s(const %s_t *inp)" % (st, nm, st))
         self.w("{\n"
                "  return TRUNNEL_DYNARRAY_LEN(&inp->%s);\n"
-               "}\n\n"%nm)
+               "}\n\n" % nm)
 
         self.docstring("""Return the element at position 'idx' of the
-                          dynamic array field %s of the %s_t in 'inp'."""%
-                       (nm,st))
+                          dynamic array field %s of the %s_t in 'inp'.""" %
+                       (nm, st))
         self.declaration(elttype, '%s_get_%s(%s_t *inp, size_t idx)'
-               %(st,nm,st))
+                         % (st, nm, st))
         self.w("{\n"
                "  return TRUNNEL_DYNARRAY_GET(&inp->%s, idx);\n"
-               "}\n\n"%nm)
+               "}\n\n" % nm)
 
         freestr = ""
         if type(sva.basetype) == str:
             freestr = "  Free the previous value, if any."
         self.docstring("""Change the element at position 'idx' of the
                           dynamic array field %s of the %s_t in 'inp', so
-                          that it will hold the value 'elt'.%s"""%
-                       (nm,st,freestr))
+                          that it will hold the value 'elt'.%s""" %
+                       (nm, st, freestr))
         self.declaration("int", "%s_set_%s(%s_t *inp, size_t idx, %s elt)"
-               %(st,nm,st,elttype))
+                         % (st, nm, st, elttype))
         self.w("{\n")
         if type(sva.basetype) == str:
             self.format("""
@@ -1198,20 +1275,20 @@ class AccessorFnGenerator(CodeGenerator):
              }}""", basetype=sva.basetype, c_name=sva.c_name, st=st, nm=nm)
 
             self.docstring("As %s_set_%s, but does not free the previous value."
-                           %(st,nm))
+                           % (st, nm))
             self.declaration("int", "%s_set0_%s(%s_t *inp, size_t idx, %s elt)"
-                             %(st,nm,st,elttype))
+                             % (st, nm, st, elttype))
             self.w("{\n")
 
-        self.w("  TRUNNEL_DYNARRAY_SET(&inp->%s, idx, elt);\n"%nm)
+        self.w("  TRUNNEL_DYNARRAY_SET(&inp->%s, idx, elt);\n" % nm)
         self.w("  return 0;\n")
         self.w("}\n")
 
         self.docstring("""Append a new element 'elt' to the dynamic array
-                          field %s of the %s_t in 'inp'."""%
-                       (nm,st))
+                          field %s of the %s_t in 'inp'.""" %
+                       (nm, st))
         self.declaration("int", "%s_add_%s(%s_t *inp, %s elt)"
-               %(st,nm,st,elttype))
+                         % (st, nm, st, elttype))
         self.w("{\n")
 
         if maxlen is not None:
@@ -1220,22 +1297,22 @@ class AccessorFnGenerator(CodeGenerator):
                  if (inp->{c_name}.n_ == {maxlen})
                    goto trunnel_alloc_failed;
                #endif""",
-                   c_name=sva.c_name,maxlen=maxlen)
+                        c_name=sva.c_name, maxlen=maxlen)
 
         self.w("  TRUNNEL_DYNARRAY_ADD(%s, &inp->%s, elt, {});\n"
                "  return 0;\n"
                " trunnel_alloc_failed:\n"
                "  TRUNNEL_SET_ERROR_CODE(inp);\n"
                "  return -1;\n"
-               "}\n\n"%(elttype,nm))
+               "}\n\n" % (elttype, nm))
 
         self.docstring("""Return a pointer to the variable-length
-                          array field %s of 'inp'."""%nm)
-        self.declaration("%s *"%elttype,
-                         "%s_getarray_%s(%s_t *inp)"%(st,nm,st))
+                          array field %s of 'inp'.""" % nm)
+        self.declaration("%s *" % elttype,
+                         "%s_getarray_%s(%s_t *inp)" % (st, nm, st))
         self.w(("{\n"
                 "  return inp->%s.elts_;\n"
-                "}\n")%(sva.c_name))
+                "}\n") % (sva.c_name))
 
         if type(sva.basetype) == str:
             fill = "Fill extra elements with NULL; free removed elements."
@@ -1246,19 +1323,19 @@ class AccessorFnGenerator(CodeGenerator):
                           array field %s of 'inp' to 'newlen'.%s
                           Return 0 on
                           success; return -1 and set the error code
-                          on 'inp' on failure."""%(nm,fill))
+                          on 'inp' on failure.""" % (nm, fill))
         self.declaration("int",
-                         "%s_setlen_%s(%s_t *inp, size_t newlen)"%(st,nm,st))
+                         "%s_setlen_%s(%s_t *inp, size_t newlen)" % (st, nm, st))
         self.w("{\n")
         self.pushIndent(2)
         if str(sva.basetype) != 'char':
-            self.w("%s *newptr;\n"%elttype)
+            self.w("%s *newptr;\n" % elttype)
         needFailed = False
         if maxlen is not None:
             needFailed = True
             self.w_no_indent(if_overflow_possible)
             self.w("if (newlen > %s)\n"
-                   "  goto trunnel_alloc_failed;\n"%maxlen)
+                   "  goto trunnel_alloc_failed;\n" % maxlen)
             self.w_no_indent(endif_overflow_possible)
 
         if str(sva.basetype) == 'char':
@@ -1267,7 +1344,7 @@ class AccessorFnGenerator(CodeGenerator):
         else:
             needFailed = True
             if type(sva.basetype) == str:
-                freefn = "(trunnel_free_fn_t) %s_free"%sva.basetype
+                freefn = "(trunnel_free_fn_t) %s_free" % sva.basetype
             else:
                 freefn = "(trunnel_free_fn_t) NULL"
 
@@ -1310,41 +1387,39 @@ class AccessorFnGenerator(CodeGenerator):
             endif_overflow_possible = "#endif"
 
         self.docstring("""Return the value of the %s field of a %s_t as
-                          a NUL-terminated string."""%(nm,st))
+                          a NUL-terminated string.""" % (nm, st))
         self.declaration("const char *",
-                         "%s_getstr_%s(%s_t *inp)"%(st,nm,st))
+                         "%s_getstr_%s(%s_t *inp)" % (st, nm, st))
         self.w(("{\n"
                 "  return trunnel_string_getstr(&inp->%s);\n"
-                "}\n"%nm))
+                "}\n" % nm))
 
         self.docstring("""Set the value of the %s field of a %s_t to
                           a given string of length  'len'. Return 0 on
                           success; return -1 and set the error code
-                          on 'inp' on failure."""%(nm,st))
+                          on 'inp' on failure.""" % (nm, st))
         self.declaration("int",
-                         "%s_setstr0_%s(%s_t *inp, const char *val, size_t len)"%(st,nm,st))
+                         "%s_setstr0_%s(%s_t *inp, const char *val, size_t len)" % (st, nm, st))
         self.w("{\n")
         if maxlen is not None:
             self.w_no_indent(if_overflow_possible)
             self.w("  if (len > %s) {\n"
                    "    TRUNNEL_SET_ERROR_CODE(inp);\n"
                    "    return -1;\n"
-                   "  }\n"%maxlen)
+                   "  }\n" % maxlen)
             self.w_no_indent(endif_overflow_possible)
         self.w(("  return trunnel_string_setstr0(&inp->%s, val, len, &inp->trunnel_error_code_);\n"
-                "}\n")%nm)
+                "}\n") % nm)
 
         self.docstring("""Set the value of the %s field of a %s_t to
                           a given NUL-terminated string. Return 0 on
                           success; return -1 and set the error code
-                          on 'inp' on failure."""%(nm,st))
+                          on 'inp' on failure.""" % (nm, st))
         self.declaration("int",
-                         "%s_setstr_%s(%s_t *inp, const char *val)"%(st,nm,st))
+                         "%s_setstr_%s(%s_t *inp, const char *val)" % (st, nm, st))
         self.w(("{\n"
                 "  return %s_setstr0_%s(inp, val, strlen(val));\n"
-                "}\n")%(st, nm))
-
-
+                "}\n") % (st, nm))
 
     def visitSMString(self, sms):
         """For a nul-terminated string field 'FIELD' of char in a structure
@@ -1359,18 +1434,20 @@ class AccessorFnGenerator(CodeGenerator):
         st = self.structName
         nm = sms.c_fn_name
 
-        self.docstring("Return the value of the %s field of the %s_t in 'inp'"%(nm,st))
-        self.declaration("const char *", "%s_get_%s(%s_t *inp)"%(st,nm,st))
+        self.docstring(
+            "Return the value of the %s field of the %s_t in 'inp'" % (nm, st))
+        self.declaration("const char *", "%s_get_%s(%s_t *inp)" % (st, nm, st))
         self.w("{\n"
                "  return inp->%s;\n"
-               "}\n"%sms.c_name)
+               "}\n" % sms.c_name)
 
         self.docstring("Set the value of the %s field of the %s_t in 'inp' to "
                        "'val'.  Free the old value if any. Does not steal "
                        " the reference to 'val'."
                        "Return 0 on success; return -1 and set the "
-                       "error code on 'inp' on failure."%(nm,st))
-        self.declaration("int", "%s_set_%s(%s_t *inp, const char *val)"%(st,nm,st))
+                       "error code on 'inp' on failure." % (nm, st))
+        self.declaration(
+            "int", "%s_set_%s(%s_t *inp, const char *val)" % (st, nm, st))
         self.format("""
              {{
                trunnel_free(inp->{c_name});
@@ -1381,6 +1458,7 @@ class AccessorFnGenerator(CodeGenerator):
                return 0;
              }}""", c_name=sms.c_name)
 
+
 def iterateOverFixedArray(generator, sfa, body, extraDecl=""):
     """Helper: write the code needed to iterate over every element of a
        fixed array (whose SMFixedArray is sfa), invoking the code 'body'
@@ -1390,19 +1468,20 @@ def iterateOverFixedArray(generator, sfa, body, extraDecl=""):
 
        The code is generated using the CodeGenerator in 'generator'.
     """
-    element = "obj->%s[idx]"%sfa.c_name
+    element = "obj->%s[idx]" % sfa.c_name
     generator.format("""
            {{
              {extraDecl}
              unsigned idx;
              for (idx = 0; idx < {width}; ++idx) {{""",
-                    width=sfa.width,extraDecl=extraDecl)
+                     width=sfa.width, extraDecl=extraDecl)
     generator.pushIndent(4)
     generator.format(body, ELEMENT=element)
     generator.popIndent(4)
     generator.format("""
              }}
            }}""")
+
 
 def iterateOverVarArray(generator, sva, body, extraDecl=""):
     """Helper: write the code needed to iterate over every element of a
@@ -1413,14 +1492,14 @@ def iterateOverVarArray(generator, sva, body, extraDecl=""):
 
        The code is generated using the CodeGenerator in 'generator'.
     """
-    element = "TRUNNEL_DYNARRAY_GET(&obj->%s, idx)"%sva.c_name
+    element = "TRUNNEL_DYNARRAY_GET(&obj->%s, idx)" % sva.c_name
 
     generator.format("""
            {{
              {extraDecl}
              unsigned idx;
              for (idx = 0; idx < TRUNNEL_DYNARRAY_LEN(&obj->{c_name}); ++idx) {{
-           """,c_name=sva.c_name,extraDecl=extraDecl)
+           """, c_name=sva.c_name, extraDecl=extraDecl)
     generator.pushIndent(4)
     generator.format(body, ELEMENT=element)
     generator.popIndent(4)
@@ -1428,7 +1507,9 @@ def iterateOverVarArray(generator, sva, body, extraDecl=""):
              }}
            }}""")
 
+
 class CheckFnGenerator(CodeGenerator):
+
     """Code-generating visitor to generate the 'typename_check' function
        for a given structure.
 
@@ -1438,6 +1519,7 @@ class CheckFnGenerator(CodeGenerator):
        string explaining what's wrong with it.  If every member is okay,
        we return NULL at the end of the function.
     """
+
     def __init__(self, writefn):
         CodeGenerator.__init__(self, writefn)
 
@@ -1445,7 +1527,7 @@ class CheckFnGenerator(CodeGenerator):
         # To check a whole structure: check that the structure pointer
         # isn't NULL, then check the contents.
         self.structName = name = sd.name
-        self.w("const char *\n%s_check(const %s_t *obj)\n{\n"%(name,name))
+        self.w("const char *\n%s_check(const %s_t *obj)\n{\n" % (name, name))
         self.pushIndent(2)
         self.w('if (obj == NULL)\n'
                '  return "Object was NULL";\n'
@@ -1462,11 +1544,12 @@ class CheckFnGenerator(CodeGenerator):
         # any checking.
 
         if smi.constraints is not None:
-            v = "obj->%s"%smi.c_name
-            expr = intConstraintExpression(v, smi.constraints.ranges, smi.inttype.width)
+            v = "obj->%s" % smi.c_name
+            expr = intConstraintExpression(
+                v, smi.constraints.ranges, smi.inttype.width)
 
             self.w(('if (! %s)\n'
-                    '  return "Integer out of bounds";\n')%(expr))
+                    '  return "Integer out of bounds";\n') % (expr))
 
     def visitSMFixedArray(self, sfa):
         # To check a fixed array of char: make sure that it's NUL-terminated.
@@ -1476,14 +1559,14 @@ class CheckFnGenerator(CodeGenerator):
 
         if type(sfa.basetype) == str:
             body = ("if (NULL != (msg = %s_check({ELEMENT})))\n"
-                    "  return msg;"%(sfa.basetype))
+                    "  return msg;" % (sfa.basetype))
             iterateOverFixedArray(self, sfa, body,
                                   extraDecl='const char *msg;\n')
 
         elif str(sfa.basetype) == 'char':
             self.w('if (obj->%s[%s] != 0)\n'
                    '  return "String not terminated";\n'
-                   %(sfa.c_name,sfa.width))
+                   % (sfa.c_name, sfa.width))
 
     def visitSMStruct(self, sms):
         # To check a nested struct: recursively invoke that struct's check
@@ -1505,19 +1588,20 @@ class CheckFnGenerator(CodeGenerator):
 
         if type(sva.basetype) == str:
             body = ("if (NULL != (msg = %s_check({ELEMENT})))\n"
-                    "  return msg;"%(sva.basetype))
+                    "  return msg;" % (sva.basetype))
 
             iterateOverVarArray(self, sva, body,
                                 extraDecl='const char *msg;\n')
 
         if sva.widthfield is not None:
             self.w(('if (TRUNNEL_DYNARRAY_LEN(&obj->%s) != obj->%s)\n'
-                    '  return "Length mismatch for %s";\n')%(
+                    '  return "Length mismatch for %s";\n') % (
                         sva.c_name, sva.widthfieldmember.c_name, sva.name))
 
     def visitSMString(self, ss):
         # To check a nul-terminated string: make sure it isn't NULL.
-        self.w('if (NULL == obj->%s)\n  return "Missing %s";\n'%(ss.c_name, ss.c_name))
+        self.w('if (NULL == obj->%s)\n  return "Missing %s";\n' %
+               (ss.c_name, ss.c_name))
 
     def visitSMLenConstrained(self, sml):
         # To check a SMlenConstrained, check its children.
@@ -1526,13 +1610,13 @@ class CheckFnGenerator(CodeGenerator):
     def visitSMUnion(self, smu):
         # To check a union, look at the union's tag value, and handle all
         # the tag values separately.
-        self.w('switch (obj->%s) {\n'%smu.tagfield)
+        self.w('switch (obj->%s) {\n' % smu.tagfield)
         smu.visitChildren(self)
         self.w("}\n")
 
     def visitUnionMember(self, um):
         self.pushIndent(2)
-        writeUnionMemberCaseLabel(self.w,um)
+        writeUnionMemberCaseLabel(self.w, um)
         self.pushIndent(2)
         um.visitChildren(self)
         self.popIndent(2)
@@ -1541,8 +1625,10 @@ class CheckFnGenerator(CodeGenerator):
 
     def visitSMEos(self, eos):
         pass
+
     def visitSMIgnore(self, ignore):
         pass
+
     def visitSMFail(self, fail):
         self.pushIndent(2)
         self.w('return "Bad tag for union";\n')
@@ -1560,10 +1646,11 @@ def writeUnionMemberCaseLabel(w, um):
 
     for lo, hi in um.tagvalue:
         if lo == hi:
-            w("case %s:\n"%lo)
+            w("case %s:\n" % lo)
         else:
-            for value in range(lo, hi+1):
-                w("case %s:\n"%value)
+            for value in range(lo, hi + 1):
+                w("case %s:\n" % value)
+
 
 def arrayIsBytes(arry):
     """Return true if the array is an array of char or of uint8_t. Otherwise
@@ -1576,7 +1663,9 @@ def arrayIsBytes(arry):
     else:
         return False
 
+
 class EncodeFnGenerator(CodeGenerator):
+
     """Code-generating visitor that generates the 'typename_encode()'
        function and 'typename_clear_errors()' function for a given structure.
 
@@ -1602,10 +1691,11 @@ class EncodeFnGenerator(CodeGenerator):
             "output + written == ptr"
             "written <= avail"
     """
-    ####
+    #
     # curStruct -- the current StructDecl
     # structName -- the name of the current structure
     # needTruncated -- true iff we need to generate a 'truncated' label.
+
     def __init__(self, writefn):
         CodeGenerator.__init__(self, writefn)
         self.action = "Encode"
@@ -1614,14 +1704,15 @@ class EncodeFnGenerator(CodeGenerator):
         self.structName = name = sd.name
         self.curStruct = sd
 
-        self.w("int\n%s_clear_errors(%s_t *obj)\n"%(name,name))
+        self.w("int\n%s_clear_errors(%s_t *obj)\n" % (name, name))
         self.w("{\n"
                "  int r = obj->trunnel_error_code_;\n"
                "  obj->trunnel_error_code_ = 0;\n"
                "  return r;\n"
                "}")
 
-        self.w("ssize_t\n%s_encode(uint8_t *output, const size_t avail, const %s_t *obj)\n{\n"%(name,name))
+        self.w(
+            "ssize_t\n%s_encode(uint8_t *output, const size_t avail, const %s_t *obj)\n{\n" % (name, name))
         self.pushIndent(2)
         self.w('ssize_t result = 0;\n'
                'size_t written = 0;\n'
@@ -1630,10 +1721,10 @@ class EncodeFnGenerator(CodeGenerator):
         self.w('\n')
         if sd.lengthFields:
             for m in sorted(sd.lengthFields.values()):
-                self.w('uint8_t *backptr_%s = NULL;\n'%(m.c_name))
+                self.w('uint8_t *backptr_%s = NULL;\n' % (m.c_name))
             self.w('\n')
         self.w(('if (NULL != (msg = %s_check(obj)))\n'
-               '  goto check_failed;\n\n')%sd.name)
+               '  goto check_failed;\n\n') % sd.name)
         self.needTruncated = False
         sd.visitChildren(self)
 
@@ -1662,8 +1753,8 @@ class EncodeFnGenerator(CodeGenerator):
         # current position in the output buffer.
         self.eltHeader(smi)
         if smi.c_name in self.curStruct.lengthFields:
-            self.w('backptr_%s = ptr;\n'%(smi.c_name));
-        self.w(self.encodeInteger(smi.inttype.width, "obj->%s"%(smi.c_name)))
+            self.w('backptr_%s = ptr;\n' % (smi.c_name))
+        self.w(self.encodeInteger(smi.inttype.width, "obj->%s" % (smi.c_name)))
 
     def encodeInteger(self, width, element):
         # To encode an integer field, we make sure we have enough
@@ -1684,7 +1775,7 @@ class EncodeFnGenerator(CodeGenerator):
     def visitSMStruct(self, sms):
         # To encode an structure field, we delegate to encodeStruct
         self.eltHeader(sms)
-        self.w(self.encodeStruct(sms.structname, "obj->%s"%(sms.c_name)))
+        self.w(self.encodeStruct(sms.structname, "obj->%s" % (sms.c_name)))
 
     def encodeStruct(self, structtype, element_pointer):
         # To encode a struct, we delegate to that structure's typename_encode()
@@ -1757,7 +1848,7 @@ class EncodeFnGenerator(CodeGenerator):
 
         self.eltHeader(sva)
         if arrayIsBytes(sva):
-            arry = "obj->%s.elts_"%sva.c_name
+            arry = "obj->%s.elts_" % sva.c_name
             self.needTruncated = True
             self.format("""
                    {{
@@ -1765,7 +1856,8 @@ class EncodeFnGenerator(CodeGenerator):
                      trunnel_assert(written <= avail);
                    """, c_name=sva.c_name)
             if sva.widthfield is not None:
-                self.w('  trunnel_assert(obj->%s == elt_len);'%sva.widthfieldmember.c_name)
+                self.w('  trunnel_assert(obj->%s == elt_len);' %
+                       sva.widthfieldmember.c_name)
             self.format("""
                     if (avail - written < elt_len)
                      goto truncated;
@@ -1810,7 +1902,7 @@ class EncodeFnGenerator(CodeGenerator):
 
         sml.visitChildren(self)
 
-        self.comment('Write the length field back to %s'%sml.lengthfield)
+        self.comment('Write the length field back to %s' % sml.lengthfield)
         m = sml.lengthfieldmember
         width = m.inttype.width
         hton = HTON_FN[width]
@@ -1834,13 +1926,13 @@ class EncodeFnGenerator(CodeGenerator):
 
         self.eltHeader(smu)
         self.w('trunnel_assert(written <= avail);\n')
-        self.w('switch (obj->%s) {\n'%smu.tagfield)
+        self.w('switch (obj->%s) {\n' % smu.tagfield)
         smu.visitChildren(self)
         self.w("}\n")
 
     def visitUnionMember(self, um):
         self.pushIndent(2)
-        writeUnionMemberCaseLabel(self.w,um)
+        writeUnionMemberCaseLabel(self.w, um)
         self.pushIndent(2)
         um.visitChildren(self)
         self.w("break;\n")
@@ -1850,11 +1942,14 @@ class EncodeFnGenerator(CodeGenerator):
     def visitSMFail(self, udf):
         # This case should have gotten caught by the check function before
         # encoding; we shouldn't be able to reach here.
-        self.w('trunnel_assert(0);\n');
+        self.w('trunnel_assert(0);\n')
+
     def visitSMIgnore(self, udi):
         pass
+
     def visitSMEos(self, eos):
         pass
+
 
 def intConstraintExpression(v, ranges, width):
     """Return a C expression that is true if the value 'v' is within the
@@ -1866,20 +1961,21 @@ def intConstraintExpression(v, ranges, width):
     """
     tests = []
     maximum = TYPE_MAXIMA[width]
-    for lo,hi in ranges:
+    for lo, hi in ranges:
         if lo == hi:
-            tests.append('%s == %s'%(v, lo))
+            tests.append('%s == %s' % (v, lo))
         elif lo == 0:
-            tests.append('%s <= %s'%(v, hi))
+            tests.append('%s <= %s' % (v, hi))
         elif hi == maximum:
-            tests.append('%s >= %s'%(v, lo))
+            tests.append('%s >= %s' % (v, lo))
         else:
-            tests.append('(%s >= %s && %s <= %s)'%(v,lo,v,hi))
+            tests.append('(%s >= %s && %s <= %s)' % (v, lo, v, hi))
 
-    return "(%s)"%(" || ".join(tests))
+    return "(%s)" % (" || ".join(tests))
 
 
 class ParseFnGenerator(CodeGenerator):
+
     """Code-generating visitor that generates the 'typename_parse()' and
        'typename_parse_into()' functions for a given structure.
 
@@ -1910,7 +2006,7 @@ class ParseFnGenerator(CodeGenerator):
           result -- holds the temporary value of a recursively-invoked
              parse function.
     """
-    ####
+    #
     # needLabels -- a set of all the labels that we have used 'goto'
     #    to reach.
     # truncatedLabel -- the label that we should goto if we find the
@@ -1925,7 +2021,7 @@ class ParseFnGenerator(CodeGenerator):
     def visitStructDecl(self, sd):
         self.structName = name = sd.name
         self.docstring("""As %s_parse(), but do not allocate the
-                          output object."""%name)
+                          output object.""" % name)
         self.format("""
             static ssize_t
             {name}_parse_into({name}_t *obj, const uint8_t *input, const size_t len_in)
@@ -1950,7 +2046,8 @@ class ParseFnGenerator(CodeGenerator):
         if 'truncated' in self.needLabels:
             self.w(' truncated:\n  return -2;\n')
         if 'relay_fail' in self.needLabels:
-            self.w(' relay_fail:\n  if (result >= 0) result = -1;\n  return result;\n')
+            self.w(
+                ' relay_fail:\n  if (result >= 0) result = -1;\n  return result;\n')
         if 'trunnel_alloc_failed' in self.needLabels:
             self.w(" trunnel_alloc_failed:\n  return -1;\n")
         if 'fail' in self.needLabels:
@@ -1984,12 +2081,12 @@ class ParseFnGenerator(CodeGenerator):
         self.parseInteger(smi.inttype.width, v)
 
         if smi.constraints is not None:
-            expr = intConstraintExpression(v, smi.constraints.ranges, smi.inttype.width)
+            expr = intConstraintExpression(
+                v, smi.constraints.ranges, smi.inttype.width)
 
             self.needLabels.add('fail')
             self.w(('if (! %s)\n'
-                    '  goto fail;\n')%(expr))
-
+                    '  goto fail;\n') % (expr))
 
     def parseInteger(self, width, element):
         """Generate code to parse a width-bit integer into element."""
@@ -2004,13 +2101,13 @@ class ParseFnGenerator(CodeGenerator):
                   goto {truncated};
                 {element} = {ntoh}(trunnel_get_uint{width}(ptr));
                 remaining -= {nbytes}; ptr += {nbytes};
-                """,nbytes=nbytes, truncated=self.truncatedLabel,
+                """, nbytes=nbytes, truncated=self.truncatedLabel,
                     ntoh=ntoh, width=width, element=element)
 
     def visitSMStruct(self, sms):
         # To generate code to parse a struture, delegate to parseStruct
         self.eltHeader(sms)
-        self.w(self.parseStructInto(sms.structname, "obj->%s"%(sms.c_name)))
+        self.w(self.parseStructInto(sms.structname, "obj->%s" % (sms.c_name)))
 
     def parseStructInto(self, structtype, target_pointer):
         """Generate code to parse a structure from the input into
@@ -2028,7 +2125,7 @@ class ParseFnGenerator(CodeGenerator):
                 trunnel_assert((size_t)result <= remaining);
                 remaining -= result; ptr += result;
                 """, structtype=structtype, target=target_pointer,
-                     fail=self.structFailLabel)
+                             fail=self.structFailLabel)
 
     def visitSMFixedArray(self, sfa):
         # To parse a fixed array of non-struct, we can precompute its
@@ -2054,7 +2151,7 @@ class ParseFnGenerator(CodeGenerator):
             if type(sfa.basetype) == trunnel.Grammar.IntType:
                 bytesPerElt = sfa.basetype.width // 8
                 if bytesPerElt > 1:
-                    multiplier = "%s * "%bytesPerElt
+                    multiplier = "%s * " % bytesPerElt
             self.format("""
                         if (remaining < ({multiplier}{width}))
                           goto {truncated};
@@ -2077,7 +2174,7 @@ class ParseFnGenerator(CodeGenerator):
         else:
             iterateOverFixedArray(self, sfa,
                                   self.parseStructInto(sfa.basetype,
-                                        "obj->%s[idx]"%(sfa.c_name)))
+                                                       "obj->%s[idx]" % (sfa.c_name)))
 
     def visitSMVarArray(self, sva):
         # There are quite a few cases here. Sorry!
@@ -2109,13 +2206,13 @@ class ParseFnGenerator(CodeGenerator):
         # FFFF some of this is kinda cut-and-paste
         if arrayIsBytes(sva):
             if sva.widthfield != None:
-                self.w('if (remaining < obj->%s)\n  goto %s;\n'%(
+                self.w('if (remaining < obj->%s)\n  goto %s;\n' % (
                     sva.widthfieldmember.c_name, self.truncatedLabel))
-                w = "obj->%s"%sva.widthfieldmember.c_name
+                w = "obj->%s" % sva.widthfieldmember.c_name
             else:
                 w = "remaining"
 
-            elt = "obj->%s.elts_"%sva.c_name
+            elt = "obj->%s.elts_" % sva.c_name
 
             self.needLabels.add(self.truncatedLabel)
 
@@ -2123,7 +2220,7 @@ class ParseFnGenerator(CodeGenerator):
                 tp = "char"
                 self.needLabels.add('fail')
                 self.w(("if (%s_setstr0_%s(obj, (const char*)ptr, %s))\n"
-                        "  goto fail;")%(self.structName,sva.c_fn_name,w))
+                        "  goto fail;") % (self.structName, sva.c_fn_name, w))
 
             else:
                 tp = "uint8_t"
@@ -2141,20 +2238,20 @@ class ParseFnGenerator(CodeGenerator):
             self.needLabels.add('trunnel_alloc_failed')
 
             if type(sva.basetype) == str:
-                elttype = "%s_t *"%sva.basetype
+                elttype = "%s_t *" % sva.basetype
             else:
-                elttype = "uint%d_t"%sva.basetype.width
+                elttype = "uint%d_t" % sva.basetype.width
 
             if sva.widthfield is not None:
                 self.w('TRUNNEL_DYNARRAY_EXPAND(%s, &obj->%s, obj->%s, {});\n'
-                       %(elttype, sva.c_name, sva.widthfieldmember.c_name))
+                       % (elttype, sva.c_name, sva.widthfieldmember.c_name))
 
             self.w('{\n'
-                    '  %s elt;\n'%(elttype))
+                   '  %s elt;\n' % (elttype))
             if sva.widthfield is not None:
                 self.w('  unsigned idx;\n')
                 self.w('  for (idx = 0; idx < obj->%s; ++idx) {\n'
-                       %sva.widthfieldmember.c_name)
+                       % sva.widthfieldmember.c_name)
             else:
                 self.w('  while (remaining > 0) {\n')
                 # This is a bit subtle.  But if a member is truncated inside
@@ -2175,7 +2272,8 @@ class ParseFnGenerator(CodeGenerator):
                 self.parseInteger(sva.basetype.width, "elt")
                 on_fail = "{}"
 
-            self.w("TRUNNEL_DYNARRAY_ADD(%s, &obj->%s, elt, %s);"%(elttype,sva.c_name, on_fail))
+            self.w("TRUNNEL_DYNARRAY_ADD(%s, &obj->%s, elt, %s);" %
+                   (elttype, sva.c_name, on_fail))
 
             self.popIndent(2)
             self.w('}\n')
@@ -2185,7 +2283,6 @@ class ParseFnGenerator(CodeGenerator):
 
             self.popIndent(2)
             self.w('}\n')
-
 
     def visitSMString(self, ss):
         # To parse a nul-terminated string, we use memchr to find the first
@@ -2256,7 +2353,7 @@ class ParseFnGenerator(CodeGenerator):
         # parsed tag field.
         self.eltHeader(smu)
 
-        self.w('switch (obj->%s) {\n'%smu.tagfield)
+        self.w('switch (obj->%s) {\n' % smu.tagfield)
         self.curunion = smu
 
         smu.visitChildren(self)
@@ -2265,7 +2362,7 @@ class ParseFnGenerator(CodeGenerator):
 
     def visitUnionMember(self, um):
         self.pushIndent(2)
-        writeUnionMemberCaseLabel(self.w,um)
+        writeUnionMemberCaseLabel(self.w, um)
         self.pushIndent(2)
         um.visitChildren(self)
         self.w("break;\n")
@@ -2276,10 +2373,12 @@ class ParseFnGenerator(CodeGenerator):
         # To parse an EOS assertion, we fail if "remaining" is nonzero.
         self.needLabels.add('fail')
         self.w('if (remaining)\n  goto fail;\n')
+
     def visitSMFail(self, udf):
         # To parse a 'fail' assertion, we fail.
         self.needLabels.add('fail')
         self.w('goto fail;\n')
+
     def visitSMIgnore(self, udi):
         # To parse an 'ignore' assertion, we skip to the end of 'remaining'.
         self.w('/* Skip to end of union */\n')
@@ -2314,6 +2413,7 @@ MODULE_BOILERPLATE = """
 
 """
 
+
 def generate_code(input_fname, extra_options=[]):
     """Read a trunnel file from 'input_fname' and write the result to
        appropriate output files.  If 'extra_options' is set, add those
@@ -2337,17 +2437,18 @@ def generate_code(input_fname, extra_options=[]):
 
     Annotator().visit(parsed)
 
-    guard_macro = "TRUNNEL_"+os.path.split(h_fname)[1].upper().replace(".","_")
+    guard_macro = "TRUNNEL_" + \
+        os.path.split(h_fname)[1].upper().replace(".", "_")
     expose_definitions = []
     if "opaque" in parsed.options:
         for n in c.sortedStructs:
             expose_definitions.append(
-                "#define TRUNNEL_EXPOSE_%s_\n"%(n.upper()))
+                "#define TRUNNEL_EXPOSE_%s_\n" % (n.upper()))
     boilerplate_vars = {
-        'guard_macro' : guard_macro,
+        'guard_macro': guard_macro,
         'h_fname': os.path.split(h_fname)[1],
         'c_fname': os.path.split(c_fname)[1],
-        'expose_definitions' : "".join(expose_definitions),
+        'expose_definitions': "".join(expose_definitions),
     }
 
     out_h = open(h_fname, 'w')
@@ -2360,7 +2461,8 @@ def generate_code(input_fname, extra_options=[]):
     out_c = open(c_fname, 'w')
     out_c.write(MODULE_BOILERPLATE % boilerplate_vars)
     if "very_opaque" in parsed.options:
-        DeclarationGenerationVisitor(c.sortedStructs, out_c, inCFile=True).visit(parsed)
+        DeclarationGenerationVisitor(
+            c.sortedStructs, out_c, inCFile=True).visit(parsed)
     CodeGenerationVisitor(c.sortedStructs, out_c).visit(parsed)
     out_c.close()
 
