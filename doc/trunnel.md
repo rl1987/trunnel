@@ -358,6 +358,36 @@ for a given structure, you can give an end-of-string constraint:
 (*This feature might go away in a future version if it doesn't turn
 out to be useful.)
 
+### Fields that extend up to a certain point before the end of the structure
+
+Some data formats have fixed-width fields at the end, and
+indeterminate-extent fields in the middle.  For example, you might
+have an "encrypted message" format where the first 16 bytes are a
+salt, the last 32 bytes are a message authentication code, and
+everything in the middle is an encrypted message.  You can express
+this in Trunnel with:
+
+    struct encrypted {
+       u8 salt[16];
+       u8 message[..-32];
+       u8 mac[32];
+    }
+
+The "..-32" notation means that the array should try to consume
+everything up to but not including the last 32 bytes of the message.
+
+You can also use this notation to indicate the extent of a union:
+
+    struct encrypted {
+       u8 type;
+       union u[type] WITH LENGTH ..-32 {
+          1: u8 bytes[];
+	  2: u8 salt[16];
+	     u8 other_bytes[];
+       }
+       u64 data[4];
+    }
+
 ## 4. Controlling code generation with options
 
 Two options are supported in Trunnel right now:
@@ -443,6 +473,11 @@ Here we take up to `inp_len` bytes from the buffer `inp`.  On success, this
 function returns the number of bytes actually consumed, and sets `*out` to a
 newly allocated `example_t` holding the parsed object.  On failure, it returns
 -1 if the input was completely invalid, and -2 if it was possibly truncated.
+
+Note that truncation detection depends on the actual layout of your
+objects.  Some valid encoded objects are prefixes of other encoded
+objects.  In these cases, there's no way to tell that truncation has
+occurred.
 
 ### Generated code: accessor functions
 

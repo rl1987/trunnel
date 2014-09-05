@@ -17,6 +17,8 @@ TEST_OBJS = \
     c/test_strings.o \
     c/test_eos.o \
     c/test_extends.o \
+    c/test_leftover_messages.o \
+    c/test_leftover_union.o \
     c/test_nested.o \
     c/test_fixedarray.o \
     c/test_vararray.o \
@@ -30,6 +32,7 @@ OBJS=tinytest/tinytest.o \
     valid/simple.o \
     valid/derived.o \
     valid/opaque.o \
+    valid/leftover.o \
     ../c/trunnel.o \
     $(TEST_OBJS)
 
@@ -53,6 +56,7 @@ test: ctest
 valid/simple.o: valid/simple.h valid/simple.c
 valid/derived.o: valid/derived.h valid/derived.c
 valid/opaque.o: valid/opaque.h valid/opaque.h
+valid/leftover.o: valid/leftover.h valid/leftover.c
 $(TEST_OBJS) : tinytest/tinytest.h tinytest/tinytest_macros.h valid/simple.h valid/derived.h
 tinytest/tinytest.o: tinytest/tinytest.h tinytest/tinytest_macros.h
 
@@ -64,4 +68,7 @@ valid/derived.c valid/derived.h: valid/derived.trunnel ../lib/trunnel/*py
 
 valid/opaque.c valid/opaque.h: valid/opaque.trunnel ../lib/trunnel/*py
 	PYTHONPATH=../lib:${PYTHONPATH} python -m trunnel valid/opaque.trunnel
+
+valid/leftover.c valid/leftover.h: valid/leftover.trunnel ../lib/trunnel/*py
+	PYTHONPATH=../lib:${PYTHONPATH} python -m trunnel valid/leftover.trunnel
 

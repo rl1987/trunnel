@@ -14,6 +14,8 @@ struct testgroup_t test_groups[] = {
   { "union-defaults/", union_defaults_tests },
   { "repeats-to-end/", repeats_tests },
   { "util/", util_tests },
+  { "leftovers/messages/", leftover_messages_tests },
+  { "leftovers/union/", leftover_union_tests },
   END_OF_GROUPS,
 };
 

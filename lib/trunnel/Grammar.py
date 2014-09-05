@@ -110,7 +110,7 @@ class Lexer(trunnel.spark.GenericScanner, object):
         return self.rv
 
     def t_punctuation(self, s):
-        r"(?:[;{}\[\]=,:]|\.\.\.|\.\.)"
+        r"(?:[;{}\[\]\-=,:]|\.\.\.|\.\.)"
         self.rv.append(Token(s, self.lineno))
 
     def t_id(self, s):
@@ -232,6 +232,8 @@ class StructDecl(AST):
     # Set elsewhere (in CodeGen.Annotator):
     #   lengthFields -- a map from c_name of a field to the field itself
     #     for every field that is used as the length of a SMLenConstrained
+    #   has_leftover_field -- boolean: true iff this struct contains
+    #     an SMLenConstrained.
 
     def __init__(self, name, members):
         self.name = name
@@ -456,21 +458,23 @@ class SMLenConstrained(StructMember):
 
     #
     # lengthfield -- the name of the field holding the length for this
-    #    extent.
+    #    extent, or None if this is a leftover-bytes based constraint
+    # leftoverbytes -- None, or an integer of the number of bytes
+    #    that must be left *after* parsing the members of this item.
     #
     # Set elsewhere (in CodeGen.Annotator):
     #   lengthfieldmember -- The StructMember corresponding to the named
     #     lengthfield, or None if lengthfield is None
 
-    def __init__(self, lengthfield, members):
+    def __init__(self, lengthfield, members, leftoverbytes=None):
         StructMember.__init__(self)
         self.lengthfield = lengthfield
         self.members = members
+        self.leftoverbytes = leftoverbytes
 
     def visitChildren(self, v, *args):
         for m in self.members:
             v.visit(m, *args)
-
 
 class SMUnion(StructMember):
 
@@ -797,9 +801,14 @@ class Parser(trunnel.spark.GenericParser, object):
         " ArrayBase ::= char "
         return info[0]
 
-    def p_SMVarArray(self, info):
+    def p_SMVarArray_1(self, info):
         " SMVarArray ::= ArrayBase ID [ ID ] "
         return SMVarArray(info[0], str(info[1]), str(info[3]))
+
+    def p_SMVarArray_2(self, info):
+        " SMVarArray ::= ArrayBase ID [ .. - Integer ] "
+        array = SMVarArray(info[0], str(info[1]), None)
+        return SMLenConstrained(None, [array], info[5])
 
     def p_SMFixedArray(self, info):
         " SMFixedArray ::= ArrayBase ID [ Integer ] "
@@ -810,7 +819,10 @@ class Parser(trunnel.spark.GenericParser, object):
         _1, unionfield, _2, tagfield, _3, optlength, _4, members, _5 = info
         union = SMUnion(str(unionfield), str(tagfield), members)
         if optlength is not None:
-            union = SMLenConstrained(optlength, [union])
+            if type(optlength) == str:
+                union = SMLenConstrained(optlength, [union])
+            else:
+                union = SMLenConstrained(None, [union], optlength)
         return union
 
     def p_OptUnionLength_1(self, info):
@@ -820,6 +832,10 @@ class Parser(trunnel.spark.GenericParser, object):
     def p_OptUnionLength_2(self, info):
         " OptUnionLength ::= WITH LENGTH ID"
         return str(info[2])
+
+    def p_OptUnionLength_3(self, info):
+        " OptUnionLength ::= WITH LENGTH .. - Integer"
+        return info[4]
 
     def p_UnionMembers_1(self, info):
         " UnionMembers ::= UnionMember "

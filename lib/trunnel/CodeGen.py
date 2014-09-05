@@ -318,8 +318,14 @@ class Checker(ASTVisitor):
         self.addMemberName(sms.name)
 
     def visitSMLenConstrained(self, sml):
-        self.checkIntField(sml.lengthfield, "union length", self.structName)
+        if sml.lengthfield != None:
+            self.checkIntField(sml.lengthfield, "union length", self.structName)
         self.lenFieldDepth += 1
+        if self.lenFieldDepth >= 2:
+            # This is an undesirable restriction, but the alternative
+            # is to fix some really knotty bugs.
+            raise CheckError("Nested fields with length constraints.")
+
         sml.visitChildren(self)
         self.lenFieldDepth -= 1
 
@@ -446,6 +452,8 @@ class Annotator(ASTVisitor):
     # memberByName -- a map from member name to StructMember
     # cur_struct -- the name of the current StructDecl we're annotating
     # cur_struct_obj -- the current StructDecl we're annotating
+    # after_leftover_field -- true if we are after an SMLenConstrained
+    #   that uses the 'leftover bytes' feature.
 
     def __init__(self):
         ASTVisitor.__init__(self)
@@ -461,6 +469,8 @@ class Annotator(ASTVisitor):
     def visitStructDecl(self, sd):
         self.cur_struct_obj = sd
         self.cur_struct = sd.name
+        self.cur_struct_obj.has_leftover_field = False
+        self.after_leftover_field = False
         self.memberByName = {}
         sd.lengthFields = {}
         sd.visitChildren(self)
@@ -473,6 +483,7 @@ class Annotator(ASTVisitor):
            self.memberByName"""
         member.c_name = "%s%s" % (self.prefix, member.name)
         member.c_fn_name = member.c_name
+        member.after_leftover_field = self.after_leftover_field
         self.memberByName[member.name] = member
 
     def visitSMInteger(self, smi):
@@ -493,15 +504,30 @@ class Annotator(ASTVisitor):
         self.annotateMember(ss)
 
     def visitSMLenConstrained(self, sml):
-        m = self.memberByName[sml.lengthfield]
-        self.cur_struct_obj.lengthFields[m.c_name] = m
-        sml.lengthfieldmember = m
+        if sml.lengthfield is not None:
+            m = self.memberByName[sml.lengthfield]
+            self.cur_struct_obj.lengthFields[m.c_name] = m
+            sml.lengthfieldmember = m
+        else:
+            sml.lengthfieldmember = None
+            self.cur_struct_obj.has_leftover_field = True
+        sml.after_leftover_field = self.after_leftover_field
         sml.visitChildren(self)
+
+        if sml.lengthfield is None:
+            self.after_leftover_field = True
+
 
     def visitSMUnion(self, smu):
         self.annotateMember(smu)
         self.prefix = smu.name + "_"
-        smu.visitChildren(self)
+        prev_alf = next_alf = self.after_leftover_field
+        for child in smu.members:
+            self.after_leftover_field = prev_alf
+            self.visit(child)
+            if self.after_leftover_field:
+                next_alf = True
+        self.after_leftover_field = next_alf
         self.prefix = ""
         smu.tagfieldmember = self.memberByName[smu.tagfield]
 
@@ -1700,6 +1726,28 @@ class EncodeFnGenerator(CodeGenerator):
         CodeGenerator.__init__(self, writefn)
         self.action = "Encode"
 
+    def checkAvail_s(self, needed, member):
+        self.needTruncated = True
+        if member.after_leftover_field:
+            return self.format_s("""
+               trunnel_assert(written <= avail);
+               if (avail - written < {0}) {{
+                 if (avail_orig - written < {0})
+                   goto truncated;
+                 else
+                   goto check_failed;
+               }}
+               """, needed)
+        else:
+            return self.format_s("""
+                 trunnel_assert(written <= avail);
+                 if (avail - written < {0})
+                   goto truncated;
+                 """, needed)
+
+    def checkAvail(self, needed, member):
+        self.w(self.checkAvail_s(needed, member))
+
     def visitStructDecl(self, sd):
         self.structName = name = sd.name
         self.curStruct = sd
@@ -1711,13 +1759,21 @@ class EncodeFnGenerator(CodeGenerator):
                "  return r;\n"
                "}")
 
+        if sd.has_leftover_field:
+            optconst = ""
+        else:
+            optconst = "const "
+
         self.w(
-            "ssize_t\n%s_encode(uint8_t *output, const size_t avail, const %s_t *obj)\n{\n" % (name, name))
+            "ssize_t\n%s_encode(uint8_t *output, %ssize_t avail, const %s_t *obj)\n{\n" % (name, optconst, name))
         self.pushIndent(2)
         self.w('ssize_t result = 0;\n'
                'size_t written = 0;\n'
                'uint8_t *ptr = output;\n'
                'const char *msg;\n')
+        if sd.has_leftover_field:
+            self.w('int enforce_avail = 0;\n'
+                   'const size_t avail_orig = avail;\n')
         self.w('\n')
         if sd.lengthFields:
             for m in sorted(sd.lengthFields.values()):
@@ -1729,8 +1785,13 @@ class EncodeFnGenerator(CodeGenerator):
         sd.visitChildren(self)
 
         self.w('\n'
-               '\ntrunnel_assert(ptr == output + written);\n'
-               '\n'
+               '\ntrunnel_assert(ptr == output + written);\n')
+
+        if sd.has_leftover_field:
+            self.w('if (enforce_avail && avail != written)\n'
+                   '  goto check_failed;\n')
+
+        self.w('\n'
                'return written;\n\n')
 
         self.popIndent(2)
@@ -1754,9 +1815,9 @@ class EncodeFnGenerator(CodeGenerator):
         self.eltHeader(smi)
         if smi.c_name in self.curStruct.lengthFields:
             self.w('backptr_%s = ptr;\n' % (smi.c_name))
-        self.w(self.encodeInteger(smi.inttype.width, "obj->%s" % (smi.c_name)))
+        self.w(self.encodeInteger(smi, smi.inttype.width, "obj->%s" % (smi.c_name)))
 
-    def encodeInteger(self, width, element):
+    def encodeInteger(self, member, width, element, forFormat=False):
         # To encode an integer field, we make sure we have enough
         # room, then use the appropriate endian-conversion and
         # set_uintX functions to write it to the output.  Then we
@@ -1764,10 +1825,10 @@ class EncodeFnGenerator(CodeGenerator):
         nbytes = width // 8
         hton = HTON_FN[width]
         self.needTruncated = True
-        return self.format_s("""
-            trunnel_assert(written <= avail);
-            if (avail - written < {nbytes})
-              goto truncated;
+        avail = self.checkAvail_s(nbytes, member)
+        if forFormat:
+            avail = avail.replace("{", "{{").replace("}","}}")
+        return avail + self.format_s("""
             trunnel_set_uint{width}(ptr, {hton}({element}));
             written += {nbytes}; ptr += {nbytes};
             """, nbytes=nbytes, width=width, hton=hton, element=element)
@@ -1785,7 +1846,7 @@ class EncodeFnGenerator(CodeGenerator):
                 trunnel_assert(written <= avail);
                 result = {structtype}_encode(ptr, avail - written, {element});
                 if (result < 0)
-                  goto fail;
+                  goto fail; /* XXXXXXX !*/
                 written += result; ptr += result;
                 """, structtype=structtype, element=element_pointer)
 
@@ -1808,10 +1869,8 @@ class EncodeFnGenerator(CodeGenerator):
         if arrayIsBytes(sfa):
             self.needTruncated = True
             if str(sfa.basetype) == 'char':
+                self.checkAvail(sfa.width, sfa)
                 self.format("""
-                        trunnel_assert(written <= avail);
-                        if (avail - written < {width})
-                          goto truncated;
                         {{
                           size_t len = strlen(obj->{c_name});
                           trunnel_assert(len <= {width});
@@ -1821,10 +1880,8 @@ class EncodeFnGenerator(CodeGenerator):
                         }}
                         """, c_name=sfa.c_name, width=sfa.width)
             else:
+                self.checkAvail(sfa.width, sfa)
                 self.format("""
-                        trunnel_assert(written <= avail);
-                        if (avail - written < {width})
-                          goto truncated;
                         memcpy(ptr, obj->{c_name}, {width});
                         written += {width}; ptr += {width};
                         """, c_name=sfa.c_name, width=sfa.width)
@@ -1833,7 +1890,7 @@ class EncodeFnGenerator(CodeGenerator):
         if type(sfa.basetype) == str:
             body = self.encodeStruct(sfa.basetype, "{ELEMENT}")
         else:
-            body = self.encodeInteger(sfa.basetype.width, "{ELEMENT}")
+            body = self.encodeInteger(sfa, sfa.basetype.width, "{ELEMENT}")
         iterateOverFixedArray(self, sfa, body)
 
     def visitSMVarArray(self, sva):
@@ -1852,22 +1909,23 @@ class EncodeFnGenerator(CodeGenerator):
             self.format("""
                    {{
                      size_t elt_len = TRUNNEL_DYNARRAY_LEN(&obj->{c_name});
-                     trunnel_assert(written <= avail);
                    """, c_name=sva.c_name)
             if sva.widthfield is not None:
                 self.w('  trunnel_assert(obj->%s == elt_len);' %
                        sva.widthfieldmember.c_name)
+            self.pushIndent(2)
+            self.checkAvail("elt_len", sva)
+            self.popIndent(2)
             self.format("""
-                    if (avail - written < elt_len)
-                     goto truncated;
                     memcpy(ptr, obj->{c_name}.elts_, elt_len);
                     written += elt_len; ptr += elt_len;
                   }}""", c_name=sva.c_name)
             return
+
         if type(sva.basetype) == str:
             body = self.encodeStruct(sva.basetype, "{ELEMENT}")
         else:
-            body = self.encodeInteger(sva.basetype.width, "{ELEMENT}")
+            body = self.encodeInteger(sva, sva.basetype.width, "{ELEMENT}", True)
         iterateOverVarArray(self, sva, body)
 
     def visitSMString(self, ss):
@@ -1879,11 +1937,12 @@ class EncodeFnGenerator(CodeGenerator):
         self.eltHeader(ss)
         self.needTruncated = True
         self.format("""
-                trunnel_assert(written <= avail);
                 {{
-                  size_t len = strlen(obj->{c_name});
-                  if (len >= avail - written)
-                    goto truncated;
+                  size_t len = strlen(obj->{c_name});""",c_name=ss.c_name)
+        self.pushIndent(2)
+        self.checkAvail("len + 1", ss)
+        self.popIndent(2)
+        self.format("""
                   memcpy(ptr, obj->{c_name}, len + 1);
                   ptr += len + 1; written += len + 1;
                 }}""", c_name=ss.c_name)
@@ -1897,18 +1956,20 @@ class EncodeFnGenerator(CodeGenerator):
         # actual length.
         self.w("{\n")
         self.pushIndent(2)
-        self.w("size_t written_before_union = written;\n")
+        m = sml.lengthfieldmember
+        if m is not None:
+            self.w("size_t written_before_union = written;\n")
 
         sml.visitChildren(self)
 
-        self.comment('Write the length field back to %s' % sml.lengthfield)
-        m = sml.lengthfieldmember
-        width = m.inttype.width
-        hton = HTON_FN[width]
-        # We do this CPP check so that we don't generate any code
-        # to check whether a size_t fits inside a uint64_t: compilers
-        # don't like that.
-        self.format("""
+        if m is not None:
+            width = m.inttype.width
+            hton = HTON_FN[width]
+            self.comment('Write the length field back to %s' % sml.lengthfield)
+            # We do this CPP check so that we don't generate any code
+            # to check whether a size_t fits inside a uint64_t: compilers
+            # don't like that.
+            self.format("""
               trunnel_assert(written >= written_before_union);
               #if UINT{width}_MAX < SIZE_MAX
               if (written - written_before_union > UINT{width}_MAX)
@@ -1916,6 +1977,13 @@ class EncodeFnGenerator(CodeGenerator):
               #endif
               trunnel_set_uint{width}(backptr_{c_name}, {hton}(written - written_before_union));
               """, width=width, hton=hton, c_name=m.c_name)
+        else:
+            self.checkAvail(sml.leftoverbytes, sml)
+            self.format("""
+                  avail = written + {leftover};
+                  enforce_avail = 1;
+                  """, leftover=sml.leftoverbytes)
+
         self.popIndent(2)
         self.w("}\n")
 
@@ -2316,9 +2384,10 @@ class ParseFnGenerator(CodeGenerator):
         # the region.  Finally, we check that 'remaining' is now 0.  If it
         # is, we restore it to remaining_after.  If not, we fail.
 
-        field = sml.lengthfieldmember.c_name
+        if sml.lengthfieldmember != None:
+            field = sml.lengthfieldmember.c_name
 
-        self.format("""
+            self.format("""
                     {{
                       size_t remaining_after;
                       if (obj->{field} > remaining)
@@ -2326,6 +2395,16 @@ class ParseFnGenerator(CodeGenerator):
                       remaining_after = remaining - obj->{field};
                       remaining = obj->{field};
                     """, field=field, truncated=self.truncatedLabel)
+        else:
+            self.format("""
+                    {{
+                      size_t remaining_after;
+                      if (remaining < {leftafter})
+                         goto {truncated};
+                      remaining_after = {leftafter};
+                      remaining = remaining - {leftafter};
+                    """, leftafter=sml.leftoverbytes,
+                         truncated=self.truncatedLabel)
 
         self.pushIndent(2)
         self.needLabels.add(self.truncatedLabel)

@@ -1,0 +1,11 @@
+
+struct nested {
+
+  u8 tag;
+  u8 len;
+  union u[tag] WITH LENGTH len {
+    3: u8 array[..-8];
+  };
+
+  u64 z;
+}

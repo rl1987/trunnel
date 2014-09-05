@@ -52,9 +52,11 @@
  OptSemi ::=
  OptSemi ::= ;
  OptUnionLength ::=
+ OptUnionLength ::= WITH LENGTH .. - Integer
  OptUnionLength ::= WITH LENGTH ID
  SMFixedArray ::= ArrayBase ID [ Integer ]
  SMRemainder ::= OptAnnotation ArrayBase ID [ ]
+ SMVarArray ::= ArrayBase ID [ .. - Integer ]
  SMVarArray ::= ArrayBase ID [ ID ]
  StructEnding ::=
  StructEnding ::= SMRemainder ;
