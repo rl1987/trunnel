@@ -438,11 +438,13 @@ class SMVarArray(StructMember):
         self.widthfield = widthfield
 
     def __str__(self):
-        struct = ""
+        struct = width = ""
         if type(self.basetype) == str:
             struct = "struct "
+        if self.widthfield is not None:
+            width = self.widthfield
 
-        return "%s%s %s[%s]" % (struct, str(self.basetype), self.getName(), self.widthfield)
+        return "%s%s %s[%s]" % (struct, str(self.basetype), self.getName(), width)
 
 
 class SMLenConstrained(StructMember):
