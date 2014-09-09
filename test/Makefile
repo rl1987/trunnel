@@ -23,6 +23,11 @@ TEST_OBJS = \
     c/test_union_nolen.o \
     c/test_union_withlen.o \
     c/test_union_defaults.o \
+    c/test_contexts_support.o \
+    c/test_contexts_uniontag.o \
+    c/test_contexts_varsize.o \
+    c/test_contexts_varsize2.o \
+    c/test_contexts_complex.o \
     c/test_remainder_repeats.o \
     c/test_util.o
 
@@ -30,6 +35,7 @@ OBJS=tinytest/tinytest.o \
     valid/simple.o \
     valid/derived.o \
     valid/opaque.o \
+    valid/contexts.o \
     ../c/trunnel.o \
     $(TEST_OBJS)
 
@@ -53,6 +59,7 @@ test: ctest
 valid/simple.o: valid/simple.h valid/simple.c
 valid/derived.o: valid/derived.h valid/derived.c
 valid/opaque.o: valid/opaque.h valid/opaque.h
+valid/contexts.o: valid/contexts.h
 $(TEST_OBJS) : tinytest/tinytest.h tinytest/tinytest_macros.h valid/simple.h valid/derived.h
 tinytest/tinytest.o: tinytest/tinytest.h tinytest/tinytest_macros.h
 
@@ -64,4 +71,7 @@ valid/derived.c valid/derived.h: valid/derived.trunnel ../lib/trunnel/*py
 
 valid/opaque.c valid/opaque.h: valid/opaque.trunnel ../lib/trunnel/*py
 	PYTHONPATH=../lib:${PYTHONPATH} python -m trunnel valid/opaque.trunnel
+
+valid/contexts.c valid/contexts.h: valid/contexts.trunnel ../lib/trunnel/*py
+	PYTHONPATH=../lib:${PYTHONPATH} python -m trunnel valid/contexts.trunnel
 

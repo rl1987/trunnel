@@ -80,7 +80,7 @@ class Annotation(Token):
 
 # Set of reserved keywords.
 KEYWORDS = set("""
-  union struct extern trunnel
+  union struct extern trunnel context
   u8 u16 u32 u64 char
   IN const nulterm WITH LENGTH default fail ignore eos
 """.split())
@@ -110,7 +110,7 @@ class Lexer(trunnel.spark.GenericScanner, object):
         return self.rv
 
     def t_punctuation(self, s):
-        r"(?:[;{}\[\]=,:]|\.\.\.|\.\.)"
+        r"(?:[;{}\[\]=,:]|\.\.\.|\.\.|\.)"
         self.rv.append(Token(s, self.lineno))
 
     def t_id(self, s):
@@ -184,6 +184,7 @@ class File(AST):
         self.constants = []
         self.declarations = []
         self.declarationsByName = {}
+        self.externsByName = {} #XXXX
         self.externStructs = []
         self.options = []
         for m in members:
@@ -193,7 +194,8 @@ class File(AST):
         if isinstance(m, ConstDecl):
             self.constants.append(m)
         elif isinstance(m, ExternStructDecl):
-            self.externStructs.append(m.name)
+            self.externStructs.append(m)
+            self.externsByName[m.name] = m
         elif isinstance(m, TrunnelOptionsDecl):
             self.options.extend(m.options)
         else:
@@ -219,6 +221,13 @@ class File(AST):
         for name in sort_order:
             v.visit(self.declarationsByName[name], *args)
 
+    def getDeclaration(self, name):
+        try:
+            return self.declarationsByName[name]
+        except KeyError:
+            pass
+        return self.externsByName[name]
+
 
 class StructDecl(AST):
 
@@ -233,15 +242,19 @@ class StructDecl(AST):
     #   lengthFields -- a map from c_name of a field to the field itself
     #     for every field that is used as the length of a SMLenConstrained
 
-    def __init__(self, name, members):
+    def __init__(self, name, members, contextList=(), isContext=False):
         self.name = name
         self.members = members
         self.annotation = None
+        self.contextList = list(contextList)
+        self._isContext = isContext
 
     def visitChildren(self, v, *args):
         for m in self.members:
             v.visit(m, *args)
 
+    def isContext(self):
+        return self._isContext
 
 class ConstDecl(AST):
 
@@ -262,9 +275,9 @@ class ExternStructDecl(AST):
 
     """Declaration that a Trunnel structure is available elsewhere."""
 
-    def __init__(self, name):
+    def __init__(self, name, contextList=()):
         self.name = str(name)
-
+        self.contextList = list(contextList)
 
 class TrunnelOptionsDecl(AST):
 
@@ -535,6 +548,15 @@ class SMIgnore(StructMember):
        ignored."""
     pass
 
+class IDReference(AST):
+    """DOCDOC"""
+    def __init__(self, context, ident):
+        self.context = context
+        self.ident = ident
+
+    def __str__(self):
+        return "%s.%s"%(self.context, self.ident)
+
 #
 #
 # Parser
@@ -602,8 +624,16 @@ class Parser(trunnel.spark.GenericParser, object):
         return d
 
     def p_Decl_3(self, info):
-        " Declaration ::= extern struct ID ; "
-        return ExternStructDecl(info[2])
+        " Declaration ::= extern struct ID OptWithContext ; "
+        return ExternStructDecl(info[2], info[3])
+
+    def p_OptWithContext_1(self, info):
+        " OptWithContext ::= "
+        return ()
+
+    def p_OptWithContext_2(self, info):
+        " OptWithContext ::= WITH context IDList"
+        return info[2]
 
     def p_Decl_4(self, info):
         " Declaration ::= trunnel ID IDList ; "
@@ -623,18 +653,25 @@ class Parser(trunnel.spark.GenericParser, object):
         lst.append(str(item))
         return lst
 
+    def p_Decl_5(self, info):
+        " Declaration ::= OptAnnotation ContextDecl OptSemi"
+        a, decl, _1 = info
+        if a:
+            decl.annotation = str(a)
+        return decl
+
     def p_ConstDecl(self, info):
         " ConstDecl ::= const CONST_ID = INT ; "
         _0, name, _1, val, _2 = info
         return ConstDecl(str(name), val)
 
     def p_StructDecl(self, info):
-        " StructDecl ::= struct ID { StructMembers StructEnding } "
-        _0, name, _1, members, ending, _2 = info
+        " StructDecl ::= struct ID OptWithContext { StructMembers StructEnding } "
+        _0, name, contexts, _1, members, ending, _2 = info
         if ending is not None:
             members.append(ending)
 
-        return StructDecl(str(name), members)
+        return StructDecl(str(name), members, contexts)
 
     def p_OptSemi_1(self, info):
         " OptSemi ::= "
@@ -798,15 +835,23 @@ class Parser(trunnel.spark.GenericParser, object):
         return info[0]
 
     def p_SMVarArray(self, info):
-        " SMVarArray ::= ArrayBase ID [ ID ] "
+        " SMVarArray ::= ArrayBase ID [ IDRef ] "
         return SMVarArray(info[0], str(info[1]), str(info[3]))
 
     def p_SMFixedArray(self, info):
         " SMFixedArray ::= ArrayBase ID [ Integer ] "
         return SMFixedArray(info[0], str(info[1]), info[3])
 
+    def p_IDRef_1(self, info):
+        " IDRef ::= ID "
+        return info[0]
+
+    def p_IDRef_2(self, info):
+        " IDRef ::= ID . ID"
+        return IDReference(info[0], info[2])
+
     def p_SMUnion(self, info):
-        " SMUnion ::= union ID [ ID ] OptUnionLength { UnionMembers } "
+        " SMUnion ::= union ID [ IDRef ] OptUnionLength { UnionMembers } "
         _1, unionfield, _2, tagfield, _3, optlength, _4, members, _5 = info
         union = SMUnion(str(unionfield), str(tagfield), members)
         if optlength is not None:
@@ -818,7 +863,7 @@ class Parser(trunnel.spark.GenericParser, object):
         return None
 
     def p_OptUnionLength_2(self, info):
-        " OptUnionLength ::= WITH LENGTH ID"
+        " OptUnionLength ::= WITH LENGTH IDRef"
         return str(info[2])
 
     def p_UnionMembers_1(self, info):
@@ -901,6 +946,26 @@ class Parser(trunnel.spark.GenericParser, object):
     def p_UnionField_5(self, info):
         " UnionField ::= SMStruct "
         return info[0]
+
+    def p_ContextDecl(self, info):
+        " ContextDecl ::= context ID { ContextMembers }"""
+        return StructDecl(str(info[1]), info[3], isContext=True)
+
+    def p_ContextMembers_1(self, info):
+        " ContextMembers ::= "
+        return []
+
+    def p_ContextMembers_2 (self, info):
+        " ContextMembers ::= ContextMembers OptAnnotation ContextMember "
+        lst, a, m = info
+        if a:
+            m.annotation = str(a)
+        lst.append(m)
+        return lst
+
+    def p_ContextMember(self, info):
+        " ContextMember ::= IntType ID ; "
+        return SMInteger(info[0], str(info[1]), None)
 
 if __name__ == '__main__':
     print ("===== Here is our actual grammar, extracted from Grammar.py\n")
