@@ -5,12 +5,13 @@
  File ::= Declarations
 
  Declaration ::= OptAnnotation ConstDecl
+ Declaration ::= OptAnnotation ContextDecl OptSemi
  Declaration ::= OptAnnotation StructDecl OptSemi
- Declaration ::= extern struct ID ;
+ Declaration ::= extern struct ID OptWithContext ;
  Declaration ::= trunnel ID IDList ;
 
  ConstDecl ::= const CONST_ID = INT ;
- StructDecl ::= struct ID { StructMembers StructEnding }
+ StructDecl ::= struct ID OptWithContext { StructMembers StructEnding }
 
  StructMember ::= SMArray
  StructMember ::= SMInteger
@@ -24,14 +25,20 @@
  SMString ::= nulterm ID
  SMStruct ::= StructDecl ID
  SMStruct ::= struct ID ID
- SMUnion ::= union ID [ ID ] OptUnionLength { UnionMembers }
+ SMUnion ::= union ID [ IDRef ] OptUnionLength { UnionMembers }
 
  ArrayBase ::= IntType
  ArrayBase ::= StructDecl
  ArrayBase ::= char
  ArrayBase ::= struct ID
+ ContextDecl ::= context ID { ContextMembers }
+ ContextMember ::= IntType ID ;
+ ContextMembers ::=
+ ContextMembers ::= ContextMembers OptAnnotation ContextMember
  IDList ::= ID
  IDList ::= IDList , ID
+ IDRef ::= ID
+ IDRef ::= ID . ID
  IntList ::= IntList , IntListMember
  IntList ::= IntListMember
  IntListMember ::= Integer
@@ -42,6 +49,7 @@
  IntType ::= u8
  Integer ::= CONST_ID
  Integer ::= INT
+ LengthKW ::= ID
  OptAnnotation ::=
  OptAnnotation ::= ANNOTATION
  OptExtentSpec ::=
@@ -52,12 +60,14 @@
  OptSemi ::=
  OptSemi ::= ;
  OptUnionLength ::=
- OptUnionLength ::= WITH LENGTH .. - Integer
- OptUnionLength ::= WITH LENGTH ID
+ OptUnionLength ::= with LengthKW .. - Integer
+ OptUnionLength ::= with LengthKW IDRef
+ OptWithContext ::=
+ OptWithContext ::= with context IDList
  SMFixedArray ::= ArrayBase ID [ Integer ]
  SMRemainder ::= OptAnnotation ArrayBase ID [ ]
  SMVarArray ::= ArrayBase ID [ .. - Integer ]
- SMVarArray ::= ArrayBase ID [ ID ]
+ SMVarArray ::= ArrayBase ID [ IDRef ]
  StructEnding ::=
  StructEnding ::= SMRemainder ;
  StructEnding ::= eos ;
