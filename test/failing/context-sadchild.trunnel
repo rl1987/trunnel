@@ -1,0 +1,14 @@
+
+
+context c {
+  u8 foo;
+}
+
+struct x WITH context c {
+  u8 stuff[c.foo];
+}
+
+struct y {
+  struct x the_x;
+}
+

@@ -16,6 +16,11 @@ struct testgroup_t test_groups[] = {
   { "util/", util_tests },
   { "leftovers/messages/", leftover_messages_tests },
   { "leftovers/union/", leftover_union_tests },
+  { "contexts/support/", contexts_support_tests },
+  { "contexts/uniontag/",  contexts_uniontag_tests },
+  { "contexts/varsize/", contexts_varsize_tests },
+  { "contexts/varsize2/", contexts_varsize2_tests },
+  { "contexts/complex/", contexts_complex_tests },
   END_OF_GROUPS,
 };
 

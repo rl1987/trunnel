@@ -2,27 +2,24 @@
 const PAYLOAD_LEN = 509;
 const RELAY_PAYLOAD_LEN = 498;
 
-struct cell {
-   u16 circ_id;
+context conn_state {
+   u8 wide_circids;
+}
+
+struct cell WITH context conn_state {
+   union circ_id[conn_state.wide_circids] {
+      0: u16 circ_id16;
+      1: u32 circ_id32;
+   }
    u8 command;
    u8 body[PAYLOAD_LEN];
 }
 
-struct wide_cell {
-   u32 circ_id;
-   u8 command;
-   u8 body[PAYLOAD_LEN];
-}
-
-struct var_cell {
-   u16 circ_id;
-   u8 command IN [ 7, 128..255 ];
-   u16 length;
-   u8 body[length];
-}
-
-struct wide_var_cell {
-   u32 circ_id;
+struct var_cell WITH context conn_state {
+   union circ_id[conn_state.wide_circids] {
+      0: u16 circ_id16;
+      1: u32 circ_id32;
+   }
    u8 command IN [ 7, 128..255 ];
    u16 length;
    u8 body[length];

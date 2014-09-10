@@ -1,0 +1,4 @@
+
+struct x WITH context c {
+  u8 foo[c.bar];
+}

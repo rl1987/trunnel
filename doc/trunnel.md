@@ -388,6 +388,49 @@ You can also use this notation to indicate the extent of a union:
        u64 data[4];
     }
 
+### Parameterizing structures
+
+Some protocols have the type of length of some structure fields depend
+on settings elsewhere in the protocol.  For example, you might have a
+TLS-like protocol where each encrypted records's format depends on
+some session parameters.
+
+To support this, trunnel provides context-dependent objects:
+
+    context stream_settings {
+       u8 block_mode;
+       u8 iv_len;
+       u8 block_len;
+       u8 mac_len;
+    }
+
+    struct encrypted_record WITH context stream_settings {
+       u8 iv[stream_settings.iv_len];
+       union msg[stream_settings.block_mode] {
+          0: u16 n_bytes; u8 bytes[n_bytes];
+	  1: u16 n_blocks; struct block[n_blocks];
+       };
+       u8 mac[stream_settings.maclen];
+    }
+
+    struct block WITH context stream_settings {
+       u8 body[stream_settings.block_len]
+    }
+
+In the example above, the lengths of the `mac`, `iv`, and `body`
+fields do not depend on values within the structures themselves;
+instead, they depend on the values set within the `stream_settings`
+context.  It's similar for the tag of the `msg` union: it depends on a
+value in the stream_settings context.
+
+Note also that the `stream_settings` context can propagate from the
+`encrypted_record` structure to the `block` structure it contains.  It
+is an error to include a context-dependent structure in an environment
+that doesn't declare the same context dependency.
+
+Contexts may only include integer types, and may not declare integer
+restrictions.
+
 ## 4. Controlling code generation with options
 
 Two options are supported in Trunnel right now:
@@ -593,6 +636,39 @@ The `getstr` function is identical to `getarray`, except that it guarantees a
 NUL-terminated result.  (It can return `NULL` if it fails to NUL-terminate the
 answer.)  This time the `setstr0` function takes a new value and its length;
 the `setstr` function just takes a value and assumes it is NUL-terminated.
+
+### Generated code: the impact of contexts
+
+If you declare context-dependent structures, Trunnel will add extra
+context arguments to the generated `encode`, `parse`, and `check`
+functions.  For example, if you say:
+
+    context len {
+       u16 len;
+    }
+    struct msg WITH context len {
+       u8 tag;
+       u16 items[len.len];
+    }
+
+Then trunnel will generate those functions with the protptypes:
+
+    ssize_t msg_encode(uint8_t *buf, size_t buf_len, msg_t *obj,
+                       const len_t *len_ctx);
+    const char *msg_check(const msg_t *obj, const len_t *len_ctx);
+    ssize_t msg_parse(msg_t **out, const uint8_t *inp, size_t inp_len,
+                      const len_t *len_ctx);
+
+Trunnel will also generate a declaration for the context type, along
+with `new`, `free`, and accessor functions for it:
+
+    struct len_t {
+       uint16_t len;
+    };
+    len_t *len_new(void);
+    void len_free(len_t *len);
+    int len_set_len(len_t *len, uint16_t newval);
+    uint16_t len_get_len(const len_t *len);
 
 ### Extending trunnel
 
