@@ -17,7 +17,7 @@ struct cert_extension {
   u16 ext_length;
   u8 ext_type;
   u8 ext_flags;
-  union un[ext_type] WITH LENGTH ext_length {
+  union un[ext_type] with length ext_length {
     CERTEXT_SIGNED_WITH_KEY : u8 signing_key[32];
     default: u8 unparsed[];
   };
@@ -64,7 +64,7 @@ const LS_ED25519_ID = 0x03;
 struct link_specifier {
   u8 ls_type;
   u8 ls_len;
-  union un[ls_type] WITH LENGTH ls_len {
+  union un[ls_type] with length ls_len {
     LS_IPV4: u32 ipv4_addr; u16 ipv4_port;
     LS_IPV6: u8 ipv6_addr[16]; u16 ipv6_port;
     LS_LEGACY_ID: u8 legacy_id[20];

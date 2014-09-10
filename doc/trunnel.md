@@ -317,7 +317,7 @@ themselves against later extensions.  You can do this as:
 
     u8 tag;
     u16 length;
-    union addr[tag] WITH LENGTH length {
+    union addr[tag] with length length {
        4 : u32 ipv4_addr;
        6 : u8 ipv6_addr[16];
        7 : ignore;
@@ -380,7 +380,7 @@ You can also use this notation to indicate the extent of a union:
 
     struct encrypted {
        u8 type;
-       union u[type] WITH LENGTH ..-32 {
+       union u[type] with length ..-32 {
           1: u8 bytes[];
 	  2: u8 salt[16];
 	     u8 other_bytes[];
@@ -404,7 +404,7 @@ To support this, trunnel provides context-dependent objects:
        u8 mac_len;
     }
 
-    struct encrypted_record WITH context stream_settings {
+    struct encrypted_record with context stream_settings {
        u8 iv[stream_settings.iv_len];
        union msg[stream_settings.block_mode] {
           0: u16 n_bytes; u8 bytes[n_bytes];
@@ -413,7 +413,7 @@ To support this, trunnel provides context-dependent objects:
        u8 mac[stream_settings.maclen];
     }
 
-    struct block WITH context stream_settings {
+    struct block with context stream_settings {
        u8 body[stream_settings.block_len]
     }
 
@@ -646,7 +646,7 @@ functions.  For example, if you say:
     context len {
        u16 len;
     }
-    struct msg WITH context len {
+    struct msg with context len {
        u8 tag;
        u16 items[len.len];
     }

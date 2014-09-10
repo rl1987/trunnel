@@ -1,4 +1,4 @@
 
-struct x WITH context c {
+struct x with context c {
   u8 foo[c.bar];
 }

@@ -3,7 +3,7 @@ struct x {
   u8 f;
   u8 g;
   u8 a[f];
-  union b[g] WITH LENGTH f {
+  union b[g] with length f {
     1 : u8 z;
   };
 }

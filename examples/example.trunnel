@@ -55,13 +55,13 @@ struct namex {
     u8 tag;
     u8 length;
 
-    union fred[tag] WITH LENGTH length {
+    union fred[tag] with length length {
         4: struct xx field1;
         5: struct yy field2;
         default: ignore;
     };
 
-    union alice[tag] WITH LENGTH length {
+    union alice[tag] with length length {
         5: struct yy field3 ; ... ;
         default: u8 junk[];
     };

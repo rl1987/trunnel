@@ -82,7 +82,7 @@ class Annotation(Token):
 KEYWORDS = set("""
   union struct extern trunnel context
   u8 u16 u32 u64 char
-  IN const nulterm WITH LENGTH default fail ignore eos
+  IN const nulterm with default fail ignore eos
 """.split())
 
 
@@ -636,7 +636,7 @@ class Parser(trunnel.spark.GenericParser, object):
         return ()
 
     def p_OptWithContext_2(self, info):
-        " OptWithContext ::= WITH context IDList"
+        " OptWithContext ::= with context IDList"
         return info[2]
 
     def p_Decl_4(self, info):
@@ -875,12 +875,18 @@ class Parser(trunnel.spark.GenericParser, object):
         return None
 
     def p_OptUnionLength_2(self, info):
-        " OptUnionLength ::= WITH LENGTH IDRef"
+        " OptUnionLength ::= with LengthKW IDRef"
         return str(info[2])
 
     def p_OptUnionLength_3(self, info):
-        " OptUnionLength ::= WITH LENGTH .. - Integer"
+        " OptUnionLength ::= with LengthKW .. - Integer"
         return info[4]
+
+    def p_LengthKW(self, info):
+        " LengthKW ::= ID "
+        if str(info[0]) != 'length':
+            raise SyntaxError("Expected 'length' at %s"%info[0].lineno)
+        return None
 
     def p_UnionMembers_1(self, info):
         " UnionMembers ::= UnionMember "

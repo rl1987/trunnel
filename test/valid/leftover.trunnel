@@ -15,7 +15,7 @@ struct message16 {
 /* unlo "union with leftovers" */
 struct unlo {
    u8 tag;
-   union u[tag] WITH LENGTH ..-8 {
+   union u[tag] with length ..-8 {
      1: u8 x;
      2: u8 y[];
      //     3: u8 w[..-1]; u8 ww;

@@ -120,7 +120,7 @@ struct union_with_len {
   u16 tag;
   u16 unionlen;
 
-  union u[tag] WITH LENGTH unionlen {
+  union u[tag] with length unionlen {
     1: struct color c;
     2: struct date d;
        ...; // ... means it's okay if unionlen > sizeof(date)

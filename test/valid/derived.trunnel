@@ -73,7 +73,7 @@ struct union2 {
    u8 tag;
    u16 length;
    /** A union with a length */
-   union un[tag] WITH LENGTH length {
+   union un[tag] with length length {
      TWO: u8 a;
      THREE: u16 b;
             ...;
@@ -96,7 +96,7 @@ struct union2 {
 struct union3 {
    u16 tag;
    u16 length;
-   union un[tag] WITH LENGTH length {
+   union un[tag] with length length {
      TWO: u8 a;
      default: u8 stuff[];
    };
@@ -105,7 +105,7 @@ struct union3 {
 struct union4 {
    u16 tag;
    u16 length;
-   union un[tag] WITH LENGTH length {
+   union un[tag] with length length {
      TWO: u8 a;
      default: ignore;
    };
