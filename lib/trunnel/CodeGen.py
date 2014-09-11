@@ -484,6 +484,7 @@ class Annotator(ASTVisitor):
     # cur_struct_obj -- the current StructDecl we're annotating
     # after_leftover_field -- true if we are after an SMLenConstrained
     #   that uses the 'leftover bytes' feature.
+    # file -- the Grammar.File object we're currently checking
 
     def __init__(self):
         ASTVisitor.__init__(self)
@@ -522,19 +523,19 @@ class Annotator(ASTVisitor):
 
     def visitSMStruct(self, sms):
         self.annotateMember(sms)
-        sms.structDeclaration = self.file.getDeclaration(sms.structname)#DOCDOC
+        sms.structDeclaration = self.file.getDeclaration(sms.structname)
 
     def visitSMFixedArray(self, sfa):
         self.annotateMember(sfa)
         if type(sfa.basetype) == str:
-            sfa.structDeclaration = self.file.getDeclaration(sfa.basetype)#DOCDOC
+            sfa.structDeclaration = self.file.getDeclaration(sfa.basetype)
 
     def visitSMVarArray(self, sva):
         self.annotateMember(sva)
         if sva.widthfield is not None:
             sva.widthfieldmember = self.memberByName.get(sva.widthfield)
         if type(sva.basetype) == str:
-            sva.structDeclaration = self.file.getDeclaration(sva.basetype)#DOCDOC
+            sva.structDeclaration = self.file.getDeclaration(sva.basetype)
 
     def visitSMString(self, ss):
         self.annotateMember(ss)
@@ -871,24 +872,28 @@ class PrototypeGenerationVisitor(CodeGenerator):
                           were cleared.""")
         self.w("int %s_clear_errors(%s_t *obj);\n" % (name, name))
 
-def formatContexts(contexts, declaration=True, precomma=True):
-    """DOCDOC"""
+def formatContexts(contexts, declaration=True):
+    """Given a list of context type names, generate a list of declarations
+       for them as formal parameters (if 'declaration' is true), or
+       as arguments to a function (if 'declaration' is false).
+    """
     if declaration:
-        s = ", ".join("const {0}_t *{0}_ctx".format(c) for c in contexts)
+        s = "".join(", const {0}_t *{0}_ctx".format(c) for c in contexts)
     else:
-        s = ", ".join("{0}_ctx".format(c) for c in contexts)
-    if precomma and contexts:
-        s = ", "+s
+        s = "".join(", {0}_ctx".format(c) for c in contexts)
     return s
 
 def field(name):
-    """DOCDOC"""
+    """Return a string for accessing the field called 'name'.  This can
+       be either a field in a context, or a field in the target object. """
     if '.' in name:
         return name.replace(".", "_ctx->")
     else:
         return "obj->"+name
 
 def formatContextChecks(cg, contextList, onFail):
+    """Using the code generator 'cg', emit code to call 'onFail' if
+       any of the context objects in 'contextList' fails a check call."""
     for context in contextList:
         cg.format("""
              if ({0}_ctx == NULL)

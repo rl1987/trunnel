@@ -391,10 +391,13 @@ class SMStruct(StructMember):
     """A structure member of a structure"""
     #
     # structname -- the name of the structure type for this structure.
+    # structDeclaration -- the StructDecl for the struct that this refers to.
+    #     Set by Annotator.
 
     def __init__(self, structname, name):
         StructMember.__init__(self, name)
         self.structname = structname
+        self.structDeclaration = None
 
     def __str__(self):
         return "struct %s %s" % (self.structname, self.getName())
@@ -419,11 +422,16 @@ class SMFixedArray(StructMember):
     #    or a string holding a struct name.
     # width -- the number of elements in this array.  Either an integer or a
     #    string representing a constant name.
+    #
+    # Set elsewhere (in CodeGen.Annotator):
+    # structDeclaration -- the StructDecl for the struct that this
+    #     refers to, if any.  Set by Annotator.
 
     def __init__(self, basetype, name, width):
         StructMember.__init__(self, name)
         self.basetype = basetype
         self.width = width
+        self.structDeclaration = None
 
     def __str__(self):
         struct = ""
@@ -446,11 +454,14 @@ class SMVarArray(StructMember):
     # Set elsewhere (in CodeGen.Annotator):
     #   widthfieldmember -- The StructMember corresponding to the named
     #     widthfield, or None if lengthfield is None
+    # structDeclaration -- the StructDecl for the struct that this
+    #     refers to, if any.  Set by Annotator.
 
     def __init__(self, basetype, name, widthfield):
         StructMember.__init__(self, name)
         self.basetype = basetype
         self.widthfield = widthfield
+        self.structDeclaration = None
 
     def __str__(self):
         struct = width = ""
@@ -553,7 +564,9 @@ class SMIgnore(StructMember):
     pass
 
 class IDReference(AST):
-    """DOCDOC"""
+    """A reference to an identity in a given context."""
+    # context -- the name of the context
+    # ident -- the name within the context
     def __init__(self, context, ident):
         self.context = context
         self.ident = ident
