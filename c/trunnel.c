@@ -110,6 +110,7 @@ trunnel_dynarray_expand(size_t *allocated_p, void *ptr,
   return newarray;
 }
 
+#ifndef trunnel_reallocarray
 void *
 trunnel_reallocarray(void *a, size_t x, size_t y)
 {
@@ -123,6 +124,7 @@ trunnel_reallocarray(void *a, size_t x, size_t y)
      return NULL;
    return realloc(a, x * y);
 }
+#endif
 
 const char *
 trunnel_string_getstr(trunnel_string_t *str)

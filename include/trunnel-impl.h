@@ -191,7 +191,9 @@ trunnel_strdup(const char *s)
 /** Helper: wraps or implements an OpenBSD-style reallocarray.  Behaves
  * as realloc(a, x*y), but verifies that no overflow will occur in the
  * multiplication. Returns NULL on failure. */
+#ifndef trunnel_reallocarray
 void *trunnel_reallocarray(void *a, size_t x, size_t y);
+#endif
 
 /** Helper to expand a dynamic array. Behaves as TRUNNEL_DYNARRAY_EXPAND(),
  * taking the array of elements in 'ptr', a pointer to thethe current number
