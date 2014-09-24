@@ -1,0 +1,14 @@
+
+
+struct foobar {
+   u8 tag;
+   u8 len;
+   /* Our grammar writes this as "with ID", so that 'length' can be not-a-
+    * reserved-word.  But that means that we need to check that non-"length"
+    * IDs in the 'with length' position get rejected */
+   union u[tag] with marmoset len {
+     1: u8 foo;
+     2: u16 bar;
+     3: u32 baz;
+   };
+}
