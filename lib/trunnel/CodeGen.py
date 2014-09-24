@@ -753,7 +753,7 @@ class DeclarationGenerationVisitor(CodeGenerator):
         elif str(sfa.basetype) == "char":
             self.format("char {c_name}[{w}+1];", **fields)
         else:
-            self.format("uint{base.width}_t {c_name}[{w}+1];", **fields)
+            self.format("uint{base.width}_t {c_name}[{w}];", **fields)
 
     def visitSMVarArray(self, sva):
         if sva.annotation != None:
@@ -1770,7 +1770,6 @@ def arrayIsBytes(arry):
         return True
     else:
         return False
-
 
 class EncodeFnGenerator(CodeGenerator):
 
