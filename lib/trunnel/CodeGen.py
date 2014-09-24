@@ -1972,6 +1972,12 @@ class EncodeFnGenerator(CodeGenerator):
                'size_t written = 0;\n'
                'uint8_t *ptr = output;\n'
                'const char *msg;\n')
+        self.format("""
+                #ifdef TRUNNEL_CHECK_ENCODED_LEN
+                const ssize_t encoded_len = {name}_encoded_len(obj{args});
+                #endif
+                """, name=sd.name, args=contextArgs)
+
         if sd.has_leftover_field:
             self.w('int enforce_avail = 0;\n'
                    'const size_t avail_orig = avail;\n')
@@ -1980,8 +1986,11 @@ class EncodeFnGenerator(CodeGenerator):
             for m in sorted(sd.lengthFields.values()):
                 self.w('uint8_t *backptr_%s = NULL;\n' % (m.c_name))
             self.w('\n')
-        self.w(('if (NULL != (msg = %s_check(obj%s)))\n'
-               '  goto check_failed;\n\n') % (sd.name, contextArgs))
+        self.w('if (NULL != (msg = %s_check(obj%s)))\n'
+               '  goto check_failed;\n\n' %(sd.name, contextArgs))
+        self.w_("#ifdef TRUNNEL_CHECK_ENCODED_LEN\n")
+        self.w("trunnel_assert(encoded_len >= 0);\n")
+        self.w_("#endif\n")
         self.needTruncated = False
         sd.visitChildren(self)
 
@@ -1995,7 +2004,6 @@ class EncodeFnGenerator(CodeGenerator):
         self.w_("#ifdef TRUNNEL_CHECK_ENCODED_LEN")
         self.format("""
                  {{
-                   ssize_t encoded_len = {name}_encoded_len(obj{args});
                    trunnel_assert(encoded_len >= 0);
                    trunnel_assert((size_t)encoded_len == written);
                  }}
