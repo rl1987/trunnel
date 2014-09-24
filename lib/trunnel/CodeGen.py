@@ -1022,6 +1022,7 @@ class FreeFnGenerator(CodeGenerator):
                if (obj == NULL)
                  return;
                {0}_clear(obj);
+               trunnel_memwipe(obj, sizeof({0}_t));
                trunnel_free_(obj);
              }}\n\n\n""", name)
 
@@ -1053,11 +1054,13 @@ class FreeFnGenerator(CodeGenerator):
                 sva.basetype, sva.c_name)
             iterateOverVarArray(self, sva, body)
 
+        self.w("TRUNNEL_DYNARRAY_WIPE(&obj->%s);\n" % (sva.c_name))
         self.w("TRUNNEL_DYNARRAY_CLEAR(&obj->%s);\n" % (sva.c_name))
 
     def visitSMString(self, ss):
         # To clear a string, we call trunnel_free() on it.  (We require that
         # trunnel_free must handle NULL.)
+        self.w("trunnel_wipestr(obj->%s);\n" % (ss.c_name))
         self.w("trunnel_free(obj->%s);\n" % (ss.c_name))
 
     def visitSMLenConstrained(self, sml):

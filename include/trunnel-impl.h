@@ -135,6 +135,16 @@ trunnel_strdup(const char *s)
 #define trunnel_abort() abort()
 #endif
 
+#ifndef trunnel_memwipe
+#define trunnel_memwipe(mem, len) ((void)0)
+#define trunnel_wipestr(s) ((void)0)
+#else
+#define trunnel_wipestr(s) do {                 \
+    if (s)                                      \
+      trunnel_memwipe(s, strlen(s));            \
+  } while (0)
+#endif
+
 /* ====== dynamic arrays ======== */
 
 #ifdef NDEBUG
@@ -186,6 +196,12 @@ trunnel_strdup(const char *s)
     trunnel_free((da)->elts_);                    \
     (da)->elts_ = NULL;                           \
     (da)->n_ = (da)->allocated_ = 0;              \
+  } while (0)
+
+/** Remove all storage held by 'da' and set it to be empty.  Does not free
+ * storage held by the elements themselves. */
+#define TRUNNEL_DYNARRAY_WIPE(da) do {                                  \
+    trunnel_memwipe((da)->elts_, (da)->allocated_ * sizeof((da)->elts_[0])); \
   } while (0)
 
 /** Helper: wraps or implements an OpenBSD-style reallocarray.  Behaves
