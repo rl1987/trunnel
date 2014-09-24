@@ -119,11 +119,15 @@ trunnel_strdup(const char *s)
 #define trunnel_malloc(x) (malloc((x)))
 #endif
 #ifndef trunnel_calloc
-#define trunnel_calloc(a,b) (calloc(a,b))
+#define trunnel_calloc(a,b) (calloc((a),(b)))
 #endif
 #ifndef trunnel_strdup
 #define trunnel_strdup(s) (strdup((s)))
 #endif
+#endif
+
+#ifndef trunnel_realloc
+#define trunnel_realloc(a,b) realloc((a),(b))
 #endif
 
 #ifndef trunnel_free_

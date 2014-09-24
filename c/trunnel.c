@@ -122,7 +122,7 @@ trunnel_reallocarray(void *a, size_t x, size_t y)
 #endif
    if (x > SIZE_MAX / y)
      return NULL;
-   return realloc(a, x * y);
+   return trunnel_realloc(a, x * y);
 }
 #endif
 
