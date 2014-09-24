@@ -10,6 +10,9 @@
 #include "trunnel.h"
 #include <assert.h>
 #include <string.h>
+#ifdef TRUNNEL_LOCAL_H
+#include "trunnel-local.h"
+#endif
 
 #ifdef _MSC_VER
 #define uint8_t unsigned char
@@ -36,7 +39,9 @@ uint16_t trunnel_ntohs(uint16_t a);
 uint64_t trunnel_htonll(uint64_t a);
 uint64_t trunnel_ntohll(uint64_t a);
 
+#ifndef trunnel_assert
 #define trunnel_assert(x) assert(x)
+#endif
 
 static inline void
 trunnel_set_uint64(void *p, uint64_t v) {
@@ -110,15 +115,25 @@ trunnel_strdup(const char *s)
    return strdup(s);
 }
 #else
+#ifndef trunnel_malloc
 #define trunnel_malloc(x) (malloc((x)))
+#endif
+#ifndef trunnel_calloc
 #define trunnel_calloc(a,b) (calloc(a,b))
+#endif
+#ifndef trunnel_strdup
 #define trunnel_strdup(s) (strdup((s)))
 #endif
+#endif
 
+#ifndef trunnel_free_
 #define trunnel_free_(x) (free(x))
-#define trunnel_free(x) ((x) ? (free(x),0) : (0))
+#endif
+#define trunnel_free(x) ((x) ? (trunnel_free_(x),0) : (0))
 
+#ifndef trunnel_abort
 #define trunnel_abort() abort()
+#endif
 
 /* ====== dynamic arrays ======== */
 
