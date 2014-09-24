@@ -488,13 +488,22 @@ objects inside it.  It's okay to call it with NULL.
 
 If you have a filled-in object, you can encode it into a buffer:
 
-   ssize_t example_encode(uint8_t *buf, size_t buf_len, example_t *obj);
+   ssize_t example_encode(uint8_t *buf, size_t buf_len, const example_t *obj);
 
 The `buf_len` parameter describes the number of available bytes in `buf` to
 use for encoding `obj`.  On success, this function will return the number of
 bytes that it used.  On failure, the function will return -2 on a truncated
 result, where providing a longer `buf_len` might make it succeed, and will
 return -1 if there is an error that prevents encoding the object entirely.
+
+You can find out the required buffer length before the encoding, if you like:
+
+   ssize_t example_encoded_len(const example_t *obj);
+
+This function returns a negative value on an error.  On success, it
+returns the suggested length of the buffer to allocate for encoding
+'obj'.  Note that this number may be an underestimate or an
+overestimate: you still need to check for truncation when encoding.
 
 ### Generated code: checking an object for correctness
 
@@ -655,6 +664,7 @@ Then trunnel will generate those functions with the protptypes:
 
     ssize_t msg_encode(uint8_t *buf, size_t buf_len, msg_t *obj,
                        const len_t *len_ctx);
+    ssize_t msg_encoded_len(msg_t *obj, const len_t *len_ctx);
     const char *msg_check(const msg_t *obj, const len_t *len_ctx);
     ssize_t msg_parse(msg_t **out, const uint8_t *inp, size_t inp_len,
                       const len_t *len_ctx);
@@ -676,6 +686,48 @@ You can extend Trunnel using the 'extern struct' mechanism described above.
 All you need to do is provide your own structure definition, along with
 `parse`, `encode`, `free`, and `check` functions.  The generated trunnel code
 will use those functions as appropriate to access your extended type.
+
+### Overriding allocators and other internal functions
+
+By default, trunnel uses the libc malloc implementation for its
+allocation.  You can override this by defining a "trunnel-local.h"
+file, and defining the TRUNNEL_LOCAL_H macro when compiling any
+trunnel C files.  When you do this, your "trunnel-local.h" will get
+included before any generated trunnel code.
+
+To replace the allocator, you must use #define to declare replacements
+for the following functions:
+
+  * `trunnel_malloc`
+  * `trunnel_calloc`
+  * `trunnel_realloc` OR `trunnel_reallocarray`
+  * `trunnel_free_` (note trailing underscore
+  * `trunnel_strdup`
+
+These functions work equivalently to their libc counterparts, and take
+arguments in the same order.
+
+You can also replace trunnel's internal-error behavior by defining one
+or more of these:
+
+  * `trunnel_abort`
+  * `trunnel_assert`
+
+These macros are also expected to behave equivalently to their libc
+counterparts.  They are only invoked in the case of an internal
+programming error in Trunnel -- if Trunnel is implemented correctly,
+they should be unreachable.
+
+Finally, if you want to ensure that all objects freed by trunnel are
+wiped from memory before they're freed, you can define a
+`trunnel_memwipe` function.  For example:
+
+    #define trunnel_memipe(mem, len)  memset_s((mem), 0, (len));
+
+Note that the standard caveats about wiping memory apply: if this
+matters to you, you should know why you should be using memset_s or
+explicit_bzero instead of memset here.
+
 
 ### Notes on thread-safety
 
