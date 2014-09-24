@@ -852,6 +852,17 @@ class PrototypeGenerationVisitor(CodeGenerator):
             "ssize_t %s_parse(%s_t **output, const uint8_t *input, const size_t len_in%s);\n" %
                (name, name, contextFormals))
 
+        self.docstring("""Return the number of bytes we expect to need to
+                          encode the %s in 'obj'.  On
+                          failure, return a negative value.  Note that
+                          this value may be an overestimate, and can
+                          even be an underestimate for certain
+                          unencodeable objects.
+                       """ % (name))
+        self.w(
+            "ssize_t %s_encoded_len(const %s_t *obj%s);\n" %
+               (name, name, contextFormals))
+
         self.docstring("""Try to encode the %s from 'input' into the buffer
                           at 'output', using up to 'avail' bytes of the
                           output buffer. On success, return the number of
@@ -915,6 +926,7 @@ class CodeGenerationVisitor(CodeGenerator):
         self.sort_order = sort_order
         self.generators = [NewFnGenerator, FreeFnGenerator,
                            AccessorFnGenerator, CheckFnGenerator,
+                           EncodedLenFnGenerator,
                            EncodeFnGenerator, ParseFnGenerator]
 
     def visitFile(self, f):
@@ -1771,6 +1783,105 @@ def arrayIsBytes(arry):
     else:
         return False
 
+class EncodedLenFnGenerator(CodeGenerator):
+    def __init__(self, writefn):
+        CodeGenerator.__init__(self, writefn)
+        self.action = "Length of"
+
+    def visitStructDecl(self, sd):
+        if sd.isContext():
+            return
+
+        name = sd.name
+        contextFormals = formatContexts(sd.contextList, declaration=True)
+        contextArgs = formatContexts(sd.contextList, declaration=False)
+
+        self.format("""
+                       ssize_t
+                       {name}_encoded_len(const {name}_t *obj{args})
+                       {{
+                         ssize_t result = 0;
+                    """, name=name, args=contextFormals)
+        self.pushIndent(2)
+        self.w(('if (NULL != %s_check(obj%s))\n'
+                '   return -1;\n\n') % (sd.name, contextArgs))
+        sd.visitChildren(self)
+        self.popIndent(2)
+        self.format("""
+                      return result;
+                    }}""")
+
+    def visitSMInteger(self, smi):
+        self.eltHeader(smi)
+        self.w("result += %s;\n"% (smi.inttype.width//8))
+
+    def visitSMStruct(self, sms):
+        self.eltHeader(sms)
+        contextList = sms.structDeclaration.contextList
+        args = formatContexts(contextList, declaration=False)
+        self.w("result += %s_encoded_len(obj->%s%s);\n"%(
+            sms.structname,sms.c_name,args))
+
+    def visitSMFixedArray(self, sfa):
+        self.eltHeader(sfa)
+        if arrayIsBytes(sfa):
+            self.w("result += %s;\n" % sfa.width)
+        elif type(sfa.basetype) != str:
+            self.w("result += %s * %s;\n" %(
+                   sfa.width, sfa.basetype.width // 8))
+        else:
+            contextList = sfa.structDeclaration.contextList
+            args = formatContexts(contextList, declaration=False)
+            body = "result += %s_encoded_len({ELEMENT}%s);"%(sfa.basetype,
+                                                            args)
+            iterateOverFixedArray(self, sfa, body)
+
+    def visitSMVarArray(self, sva):
+        self.eltHeader(sva)
+        if arrayIsBytes(sva):
+            self.w("result += TRUNNEL_DYNARRAY_LEN(&obj->%s);\n"% sva.c_name)
+        elif type(sva.basetype) != str:
+            self.w("result += %s * TRUNNEL_DYNARRAY_LEN(&obj->%s);\n"%
+                   (sva.basetype.width // 8, sva.c_name))
+        else:
+            contextList = sva.structDeclaration.contextList
+            args = formatContexts(contextList, declaration=False)
+            body = "result += %s_encoded_len({ELEMENT}%s);"%(sva.basetype,
+                                                            args)
+            iterateOverVarArray(self, sva, body)
+
+    def visitSMString(self, ss):
+        self.eltHeader(ss)
+        self.w("result += strlen(obj->%s) + 1;\n" % ss.c_name)
+
+    def visitSMLenConstrained(self, sml):
+        sml.visitChildren(self)
+
+    def visitSMUnion(self, smu):
+        self.w('switch (%s) {\n' % field(smu.tagfield))
+        smu.visitChildren(self)
+        self.w("}\n")
+
+    def visitUnionMember(self, um):
+        self.pushIndent(2)
+        writeUnionMemberCaseLabel(self.w, um)
+        self.pushIndent(2)
+        um.visitChildren(self)
+        self.w("break;\n")
+        self.popIndent(2)
+        self.popIndent(2)
+
+    def visitSMFail(self, smf):
+        # This case should have gotten caught by the check function before
+        # encoding; we shouldn't be able to reach here.
+        self.w('trunnel_assert(0);\n')
+
+    def visitSMIgnore(self, udi):
+        pass
+
+    def visitSMEos(self, eos):
+        pass
+
 class EncodeFnGenerator(CodeGenerator):
 
     """Code-generating visitor that generates the 'typename_encode()'
@@ -1877,6 +1988,16 @@ class EncodeFnGenerator(CodeGenerator):
         if sd.has_leftover_field:
             self.w('if (enforce_avail && avail != written)\n'
                    '  goto check_failed;\n')
+
+        self.w_("#ifdef TRUNNEL_CHECK_ENCODED_LEN")
+        self.format("""
+                 {{
+                   ssize_t encoded_len = {name}_encoded_len(obj{args});
+                   trunnel_assert(encoded_len >= 0);
+                   trunnel_assert((size_t)encoded_len == written);
+                 }}
+                    """, name=sd.name, args=contextArgs)
+        self.w("#endif")
 
         self.w('\n'
                'return written;\n\n')
