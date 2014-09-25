@@ -1,6 +1,12 @@
 a trunnel is a primitive nail
 =============================
 
+The official git repository is browseable at
+   https://gitweb.torproject.org/trunnel.git
+
+You can get the latest source with
+   git clone https://git.torproject.org/trunnel.git
+
 The grammar is in doc/GRAMMAR.
 
 A mostly-readable example is in examples/example2.trunnel.
