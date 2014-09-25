@@ -9,12 +9,14 @@ if __name__ == '__main__':
     import trunnel.CodeGen
     import getopt
 
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "O:",
-                                   ["option=","write-c-files","target-dir="])
+    opts, args = getopt.gnu_getopt(
+        sys.argv[1:], "O:",
+        ["option=","write-c-files","target-dir=","require-version="])
 
     more_options = []
     target_dir = None
     write_c_files = None
+    need_version = None
 
     for (k, v) in opts:
         if k in ('-O', '--option'):
@@ -23,8 +25,20 @@ if __name__ == '__main__':
             write_c_files = True
         elif k == '--target-dir':
             target_dir = v
+        elif k == '--require-version':
+            need_version = v
 
-    if len(args) < 1 and not write_c_files:
+    if need_version is not None:
+        try:
+            from distutils.version import LooseVersion
+            me,it=trunnel.__version__ ,need_version
+            if LooseVersion(me) < LooseVersion(it):
+                sys.stderr.write("I'm %s; you asked for %s\n"%(me,it))
+                sys.exit(1)
+        except ImportError:
+            print "Can't import"
+
+    if len(args) < 1 and not write_c_files and not need_version:
         sys.stderr.write("Syntax: python -m trunnel <fname>\n")
         sys.exit(1)
 

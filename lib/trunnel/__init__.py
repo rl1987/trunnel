@@ -3,5 +3,5 @@
 # a package.
 #
 
-__version__ = "1.1-dev"
+__version__ = "1.1.dev3"
 
