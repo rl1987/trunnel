@@ -2,7 +2,7 @@
 from distutils.core import setup
 
 setup(name='Trunnel',
-      version='1.0',
+      version='1.1',
       description='Trunnel binary format parser',
       author='Nick Mathewson',
       author_email='nickm@torproject.org',
