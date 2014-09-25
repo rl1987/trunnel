@@ -12,5 +12,5 @@ include test/valid/*.trunnel
 include test/Makefile
 include test/run_tests.sh
 include test/tinytest/*.[ch]
-incldue test/c/*.[ch]
+include test/c/*.[ch]
 
