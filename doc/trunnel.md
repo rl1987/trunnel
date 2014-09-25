@@ -77,7 +77,9 @@ input file is well-formatted, Trunnel will generate a header file
 
 To use this code in your program, include the header file and build and link
 with the C file.  You'll also need to distribute both generated code files,
-along with trunnel-impl.h, trunnel.h, and trunnel.c.
+along with trunnel-impl.h, trunnel.h, and trunnel.c.  (Trunnel will
+emit those files for you when you run `python -m trunnel
+--write-c-files`.)
 
 Then you can write code that uses the generated functions documented in
 myformat.h.
