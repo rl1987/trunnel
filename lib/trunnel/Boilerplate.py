@@ -21,13 +21,13 @@ def emit(target_dir=None):
 
 def emitfile(fname, in_fname, out_fname):
     settings = {
-        'fname' : 'fname',
+        'fname' : fname,
         'version' : trunnel.__version__
         }
     with open(in_fname, 'r') as inp, open(out_fname, 'w') as out:
         out.write("/* %(fname)s -- copied from Trunnel v%(version)s\n"
                   " * https://gitweb.torproject.org/trunnel.git\n"
-                  " */\n")
+                  " */\n" % settings)
         out.write(inp.read())
 
 __license__ = """
