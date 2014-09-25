@@ -1,8 +1,11 @@
 
 from distutils.core import setup
 
+namespace = {}
+exec(open("./lib/trunnel/__init__.py").read(), namespace)
+
 setup(name='Trunnel',
-      version='1.1',
+      version=namespace['__version__'],
       description='Trunnel binary format parser',
       author='Nick Mathewson',
       author_email='nickm@torproject.org',
