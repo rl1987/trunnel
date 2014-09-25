@@ -2,9 +2,6 @@ include README
 include LICENSE
 include test.sh
 
-include c/*.c
-include include/*.h
-
 include examples/*.trunnel
 
 include doc/*.md

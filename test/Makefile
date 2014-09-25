@@ -7,7 +7,7 @@
 MORE_CFLAGS=-fno-inline --coverage
 
 CC=gcc
-CFLAGS=-g -O0 -fstack-protector-all -Wstack-protector -fwrapv --param ssp-buffer-size=1 -fPIE -fasynchronous-unwind-tables -Wall -fno-strict-aliasing -Wno-deprecated-declarations -W -Wfloat-equal -Wundef -Wpointer-arith -Wstrict-prototypes -Wmissing-prototypes -Wwrite-strings -Wredundant-decls -Wchar-subscripts -Wcomment -Wformat=2 -Wwrite-strings -Wmissing-declarations -Wredundant-decls -Wnested-externs -Wbad-function-cast -Wswitch-enum -Werror -Winit-self -Wmissing-field-initializers -Wdeclaration-after-statement -Wold-style-definition -Waddress -Wmissing-noreturn -Wstrict-overflow=1 -I . -I ../include -DTRUNNEL_DEBUG_FAILING_ALLOC -DTRUNNEL_CHECK_ENCODED_LEN $(MORE_CFLAGS)
+CFLAGS=-g -O0 -fstack-protector-all -Wstack-protector -fwrapv --param ssp-buffer-size=1 -fPIE -fasynchronous-unwind-tables -Wall -fno-strict-aliasing -Wno-deprecated-declarations -W -Wfloat-equal -Wundef -Wpointer-arith -Wstrict-prototypes -Wmissing-prototypes -Wwrite-strings -Wredundant-decls -Wchar-subscripts -Wcomment -Wformat=2 -Wwrite-strings -Wmissing-declarations -Wredundant-decls -Wnested-externs -Wbad-function-cast -Wswitch-enum -Werror -Winit-self -Wmissing-field-initializers -Wdeclaration-after-statement -Wold-style-definition -Waddress -Wmissing-noreturn -Wstrict-overflow=1 -I . -I ./include -DTRUNNEL_DEBUG_FAILING_ALLOC -DTRUNNEL_CHECK_ENCODED_LEN $(MORE_CFLAGS)
 #OTHER_FLAGS= -Qunused-arguments -Wshorten-64-to-32
 
 TEST_OBJS = \
@@ -33,13 +33,18 @@ TEST_OBJS = \
     c/test_remainder_repeats.o \
     c/test_util.o
 
+BOILERPLATE_FILES=\
+    ./include/trunnel.c \
+    ./include/trunnel.h \
+    ./include/trunnel-impl.h \
+
 OBJS=tinytest/tinytest.o \
     valid/simple.o \
     valid/derived.o \
     valid/opaque.o \
     valid/leftover.o \
     valid/contexts.o \
-    ../c/trunnel.o \
+    ./include/trunnel.o \
     $(TEST_OBJS)
 
 all: ctest
@@ -54,7 +59,7 @@ reset-gcov:
 	rm -f */*.gcda ../*/*.gcda
 
 distclean: clean
-	rm -f valid/*.[ch]
+	rm -f valid/*.[ch] include/*.[ch]
 
 test: ctest
 	./ctest
@@ -65,6 +70,7 @@ valid/opaque.o: valid/opaque.h valid/opaque.h
 valid/leftover.o: valid/leftover.h valid/leftover.c
 valid/contexts.o: valid/contexts.h
 $(TEST_OBJS) : tinytest/tinytest.h tinytest/tinytest_macros.h valid/simple.h valid/derived.h
+$(OBJS) : include/trunnel.h include/trunnel-impl.h
 tinytest/tinytest.o: tinytest/tinytest.h tinytest/tinytest_macros.h
 
 valid/simple.c valid/simple.h: valid/simple.trunnel ../lib/trunnel/*py
@@ -82,4 +88,5 @@ valid/leftover.c valid/leftover.h: valid/leftover.trunnel ../lib/trunnel/*py
 valid/contexts.c valid/contexts.h: valid/contexts.trunnel ../lib/trunnel/*py
 	PYTHONPATH=../lib:${PYTHONPATH} python -m trunnel valid/contexts.trunnel
 
-
+$(BOILERPLATE_FILES): ../lib/trunnel/*py ../lib/trunnel/data/*.[ch]
+	PYTHONPATH=../lib:${PYTHONPATH} python -m trunnel --target-dir=./include --write-c-files

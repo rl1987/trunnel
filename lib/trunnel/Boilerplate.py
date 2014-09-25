@@ -1,40 +1,34 @@
-# __main__.py -- CLI for trunnel
+# CodeGen.py -- code generator for trunnel.
 #
 # Copyright 2014, The Tor Project, Inc.
 # See license at the end of this file for copying information.
 
-if __name__ == '__main__':
-    import sys
-    import trunnel.Boilerplate
-    import trunnel.CodeGen
-    import getopt
+import os
+import trunnel
 
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "O:",
-                                   ["option=","write-c-files","target-dir="])
+FILES = [ "trunnel.c", "trunnel.h", "trunnel-impl.h" ]
 
-    more_options = []
-    target_dir = None
-    write_c_files = None
+def emit(target_dir=None):
+    if target_dir == None:
+        target_dir = '.'
+    directory = os.path.split(__file__)[0]
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+    for f in FILES:
+        emitfile(f,
+                 os.path.join(directory, "data", f),
+                 os.path.join(target_dir, f))
 
-    for (k, v) in opts:
-        if k in ('-O', '--option'):
-            more_options.append(v)
-        elif k == '--write-c-files':
-            write_c_files = True
-        elif k == '--target-dir':
-            target_dir = v
-
-    if len(args) < 1 and not write_c_files:
-        sys.stderr.write("Syntax: python -m trunnel <fname>\n")
-        sys.exit(1)
-
-    for filename in args:
-        trunnel.CodeGen.generate_code(filename, more_options,
-                                      target_dir=target_dir)
-
-    if write_c_files:
-        trunnel.Boilerplate.emit(target_dir=target_dir)
-
+def emitfile(fname, in_fname, out_fname):
+    settings = {
+        'fname' : 'fname',
+        'version' : trunnel.__version__
+        }
+    with open(in_fname, 'r') as inp, open(out_fname, 'w') as out:
+        out.write("/* %(fname)s -- copied from Trunnel v%(version)s\n"
+                  " * https://gitweb.torproject.org/trunnel.git\n"
+                  " */\n")
+        out.write(inp.read())
 
 __license__ = """
 Copyright 2014  The Tor Project, Inc.

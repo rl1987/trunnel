@@ -17,6 +17,8 @@ tests.log
 
 /test/valid/*.[ch]
 /test/ctest
+/test/include
+
 /doc/*.[ch]
 /doc/trunnel.html
 /doc/trunnel.txt

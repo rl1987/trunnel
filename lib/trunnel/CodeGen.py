@@ -2749,7 +2749,7 @@ MODULE_BOILERPLATE = """\
 """
 
 
-def generate_code(input_fname, extra_options=[]):
+def generate_code(input_fname, extra_options=[], target_dir=None):
     """Read a trunnel file from 'input_fname' and write the result to
        appropriate output files.  If 'extra_options' is set, add those
        options as though they had been specified in the file with
@@ -2758,6 +2758,8 @@ def generate_code(input_fname, extra_options=[]):
     basename = input_fname
     if basename.endswith(".trunnel"):
         basename = basename[:-len(".trunnel")]
+    if target_dir != None:
+        basename = os.path.join(target_dir, os.path.split(basename)[1])
 
     c_fname = basename + ".c"
     h_fname = basename + ".h"
