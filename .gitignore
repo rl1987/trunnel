@@ -12,6 +12,8 @@ tests.log
 .\#*
 
 /build
+/dist
+/MANIFEST
 
 /test/valid/*.[ch]
 /test/ctest

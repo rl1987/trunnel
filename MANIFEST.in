@@ -1,0 +1,19 @@
+include README
+include LICENSE
+include test.sh
+
+include c/*.c
+include include/*.h
+
+include examples/*.trunnel
+
+include doc/*.md
+include doc/GRAMMAR
+
+include test/failing/*.trunnel
+include test/valid/*.trunnel
+include test/Makefile
+include test/run_tests.sh
+include test/tinytest/*.[ch]
+incldue test/c/*.[ch]
+
