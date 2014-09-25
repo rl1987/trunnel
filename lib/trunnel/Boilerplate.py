@@ -27,6 +27,7 @@ def emitfile(fname, in_fname, out_fname):
     with open(in_fname, 'r') as inp, open(out_fname, 'w') as out:
         out.write("/* %(fname)s -- copied from Trunnel v%(version)s\n"
                   " * https://gitweb.torproject.org/trunnel.git\n"
+                  " * You probably shouldn't edit this file.\n"
                   " */\n" % settings)
         out.write(inp.read())
 
