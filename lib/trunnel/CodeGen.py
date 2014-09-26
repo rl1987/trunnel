@@ -2406,8 +2406,7 @@ class ParseFnGenerator(CodeGenerator):
         ntoh = NTOH_FN[width]
         self.needLabels.add(self.truncatedLabel)
         self.format("""
-                if (remaining < {nbytes})
-                  goto {truncated};
+                CHECK_REMAINING({nbytes}, {truncated});
                 {element} = {ntoh}(trunnel_get_uint{width}(ptr));
                 remaining -= {nbytes}; ptr += {nbytes};
                 """, nbytes=nbytes, truncated=self.truncatedLabel,
@@ -2463,8 +2462,7 @@ class ParseFnGenerator(CodeGenerator):
                 if bytesPerElt > 1:
                     multiplier = "%s * " % bytesPerElt
             self.format("""
-                        if (remaining < ({multiplier}{width}))
-                          goto {truncated};
+                        CHECK_REMAINING({multiplier}{width}, {truncated});
                         memcpy(obj->{c_name}, ptr, {multiplier}{width});
                         """, c_name=sfa.c_name, multiplier=multiplier,
                         width=sfa.width, truncated=self.truncatedLabel)
@@ -2523,7 +2521,7 @@ class ParseFnGenerator(CodeGenerator):
         # FFFF some of this is kinda cut-and-paste
         if arrayIsBytes(sva):
             if sva.widthfield != None:
-                self.w('if (remaining < %s)\n  goto %s;\n' % (
+                self.w('CHECK_REMAINING(%s, %s);\n' % (
                     w, self.truncatedLabel))
             else:
                 w = "remaining"
@@ -2643,8 +2641,7 @@ class ParseFnGenerator(CodeGenerator):
             self.format("""
                     {{
                       size_t remaining_after;
-                      if ({field} > remaining)
-                         goto {truncated};
+                      CHECK_REMAINING({field}, {truncated});
                       remaining_after = remaining - {field};
                       remaining = {field};
                     """, field=field_, truncated=self.truncatedLabel)
@@ -2652,8 +2649,7 @@ class ParseFnGenerator(CodeGenerator):
             self.format("""
                     {{
                       size_t remaining_after;
-                      if (remaining < {leftafter})
-                         goto {truncated};
+                      CHECK_REMAINING({leftafter}, {truncated});
                       remaining_after = {leftafter};
                       remaining = remaining - {leftafter};
                     """, leftafter=sml.leftoverbytes,
@@ -2748,6 +2744,22 @@ MODULE_BOILERPLATE = """\
     (obj)->trunnel_error_code_ = 1; \\
   } while (0)
 
+#if defined(__COVERITY__) || defined(__clang_analyzer__)
+/* If we're runnning a static analysis tool, we don't want it to complain
+ * that some of our remaining-bytes checks are dead-code. */
+int %(csafe_fname)s_deadcode_dummy__ = 0;
+#define OR_DEADCODE_DUMMY || %(csafe_fname)s_deadcode_dummy__
+#else
+#define OR_DEADCODE_DUMMY
+#endif
+
+#define CHECK_REMAINING(nbytes, label)                           \\
+  do {                                                           \\
+    if (remaining < (nbytes) OR_DEADCODE_DUMMY) {                \\
+      goto label;                                                \\
+    }                                                            \\
+  } while (0)
+
 """
 
 
@@ -2765,6 +2777,7 @@ def generate_code(input_fname, extra_options=[], target_dir=None):
 
     c_fname = basename + ".c"
     h_fname = basename + ".h"
+    csafe_fname = re.sub(r'[^a-zA-Z]', '', os.path.split(basename)[1])
 
     inp = open(input_fname, 'r')
     t = trunnel.Grammar.Lexer().tokenize(inp.read())
@@ -2787,6 +2800,7 @@ def generate_code(input_fname, extra_options=[], target_dir=None):
         'guard_macro': guard_macro,
         'h_fname': os.path.split(h_fname)[1],
         'c_fname': os.path.split(c_fname)[1],
+        'csafe_fname' : csafe_fname,
         'expose_definitions': "".join(expose_definitions),
         'version' : trunnel.__version__
     }
