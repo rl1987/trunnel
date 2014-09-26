@@ -2468,7 +2468,7 @@ class ParseFnGenerator(CodeGenerator):
                         memcpy(obj->{c_name}, ptr, {multiplier}{width});
                         """, c_name=sfa.c_name, multiplier=multiplier,
                         width=sfa.width, truncated=self.truncatedLabel)
-            if type(sfa.basetype) == trunnel.Grammar.IntType:
+            if type(sfa.basetype) == trunnel.Grammar.IntType and sfa.basetype.width > 8:
                 self.format("""
                          {{
                            unsigned idx;
