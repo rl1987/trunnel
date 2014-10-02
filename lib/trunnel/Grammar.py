@@ -11,6 +11,8 @@
 """
 
 import trunnel.spark
+pattern = trunnel.spark.pattern
+rule = trunnel.spark.rule
 
 #
 #
@@ -98,9 +100,11 @@ class Lexer(trunnel.spark.GenericScanner, object):
     """Scanner class based on trunnel.spark.GenericScanner.  Its job is to turn
        a string into a list of Token.
 
-       Note that spark does most of the work for us here: under the hood,
-       it builds a big regex out of all the docstrings for the t_* methods,
-       and uses that to do the scanning and decide which function to invoke.
+       Note that spark does most of the work for us here: under the
+       hood, it builds a big regex out of all the @pattern decorations
+       for the t_* methods, and uses that to do the scanning and
+       decide which function to invoke.
+
     """
 
     def tokenize(self, input):
@@ -109,12 +113,12 @@ class Lexer(trunnel.spark.GenericScanner, object):
         trunnel.spark.GenericScanner.tokenize(self, input)
         return self.rv
 
+    @pattern(r"(?:[;{}\[\]\-=,:]|\.\.\.|\.\.|\.)")
     def t_punctuation(self, s):
-        r"(?:[;{}\[\]\-=,:]|\.\.\.|\.\.|\.)"
         self.rv.append(Token(s, self.lineno))
 
+    @pattern(r"[a-zA-Z_][a-zA-Z_0-9]*")
     def t_id(self, s):
-        r"[a-zA-Z_][a-zA-Z_0-9]*"
         if s in KEYWORDS:
             self.rv.append(Token(s, self.lineno))
         elif s.isupper():
@@ -122,33 +126,33 @@ class Lexer(trunnel.spark.GenericScanner, object):
         else:
             self.rv.append(Identifier(s, self.lineno))
 
+    @pattern(r"0x[0-9a-fA-F]+ | [0-9]+ ")
     def t_int(self, s):
-        r"0x[0-9a-fA-F]+ | [0-9]+ "
         self.rv.append(IntLiteral(s, self.lineno))
 
+    @pattern(r"[ \t]+")
     def t_space(self, s):
-        r"[ \t]+"
         pass
 
+    @pattern(r"\/\/.*")
     def t_comment1(self, s):
-        r"\/\/.*"
         pass
 
+    @pattern(r'/\*\*(?:[^\*]|\*+[^*/])*\*/')
     def t_annotation(self, s):
-        r'/\*\*(?:[^\*]|\*+[^*/])*\*/'
         self.rv.append(Annotation(s, self.lineno))
         self.lineno += (s.count("\n"))
 
+    @pattern(r'/\*[^\*](?:[^\*]|\*+[^*/])*\*/')
     def t_comment2(self, s):
-        r'/\*[^\*](?:[^\*]|\*+[^*/])*\*/'
         self.lineno += (s.count("\n"))
 
+    @pattern(r"\n")
     def t_newline(self, s):
-        r"\n"
         self.lineno += 1
 
+    @pattern(r".")
     def t_default(self, s):
-        r"."
         raise ValueError("unmatched input: %r on line %r" % (s, self.lineno))
 
 #
@@ -595,9 +599,10 @@ class Parser(trunnel.spark.GenericParser, object):
        (trunnel.spark.GenericParser is an Earley parse, with O(n^3) worst-case
        performance, but we don't care.)
 
-       Each p_* method represents a single grammar rule in its docstring;
-       it gets invoked in order to reduce the items listed to the
-       lhs of the rule.
+       Each p_* method represents a single grammar rule in its @rule
+       decoration: it gets invoked in order to reduce the items listed
+       to the lhs of the rule.
+
     """
     #
     # lingering_structs -- a list of StructDecl for structs declared
@@ -615,271 +620,275 @@ class Parser(trunnel.spark.GenericParser, object):
     def error(self, token):
         raise SyntaxError("%s at %s" % (token, token.lineno))
 
+    @rule(" File ::= Declarations ")
     def p_File_0(self, info):
-        " File ::= Declarations "
         d = info[0]
         d.extend(self.lingering_structs)
         return File(d)
 
+    @rule(" Declarations ::= Declaration ")
     def p_Declarations_1(self, info):
-        " Declarations ::= Declaration "
         d = info[0]
         return [d]
 
+    @rule(" Declarations ::= Declarations Declaration ")
     def p_Declarations_2(self, info):
-        " Declarations ::= Declarations Declaration "
         ds, d = info
         ds.append(d)
         return ds
 
+    @rule(" Declaration ::= OptAnnotation ConstDecl ")
     def p_Decl_1(self, info):
-        " Declaration ::= OptAnnotation ConstDecl "
+
         a, d = info
         if a:
             d.annotation = str(a)
         return d
 
+    @rule(" Declaration ::= OptAnnotation StructDecl OptSemi ")
     def p_Decl_2(self, info):
-        " Declaration ::= OptAnnotation StructDecl OptSemi "
         a, d, _1 = info
         if a:
             d.annotation = str(a)
         return d
 
+    @rule(" Declaration ::= extern struct ID OptWithContext ; ")
     def p_Decl_3(self, info):
-        " Declaration ::= extern struct ID OptWithContext ; "
         return ExternStructDecl(info[2], info[3])
 
+    @rule(" OptWithContext ::= ")
     def p_OptWithContext_1(self, info):
-        " OptWithContext ::= "
         return ()
 
+    @rule(" OptWithContext ::= with context IDList")
     def p_OptWithContext_2(self, info):
-        " OptWithContext ::= with context IDList"
         return info[2]
 
+    @rule(" Declaration ::= trunnel ID IDList ; ")
     def p_Decl_4(self, info):
-        " Declaration ::= trunnel ID IDList ; "
         _1, opt, options, _2 = info
         if str(opt) not in ("option", "options"):
             raise ValueError("Bad syntax for 'trunnel options' on line %d"
                              % opt.lineno)
         return TrunnelOptionsDecl(options, opt.lineno)
 
+    @rule(" IDList ::= ID ")
     def p_IDList_1(self, info):
-        " IDList ::= ID "
         return [str(info[0])]
 
+    @rule(" IDList ::= IDList , ID ")
     def p_IDList_2(self, info):
-        " IDList ::= IDList , ID "
         lst, _, item = info
         lst.append(str(item))
         return lst
 
+    @rule(" Declaration ::= OptAnnotation ContextDecl OptSemi")
     def p_Decl_5(self, info):
-        " Declaration ::= OptAnnotation ContextDecl OptSemi"
         a, decl, _1 = info
         if a:
             decl.annotation = str(a)
         return decl
 
+    @rule(" ConstDecl ::= const CONST_ID = INT ; ")
     def p_ConstDecl(self, info):
-        " ConstDecl ::= const CONST_ID = INT ; "
         _0, name, _1, val, _2 = info
         return ConstDecl(str(name), val)
 
+    @rule(" StructDecl ::= struct ID OptWithContext "
+           "{ StructMembers StructEnding } ")
     def p_StructDecl(self, info):
-        " StructDecl ::= struct ID OptWithContext { StructMembers StructEnding } "
         _0, name, contexts, _1, members, ending, _2 = info
         if ending is not None:
             members.append(ending)
 
         return StructDecl(str(name), members, contexts)
 
+    @rule(" OptSemi ::= ")
     def p_OptSemi_1(self, info):
-        " OptSemi ::= "
+             pass
 
+    @rule(" OptSemi ::= ; ")
     def p_OptSemi_2(self, info):
-        " OptSemi ::= ; "
+             pass
 
+    @rule(" StructEnding ::= ")
     def p_StructEnding_1(self, info):
-        " StructEnding ::= "
         return None
 
+    @rule(" StructEnding ::= eos ; ")
     def p_StructEnding_2(self, info):
-        " StructEnding ::= eos ; "
         return SMEos()
 
+    @rule(" StructEnding ::= SMRemainder ; ")
     def p_StructEnding_3(self, info):
-        " StructEnding ::= SMRemainder ; "
         return info[0]
 
+    @rule(" SMRemainder ::= OptAnnotation ArrayBase ID [ ] ")
     def p_SMRemainder(self, info):
-        " SMRemainder ::= OptAnnotation ArrayBase ID [ ] "
         m = SMVarArray(info[1], info[2], None)
         if info[0]:
             m.annotation = str(info[0])
         return m
 
+    @rule(" StructMembers ::= ")
     def p_StructMembers_1(self, info):
-        " StructMembers ::= "
         return []
 
+    @rule(" StructMembers ::= StructMembers OptAnnotation StructMember ; ")
     def p_structMembers_2(self, info):
-        " StructMembers ::= StructMembers OptAnnotation StructMember ; "
         lst, a, m, _ = info
         if a:
             m.annotation = str(a)
         lst.append(m)
         return lst
 
+    @rule(" Integer ::= INT ")
     def p_Integer_1(self, info):
-        " Integer ::= INT "
         return info[0].value
 
+    @rule(" Integer ::= CONST_ID")
     def p_Integer_2(self, info):
-        " Integer ::= CONST_ID"
         return info[0].value
 
+    @rule(" OptAnnotation ::= ")
     def p_OptAnnotation_1(self, info):
-        " OptAnnotation ::= "
         return None
 
+    @rule(" OptAnnotation ::= ANNOTATION ")
     def p_OptAnnotation_2(self, info):
-        " OptAnnotation ::= ANNOTATION "
         return info[0]
 
+    @rule(" StructMember ::= SMInteger ")
     def p_StructMember_0(self, info):
-        " StructMember ::= SMInteger "
         return info[0]
 
+    @rule(" StructMember ::= SMStruct ")
     def p_StructMember_1(self, info):
-        " StructMember ::= SMStruct "
         return info[0]
 
+    @rule(" StructMember ::= SMString ")
     def p_StructMember_2(self, info):
-        " StructMember ::= SMString "
         return info[0]
 
+    @rule(" StructMember ::= SMArray ")
     def p_StructMember_3(self, info):
-        " StructMember ::= SMArray "
         return info[0]
 
+    @rule(" StructMember ::= SMUnion ")
     def p_StructMember_4(self, info):
-        " StructMember ::= SMUnion "
         return info[0]
 
+    @rule(" SMInteger ::= IntType ID OptIntConstraint ")
     def p_SMInteger(self, info):
-        " SMInteger ::= IntType ID OptIntConstraint "
         return SMInteger(info[0], str(info[1]), info[2])
 
+    @rule(" IntType ::= u8 ")
     def p_IntType_1(self, info):
-        " IntType ::= u8 "
         return IntType(8)
 
+    @rule(" IntType ::= u16 ")
     def p_IntType_2(self, info):
-        " IntType ::= u16 "
         return IntType(16)
 
+    @rule(" IntType ::= u32 ")
     def p_IntType_3(self, info):
-        " IntType ::= u32 "
         return IntType(32)
 
+    @rule(" IntType ::= u64 ")
     def p_IntType_4(self, info):
-        " IntType ::= u64 "
         return IntType(64)
 
+    @rule(" OptIntConstraint ::= ")
     def p_OptIntConstraint_1(self, info):
-        " OptIntConstraint ::= "
         return None
 
+    @rule(" OptIntConstraint ::= IN [ IntList ]")
     def p_OptIntConstraint_2(self, info):
-        " OptIntConstraint ::= IN [ IntList ]"
         return IntConstraint(info[2])
 
+    @rule(" IntList ::= IntListMember ")
     def p_IntList_1(self, info):
-        " IntList ::= IntListMember "
         return [info[0]]
 
+    @rule(" IntList ::= IntList , IntListMember ")
     def p_IntList_2(self, info):
-        " IntList ::= IntList , IntListMember "
         info[0].append(info[2])
         return info[0]
 
+    @rule(" IntListMember ::= Integer ")
     def p_IntListMember_1(self, info):
-        " IntListMember ::= Integer "
         v = info[0]
         return (v, v)
 
+    @rule(" IntListMember ::= Integer .. Integer ")
     def p_IntListMember_2(self, info):
-        " IntListMember ::= Integer .. Integer "
         v1, _, v2 = info
         return (v1, v2)
 
+    @rule(" SMStruct ::= struct ID ID ")
     def p_SMStruct_1(self, info):
-        " SMStruct ::= struct ID ID "
         _, structtype, mname = info
         return SMStruct(str(structtype), str(mname))
 
+    @rule(" SMStruct ::= StructDecl ID ")
     def p_SMStruct_2(self, info):
-        " SMStruct ::= StructDecl ID "
         decl, mname = info
         self.lingering_structs.append(decl)
         return SMStruct(decl.name, str(mname))
 
+    @rule(" SMString ::= nulterm ID ")
     def p_SMString(self, info):
-        " SMString ::= nulterm ID "
         return SMString(info[1])
 
+    @rule(" SMArray ::= SMFixedArray ")
     def p_SMArray_1(self, info):
-        " SMArray ::= SMFixedArray "
         return info[0]
 
+    @rule(" SMArray ::= SMVarArray ")
     def p_SMArray_2(self, info):
-        " SMArray ::= SMVarArray "
         return info[0]
 
+    @rule(" ArrayBase ::= IntType ")
     def p_ArrayBase_1(self, info):
-        " ArrayBase ::= IntType "
         return info[0]
 
+    @rule(" ArrayBase ::= struct ID ")
     def p_ArrayBase_2(self, info):
-        " ArrayBase ::= struct ID "
         return str(info[1])
 
+    @rule(" ArrayBase ::= StructDecl ")
     def p_ArrayBase_3(self, info):
-        " ArrayBase ::= StructDecl "
         decl = info[0]
         self.lingering_structs.append(decl)
         return decl.name
 
+    @rule(" ArrayBase ::= char ")
     def p_ArrayBase_4(self, info):
-        " ArrayBase ::= char "
         return info[0]
 
+    @rule(" SMVarArray ::= ArrayBase ID [ IDRef ] ")
     def p_SMVarArray_1(self, info):
-        " SMVarArray ::= ArrayBase ID [ IDRef ] "
         return SMVarArray(info[0], str(info[1]), str(info[3]))
 
+    @rule(" SMVarArray ::= ArrayBase ID [ .. - Integer ] ")
     def p_SMVarArray_2(self, info):
-        " SMVarArray ::= ArrayBase ID [ .. - Integer ] "
         array = SMVarArray(info[0], str(info[1]), None)
         return SMLenConstrained(None, [array], info[5])
 
+    @rule(" SMFixedArray ::= ArrayBase ID [ Integer ] ")
     def p_SMFixedArray(self, info):
-        " SMFixedArray ::= ArrayBase ID [ Integer ] "
         return SMFixedArray(info[0], str(info[1]), info[3])
 
+    @rule(" IDRef ::= ID ")
     def p_IDRef_1(self, info):
-        " IDRef ::= ID "
         return info[0]
 
+    @rule(" IDRef ::= ID . ID")
     def p_IDRef_2(self, info):
-        " IDRef ::= ID . ID"
         return IDReference(info[0], info[2])
 
+    @rule(" SMUnion ::= union ID [ IDRef ] OptUnionLength { UnionMembers } ")
     def p_SMUnion(self, info):
-        " SMUnion ::= union ID [ IDRef ] OptUnionLength { UnionMembers } "
         _1, unionfield, _2, tagfield, _3, optlength, _4, members, _5 = info
         union = SMUnion(str(unionfield), str(tagfield), members)
         if optlength is not None:
@@ -889,123 +898,123 @@ class Parser(trunnel.spark.GenericParser, object):
                 union = SMLenConstrained(None, [union], optlength)
         return union
 
+    @rule(" OptUnionLength ::= ")
     def p_OptUnionLength_1(self, info):
-        " OptUnionLength ::= "
         return None
 
+    @rule(" OptUnionLength ::= with LengthKW IDRef")
     def p_OptUnionLength_2(self, info):
-        " OptUnionLength ::= with LengthKW IDRef"
         return str(info[2])
 
+    @rule(" OptUnionLength ::= with LengthKW .. - Integer")
     def p_OptUnionLength_3(self, info):
-        " OptUnionLength ::= with LengthKW .. - Integer"
         return info[4]
 
+    @rule(" LengthKW ::= ID ")
     def p_LengthKW(self, info):
-        " LengthKW ::= ID "
         if str(info[0]) != 'length':
             raise SyntaxError("Expected 'length' at %s" % info[0].lineno)
         return None
 
+    @rule(" UnionMembers ::= UnionMember ")
     def p_UnionMembers_1(self, info):
-        " UnionMembers ::= UnionMember "
         return [info[0]]
 
+    @rule(" UnionMembers ::= UnionMembers UnionMember ")
     def p_UnionMembers_2(self, info):
-        " UnionMembers ::= UnionMembers UnionMember "
         lst, item = info
         lst.append(item)
         return lst
 
+    @rule(" UnionMember ::= UnionCase : UnionFields OptExtentSpec ")
     def p_UnionMember(self, info):
-        " UnionMember ::= UnionCase : UnionFields OptExtentSpec "
         tagvals, _, members, extends = info
         return UnionMember(tagvals, members + extends)
 
+    @rule(" UnionCase ::= IntList ")
     def p_UnionCase_0(self, info):
-        " UnionCase ::= IntList "
         return info[0]
 
+    @rule(" UnionCase ::= default ")
     def p_UnionCase_1(self, info):
-        " UnionCase ::= default "
         return None
 
+    @rule(" OptExtentSpec ::= ")
     def p_OptExtentSpec_1(self, info):
-        " OptExtentSpec ::= "
         return []
 
+    @rule(" OptExtentSpec ::= ... ; ")
     def p_OptExtentSpec_2(self, info):
-        " OptExtentSpec ::= ... ; "
         return [SMIgnore()]
 
+    @rule(" OptExtentSpec ::= SMRemainder ; ")
     def p_OptExtentSpec_3(self, info):
-        " OptExtentSpec ::= SMRemainder ; "
         return [info[0]]
 
+    @rule(" UnionFields ::= ; ")
     def p_UnionFields_0(self, info):
-        " UnionFields ::= ; "
         return []
 
+    @rule(" UnionFields ::= UnionField ; ")
     def p_UnionFields_1(self, info):
-        " UnionFields ::= UnionField ; "
         return [info[0]]
 
+    @rule(" UnionFields ::= UnionFields UnionField ; ")
     def p_UnionFields_2(self, info):
-        " UnionFields ::= UnionFields UnionField ; "
         fields, field, _ = info
         fields.append(field)
         return fields
 
+    @rule(" UnionFields ::= fail ; ")
     def p_UnionFields_3(self, info):
-        " UnionFields ::= fail ; "
         return [SMFail()]
 
+    @rule(" UnionFields ::= ignore ; ")
     def p_UnionFields_4(self, info):
-        " UnionFields ::= ignore ; "
         return [SMIgnore()]
 
+    @rule(" UnionFields ::= SMRemainder ; ")
     def p_UnionFields_5(self, info):
-        " UnionFields ::= SMRemainder ; "
         return [info[0]]
 
+    @rule(" UnionField ::= SMInteger ")
     def p_UnionField_1(self, info):
-        " UnionField ::= SMInteger "
         return info[0]
 
+    @rule(" UnionField ::= SMFixedArray ")
     def p_UnionField_2(self, info):
-        " UnionField ::= SMFixedArray "
         return info[0]
 
+    @rule(" UnionField ::= SMVarArray ")
     def p_UnionField_3(self, info):
-        " UnionField ::= SMVarArray "
         return info[0]
 
+    @rule(" UnionField ::= SMString")
     def p_UnionField_4(self, info):
-        " UnionField ::= SMString"
         return info[0]
 
+    @rule(" UnionField ::= SMStruct ")
     def p_UnionField_5(self, info):
-        " UnionField ::= SMStruct "
         return info[0]
 
+    @rule(" ContextDecl ::= context ID { ContextMembers } ")
     def p_ContextDecl(self, info):
-        " ContextDecl ::= context ID { ContextMembers } "
         return StructDecl(str(info[1]), info[3], isContext=True)
 
+    @rule(" ContextMembers ::= ")
     def p_ContextMembers_1(self, info):
-        " ContextMembers ::= "
         return []
 
+    @rule(" ContextMembers ::= ContextMembers OptAnnotation ContextMember ")
     def p_ContextMembers_2(self, info):
-        " ContextMembers ::= ContextMembers OptAnnotation ContextMember "
         lst, a, m = info
         if a:
             m.annotation = str(a)
         lst.append(m)
         return lst
 
+    @rule(" ContextMember ::= IntType ID ; ")
     def p_ContextMember(self, info):
-        " ContextMember ::= IntType ID ; "
         return SMInteger(info[0], str(info[1]), None)
 
 if __name__ == '__main__':
@@ -1020,7 +1029,7 @@ if __name__ == '__main__':
     for item in Parser.__dict__.values():
         if not getattr(item, '__name__', '').startswith("p_"):
             continue
-        doc = item.__doc__
+        doc = item.rule
         docs.append((ordering.get(doc.split()[0], 9999), doc))
 
     lasto = 0

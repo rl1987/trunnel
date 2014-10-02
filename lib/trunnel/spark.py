@@ -19,10 +19,22 @@
 #  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 #  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-__version__ = 'SPARK-0.7 (pre-alpha-7)'
+__version__ = 'SPARK-0.7 (pre-alpha-7) (trunnel modifications)'
 
 import re
 import string
+
+def pattern(s):
+    def decorator(func):
+        func.pattern = s
+        return func
+    return decorator
+
+def rule(s):
+    def decorator(func):
+        func.rule = s
+        return func
+    return decorator
 
 def _namelist(instance):
         namelist, namedict, classlist = [], {}, [instance.__class__]
@@ -45,7 +57,11 @@ class GenericScanner:
                         self.index2func[number-1] = getattr(self, 't_' + name)
 
         def makeRE(self, name):
-                doc = getattr(self, name).__doc__
+                func = getattr(self, name)
+                try:
+                        doc = func.pattern
+                except KeyError:
+                        raise KeyError("No pattern on function %s"%name)
                 rv = '(?P<%s>%s)' % (name[2:], doc)
                 return rv
 
@@ -207,7 +223,10 @@ class GenericParser:
                 for name in _namelist(self):
                         if name[:2] == 'p_':
                                 func = getattr(self, name)
-                                doc = func.__doc__
+                                try:
+                                        doc = func.rule
+                                except KeyError:
+                                        raise KeyError("No rule on function %s"%name)
                                 self.addRule(doc, func)
 
         def augment(self, start):
