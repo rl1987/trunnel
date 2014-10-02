@@ -983,7 +983,7 @@ class Parser(trunnel.spark.GenericParser, object):
         return info[0]
 
     def p_ContextDecl(self, info):
-        " ContextDecl ::= context ID { ContextMembers }"""
+        " ContextDecl ::= context ID { ContextMembers } "
         return StructDecl(str(info[1]), info[3], isContext=True)
 
     def p_ContextMembers_1(self, info):
