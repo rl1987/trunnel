@@ -1,6 +1,9 @@
 a trunnel is a primitive nail
 =============================
 
+And trunnel is a tool that converts representations of simple data
+formats into C code that can parse and encode those formats.
+
 The official git repository is browseable at
    https://gitweb.torproject.org/trunnel.git
 

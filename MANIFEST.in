@@ -6,6 +6,7 @@ include examples/*.trunnel
 
 include doc/*.md
 include doc/GRAMMAR
+include doc/Makefile
 
 include test/failing/*.trunnel
 include test/valid/*.trunnel

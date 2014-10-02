@@ -40,7 +40,9 @@ Here are some non-goals for Trunnel:
    * Run as fast as possible.
    * Support very old versions of Python with the code generator.
    * Support pre-ANSI C with the code generator.
-
+   * Generate optimal code
+   * Generate code with no redundant checks
+   * Handle input incrementally
 
 ## 1. About this document
 
@@ -227,7 +229,7 @@ members the specified number of times.  Strings are not expected to be
 NUL-terminated in the binary format.
 
 Fixed-length arrays of integers are represented as arrays of the appropriate
-uint*_t type. Fixed-length arrays of structures are represented as arrays of
+uint\*_t type. Fixed-length arrays of structures are represented as arrays of
 pointers to that structure type.  Fixed-length arrays of char are represented
 as having one extra byte at the end, so that we can ensure that the C
 representation of the array always ends with NUL -- internal NULs are
@@ -342,7 +344,7 @@ When encoding a union of this kind, you do _not_ need to set the 'length'
 field; trunnel will fill it in for you in the output automatically based on
 the actual length.
 
-(*In a future version of Trunnel, length constraints might be supported
+(*In a future version of Trunnel*, length constraints might be supported
 independently of unions; the code is orthogonal internally.)
 
 ### Structure variants: end-of-string constraints
@@ -357,7 +359,7 @@ for a given structure, you can give an end-of-string constraint:
        eos;
     }
 
-(*This feature might go away in a future version if it doesn't turn
+(*This feature might go away* in a future version if it doesn't turn
 out to be useful.)
 
 ### Fields that extend up to a certain point before the end of the structure
@@ -384,8 +386,8 @@ You can also use this notation to indicate the extent of a union:
        u8 type;
        union u[type] with length ..-32 {
           1: u8 bytes[];
-	  2: u8 salt[16];
-	     u8 other_bytes[];
+          2: u8 salt[16];
+             u8 other_bytes[];
        }
        u64 data[4];
     }
@@ -410,7 +412,7 @@ To support this, trunnel provides context-dependent objects:
        u8 iv[stream_settings.iv_len];
        union msg[stream_settings.block_mode] {
           0: u16 n_bytes; u8 bytes[n_bytes];
-	  1: u16 n_blocks; struct block[n_blocks];
+          1: u16 n_blocks; struct block[n_blocks];
        };
        u8 mac[stream_settings.maclen];
     }
@@ -490,7 +492,7 @@ objects inside it.  It's okay to call it with NULL.
 
 If you have a filled-in object, you can encode it into a buffer:
 
-   ssize_t example_encode(uint8_t *buf, size_t buf_len, const example_t *obj);
+     ssize_t example_encode(uint8_t *buf, size_t buf_len, const example_t *obj);
 
 The `buf_len` parameter describes the number of available bytes in `buf` to
 use for encoding `obj`.  On success, this function will return the number of
@@ -500,7 +502,7 @@ return -1 if there is an error that prevents encoding the object entirely.
 
 You can find out the required buffer length before the encoding, if you like:
 
-   ssize_t example_encoded_len(const example_t *obj);
+     ssize_t example_encoded_len(const example_t *obj);
 
 This function returns a negative value on an error.  On success, it
 returns the suggested length of the buffer to allocate for encoding
@@ -512,7 +514,7 @@ overestimate: you still need to check for truncation when encoding.
 If you want to find out whether you can encode an object, or find out why an
 encode operation has just failed, you can call:
 
-    const char *example_check(const example_t *obj);
+     const char *example_check(const example_t *obj);
 
 This function returns `NULL` if the object is correct and encodeable, and
 returns a string explaining what has gone wrong otherwise.

@@ -21,6 +21,8 @@ tests.log
 
 /doc/*.[ch]
 /doc/trunnel.html
+/doc/trunnel-manual.html
+/doc/trunnel-manual.html.tmp
 /doc/trunnel.txt
 /examples/*.[ch]
 /test/grammar.tmp
