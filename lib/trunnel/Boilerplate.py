@@ -6,7 +6,8 @@
 import os
 import trunnel
 
-FILES = [ "trunnel.c", "trunnel.h", "trunnel-impl.h" ]
+FILES = ["trunnel.c", "trunnel.h", "trunnel-impl.h"]
+
 
 def emit(target_dir=None):
     if target_dir == None:
@@ -19,11 +20,12 @@ def emit(target_dir=None):
                  os.path.join(directory, "data", f),
                  os.path.join(target_dir, f))
 
+
 def emitfile(fname, in_fname, out_fname):
     settings = {
-        'fname' : fname,
-        'version' : trunnel.__version__
-        }
+        'fname': fname,
+        'version': trunnel.__version__
+    }
     with open(in_fname, 'r') as inp, open(out_fname, 'w') as out:
         out.write("/* %(fname)s -- copied from Trunnel v%(version)s\n"
                   " * https://gitweb.torproject.org/trunnel.git\n"

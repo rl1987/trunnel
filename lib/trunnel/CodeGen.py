@@ -163,12 +163,12 @@ class Checker(ASTVisitor):
         self.structNames = set()
         self.constNames = set()
         self.constValues = {}
-        self.contextNames = set() #XXXX
+        self.contextNames = set()  # XXXX
         self.structFieldNames = None
         self.structIntFieldNames = None
         self.structIntFieldUsage = None
         self.structUses = {}
-        self.structUsesContexts = {} #XXXX
+        self.structUsesContexts = {}  # XXXX
         self.memberPrefix = ""
         self.sortedStructs = None
         self.lenFieldDepth = 0
@@ -227,9 +227,11 @@ class Checker(ASTVisitor):
         # check for context mismatch.
         for structname, uses in self.structUses.items():
             for u in uses:
-                missing = self.structUsesContexts[u] - self.structUsesContexts[structname]
+                missing = self.structUsesContexts[
+                    u] - self.structUsesContexts[structname]
                 if missing:
-                    raise CheckError("{0} contains {1}, which uses contexts ({2}), but {0} does not use those contexts.".format(structname, u, ",".join(missing)))
+                    raise CheckError(
+                        "{0} contains {1}, which uses contexts ({2}), but {0} does not use those contexts.".format(structname, u, ",".join(missing)))
 
         # Perform a topological sort.
         sorted_structs = []
@@ -251,7 +253,7 @@ class Checker(ASTVisitor):
         externNames = set(es.name for es in f.externStructs)
 
         self.sortedStructs = [
-            s for s in sorted_structs if s not in externNames ]
+            s for s in sorted_structs if s not in externNames]
 
     def visitConstDecl(self, cd):
         self.constValues[cd.name] = cd.value.value
@@ -338,7 +340,8 @@ class Checker(ASTVisitor):
 
     def visitSMLenConstrained(self, sml):
         if sml.lengthfield != None:
-            self.checkIntField(sml.lengthfield, "union length", self.structName)
+            self.checkIntField(
+                sml.lengthfield, "union length", self.structName)
         self.lenFieldDepth += 1
         if self.lenFieldDepth >= 2:
             # This is an undesirable restriction, but the alternative
@@ -358,9 +361,10 @@ class Checker(ASTVisitor):
         self.unionName = smu.name
         self.unionMatching = []
         if '.' in smu.tagfield:
-            self.unionTagMax = (1<<64)-1  #XXXX wrong
+            self.unionTagMax = (1 << 64) - 1  # XXXX wrong
         else:
-            self.unionTagMax = TYPE_MAXIMA[self.structIntFieldNames[smu.tagfield]]
+            self.unionTagMax = TYPE_MAXIMA[
+                self.structIntFieldNames[smu.tagfield]]
         self.containing = "%s.%s" % (self.structName, smu.name)
         self.memberPrefix = smu.name + "_"
         self.foundDefaults = 0
@@ -445,7 +449,7 @@ class Checker(ASTVisitor):
     def checkIntField(self, fieldname, ftype, inside):
         """Check whether a reference to an integer field is correct."""
         if '.' in fieldname:
-            ctx,field = fieldname.split('.', 2)
+            ctx, field = fieldname.split('.', 2)
             if ctx not in self.contextNames:
                 raise CheckError("Unrecognized context %s for %s in %s" % (
                     fieldname.context, ftype, inside))
@@ -554,7 +558,6 @@ class Annotator(ASTVisitor):
 
         if sml.lengthfield is None:
             self.after_leftover_field = True
-
 
     def visitSMUnion(self, smu):
         self.annotateMember(smu)
@@ -681,6 +684,7 @@ class CodeGenerator(ASTVisitor):
         for line in lines:
             self.w_real(line + "\n")
         self.w_real(" */\n")
+
 
 class DeclarationGenerationVisitor(CodeGenerator):
 
@@ -876,12 +880,14 @@ class PrototypeGenerationVisitor(CodeGenerator):
         self.docstring("""Check whether the internal state of the %s in
                           'obj' is consistent. Return NULL if it is, and a
                           short message if it is not.""" % name)
-        self.w("const char *%s_check(const %s_t *obj%s);\n" % (name, name, contextFormals))
+        self.w("const char *%s_check(const %s_t *obj%s);\n" %
+               (name, name, contextFormals))
 
         self.docstring("""Clear any errors that were set on the object 'obj'
                           by its setter functions.  Return true iff errors
                           were cleared.""")
         self.w("int %s_clear_errors(%s_t *obj);\n" % (name, name))
+
 
 def formatContexts(contexts, declaration=True):
     """Given a list of context type names, generate a list of declarations
@@ -894,13 +900,15 @@ def formatContexts(contexts, declaration=True):
         s = "".join(", {0}_ctx".format(c) for c in contexts)
     return s
 
+
 def field(name):
     """Return a string for accessing the field called 'name'.  This can
        be either a field in a context, or a field in the target object. """
     if '.' in name:
         return name.replace(".", "_ctx->")
     else:
-        return "obj->"+name
+        return "obj->" + name
+
 
 def formatContextChecks(cg, contextList, onFail):
     """Using the code generator 'cg', emit code to call 'onFail' if
@@ -910,6 +918,7 @@ def formatContextChecks(cg, contextList, onFail):
              if ({0}_ctx == NULL)
                {1}
              """, context, onFail)
+
 
 class CodeGenerationVisitor(CodeGenerator):
 
@@ -1642,7 +1651,8 @@ class CheckFnGenerator(CodeGenerator):
         # To check a whole structure: check that the structure pointer
         # isn't NULL, then check the contents.
         self.structName = name = sd.name
-        self.w("const char *\n%s_check(const %s_t *obj%s)\n{\n" % (name, name, contextFormals))
+        self.w("const char *\n%s_check(const %s_t *obj%s)\n{\n" % (
+            name, name, contextFormals))
         self.pushIndent(2)
         self.w('if (obj == NULL)\n'
                '  return "Object was NULL";\n'
@@ -1674,9 +1684,10 @@ class CheckFnGenerator(CodeGenerator):
         # function for each item in the array.
 
         if type(sfa.basetype) == str:
-            args = formatContexts(sfa.structDeclaration.contextList, declaration=False)
+            args = formatContexts(
+                sfa.structDeclaration.contextList, declaration=False)
             body = ("if (NULL != (msg = %s_check({ELEMENT}%s)))\n"
-                    "  return msg;" % (sfa.basetype,args))
+                    "  return msg;" % (sfa.basetype, args))
             iterateOverFixedArray(self, sfa, body,
                                   extraDecl='const char *msg;\n')
 
@@ -1686,7 +1697,8 @@ class CheckFnGenerator(CodeGenerator):
                    % (sfa.c_name, sfa.width))
 
     def visitSMStruct(self, sms):
-        contextArgs = formatContexts(sms.structDeclaration.contextList, declaration=False)
+        contextArgs = formatContexts(
+            sms.structDeclaration.contextList, declaration=False)
         # To check a nested struct: recursively invoke that struct's check
         # function.
         self.format("""
@@ -1705,7 +1717,8 @@ class CheckFnGenerator(CodeGenerator):
         # the check function for each of its members.
 
         if type(sva.basetype) == str:
-            args = formatContexts(sva.structDeclaration.contextList, declaration=False)
+            args = formatContexts(
+                sva.structDeclaration.contextList, declaration=False)
             body = ("if (NULL != (msg = %s_check({ELEMENT}%s)))\n"
                     "  return msg;" % (sva.basetype, args))
 
@@ -1786,7 +1799,9 @@ def arrayIsBytes(arry):
     else:
         return False
 
+
 class EncodedLenFnGenerator(CodeGenerator):
+
     def __init__(self, writefn):
         CodeGenerator.__init__(self, writefn)
         self.action = "Length of"
@@ -1816,41 +1831,41 @@ class EncodedLenFnGenerator(CodeGenerator):
 
     def visitSMInteger(self, smi):
         self.eltHeader(smi)
-        self.w("result += %s;\n"% (smi.inttype.width//8))
+        self.w("result += %s;\n" % (smi.inttype.width // 8))
 
     def visitSMStruct(self, sms):
         self.eltHeader(sms)
         contextList = sms.structDeclaration.contextList
         args = formatContexts(contextList, declaration=False)
-        self.w("result += %s_encoded_len(obj->%s%s);\n"%(
-            sms.structname,sms.c_name,args))
+        self.w("result += %s_encoded_len(obj->%s%s);\n" % (
+            sms.structname, sms.c_name, args))
 
     def visitSMFixedArray(self, sfa):
         self.eltHeader(sfa)
         if arrayIsBytes(sfa):
             self.w("result += %s;\n" % sfa.width)
         elif type(sfa.basetype) != str:
-            self.w("result += %s * %s;\n" %(
+            self.w("result += %s * %s;\n" % (
                    sfa.width, sfa.basetype.width // 8))
         else:
             contextList = sfa.structDeclaration.contextList
             args = formatContexts(contextList, declaration=False)
-            body = "result += %s_encoded_len({ELEMENT}%s);"%(sfa.basetype,
-                                                            args)
+            body = "result += %s_encoded_len({ELEMENT}%s);" % (sfa.basetype,
+                                                               args)
             iterateOverFixedArray(self, sfa, body)
 
     def visitSMVarArray(self, sva):
         self.eltHeader(sva)
         if arrayIsBytes(sva):
-            self.w("result += TRUNNEL_DYNARRAY_LEN(&obj->%s);\n"% sva.c_name)
+            self.w("result += TRUNNEL_DYNARRAY_LEN(&obj->%s);\n" % sva.c_name)
         elif type(sva.basetype) != str:
-            self.w("result += %s * TRUNNEL_DYNARRAY_LEN(&obj->%s);\n"%
+            self.w("result += %s * TRUNNEL_DYNARRAY_LEN(&obj->%s);\n" %
                    (sva.basetype.width // 8, sva.c_name))
         else:
             contextList = sva.structDeclaration.contextList
             args = formatContexts(contextList, declaration=False)
-            body = "result += %s_encoded_len({ELEMENT}%s);"%(sva.basetype,
-                                                            args)
+            body = "result += %s_encoded_len({ELEMENT}%s);" % (sva.basetype,
+                                                               args)
             iterateOverVarArray(self, sva, body)
 
     def visitSMString(self, ss):
@@ -1884,6 +1899,7 @@ class EncodedLenFnGenerator(CodeGenerator):
 
     def visitSMEos(self, eos):
         pass
+
 
 class EncodeFnGenerator(CodeGenerator):
 
@@ -1987,7 +2003,7 @@ class EncodeFnGenerator(CodeGenerator):
                 self.w('uint8_t *backptr_%s = NULL;\n' % (m.c_name))
             self.w('\n')
         self.w('if (NULL != (msg = %s_check(obj%s)))\n'
-               '  goto check_failed;\n\n' %(sd.name, contextArgs))
+               '  goto check_failed;\n\n' % (sd.name, contextArgs))
         self.w_("#ifdef TRUNNEL_CHECK_ENCODED_LEN\n")
         self.w("trunnel_assert(encoded_len >= 0);\n")
         self.w_("#endif\n")
@@ -2034,7 +2050,8 @@ class EncodeFnGenerator(CodeGenerator):
         self.eltHeader(smi)
         if smi.c_name in self.curStruct.lengthFields:
             self.w('backptr_%s = ptr;\n' % (smi.c_name))
-        self.w(self.encodeInteger(smi, smi.inttype.width, "obj->%s" % (smi.c_name)))
+        self.w(
+            self.encodeInteger(smi, smi.inttype.width, "obj->%s" % (smi.c_name)))
 
     def encodeInteger(self, member, width, element, forFormat=False):
         # To encode an integer field, we make sure we have enough
@@ -2046,7 +2063,7 @@ class EncodeFnGenerator(CodeGenerator):
         self.needTruncated = True
         avail = self.checkAvail_s(nbytes, member)
         if forFormat:
-            avail = avail.replace("{", "{{").replace("}","}}")
+            avail = avail.replace("{", "{{").replace("}", "}}")
         return avail + self.format_s("""
             trunnel_set_uint{width}(ptr, {hton}({element}));
             written += {nbytes}; ptr += {nbytes};
@@ -2148,9 +2165,11 @@ class EncodeFnGenerator(CodeGenerator):
             return
 
         if type(sva.basetype) == str:
-            body = self.encodeStruct(sva.basetype, "{ELEMENT}", sva.structDeclaration.contextList)
+            body = self.encodeStruct(
+                sva.basetype, "{ELEMENT}", sva.structDeclaration.contextList)
         else:
-            body = self.encodeInteger(sva, sva.basetype.width, "{ELEMENT}", True)
+            body = self.encodeInteger(
+                sva, sva.basetype.width, "{ELEMENT}", True)
         iterateOverVarArray(self, sva, body)
 
     def visitSMString(self, ss):
@@ -2163,7 +2182,7 @@ class EncodeFnGenerator(CodeGenerator):
         self.needTruncated = True
         self.format("""
                 {{
-                  size_t len = strlen(obj->{c_name});""",c_name=ss.c_name)
+                  size_t len = strlen(obj->{c_name});""", c_name=ss.c_name)
         self.pushIndent(2)
         self.checkAvail("len + 1", ss)
         self.popIndent(2)
@@ -2415,7 +2434,8 @@ class ParseFnGenerator(CodeGenerator):
     def visitSMStruct(self, sms):
         # To generate code to parse a struture, delegate to parseStruct
         self.eltHeader(sms)
-        self.w(self.parseStructInto(sms.structname, "obj->%s" % (sms.c_name), sms.structDeclaration.contextList))
+        self.w(self.parseStructInto(sms.structname, "obj->%s" %
+               (sms.c_name), sms.structDeclaration.contextList))
 
     def parseStructInto(self, structtype, target_pointer, contextList):
         """Generate code to parse a structure from the input into
@@ -2482,7 +2502,8 @@ class ParseFnGenerator(CodeGenerator):
         else:
             iterateOverFixedArray(self, sfa,
                                   self.parseStructInto(sfa.basetype,
-                                                       "obj->%s[idx]" % (sfa.c_name),
+                                                       "obj->%s[idx]" % (
+                                                           sfa.c_name),
                                                        sfa.structDeclaration.contextList))
 
     def visitSMVarArray(self, sva):
@@ -2564,7 +2585,7 @@ class ParseFnGenerator(CodeGenerator):
                    '  %s elt;\n' % (elttype))
             if sva.widthfield is not None:
                 self.w('  unsigned idx;\n')
-                self.w('  for (idx = 0; idx < %s; ++idx) {\n'%w)
+                self.w('  for (idx = 0; idx < %s; ++idx) {\n' % w)
             else:
                 self.w('  while (remaining > 0) {\n')
                 # This is a bit subtle.  But if a member is truncated inside
@@ -2579,7 +2600,8 @@ class ParseFnGenerator(CodeGenerator):
 
             self.pushIndent(4)
             if type(sva.basetype) == str:
-                self.w(self.parseStructInto(sva.basetype, "elt", sva.structDeclaration.contextList))
+                self.w(self.parseStructInto(
+                    sva.basetype, "elt", sva.structDeclaration.contextList))
                 on_fail = "{%s_free(elt);}" % sva.basetype
             else:
                 self.parseInteger(sva.basetype.width, "elt")
@@ -2653,7 +2675,7 @@ class ParseFnGenerator(CodeGenerator):
                       remaining_after = {leftafter};
                       remaining = remaining - {leftafter};
                     """, leftafter=sml.leftoverbytes,
-                         truncated=self.truncatedLabel)
+                        truncated=self.truncatedLabel)
 
         self.pushIndent(2)
         self.needLabels.add(self.truncatedLabel)
@@ -2800,9 +2822,9 @@ def generate_code(input_fname, extra_options=[], target_dir=None):
         'guard_macro': guard_macro,
         'h_fname': os.path.split(h_fname)[1],
         'c_fname': os.path.split(c_fname)[1],
-        'csafe_fname' : csafe_fname,
+        'csafe_fname': csafe_fname,
         'expose_definitions': "".join(expose_definitions),
-        'version' : trunnel.__version__
+        'version': trunnel.__version__
     }
 
     out_h = open(h_fname, 'w')

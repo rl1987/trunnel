@@ -184,7 +184,7 @@ class File(AST):
         self.constants = []
         self.declarations = []
         self.declarationsByName = {}
-        self.externsByName = {} #XXXX
+        self.externsByName = {}  # XXXX
         self.externStructs = []
         self.options = []
         for m in members:
@@ -258,6 +258,7 @@ class StructDecl(AST):
     def isContext(self):
         return self._isContext
 
+
 class ConstDecl(AST):
 
     """The declaration for a single structure."""
@@ -280,6 +281,7 @@ class ExternStructDecl(AST):
     def __init__(self, name, contextList=()):
         self.name = str(name)
         self.contextList = list(contextList)
+
 
 class TrunnelOptionsDecl(AST):
 
@@ -500,6 +502,7 @@ class SMLenConstrained(StructMember):
         for m in self.members:
             v.visit(m, *args)
 
+
 class SMUnion(StructMember):
 
     """A tagged-union member of a structure"""
@@ -563,16 +566,19 @@ class SMIgnore(StructMember):
        ignored."""
     pass
 
+
 class IDReference(AST):
+
     """A reference to an identity in a given context."""
     # context -- the name of the context
     # ident -- the name within the context
+
     def __init__(self, context, ident):
         self.context = context
         self.ident = ident
 
     def __str__(self):
-        return "%s.%s"%(self.context, self.ident)
+        return "%s.%s" % (self.context, self.ident)
 
 #
 #
@@ -898,7 +904,7 @@ class Parser(trunnel.spark.GenericParser, object):
     def p_LengthKW(self, info):
         " LengthKW ::= ID "
         if str(info[0]) != 'length':
-            raise SyntaxError("Expected 'length' at %s"%info[0].lineno)
+            raise SyntaxError("Expected 'length' at %s" % info[0].lineno)
         return None
 
     def p_UnionMembers_1(self, info):
@@ -990,7 +996,7 @@ class Parser(trunnel.spark.GenericParser, object):
         " ContextMembers ::= "
         return []
 
-    def p_ContextMembers_2 (self, info):
+    def p_ContextMembers_2(self, info):
         " ContextMembers ::= ContextMembers OptAnnotation ContextMember "
         lst, a, m = info
         if a:

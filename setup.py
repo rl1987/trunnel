@@ -12,6 +12,6 @@ setup(name='Trunnel',
       url='https://gitweb.torproject.org/trunnel.git/',
       packages=['trunnel'],
       package_dir={'': 'lib'},
-      package_data={'trunnel' : ['data/*.c', 'data/*.h']},
+      package_data={'trunnel': ['data/*.c', 'data/*.h']},
       license='3-clause BSD'
       )

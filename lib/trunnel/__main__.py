@@ -11,7 +11,7 @@ if __name__ == '__main__':
 
     opts, args = getopt.gnu_getopt(
         sys.argv[1:], "O:",
-        ["option=","write-c-files","target-dir=","require-version="])
+        ["option=", "write-c-files", "target-dir=", "require-version="])
 
     more_options = []
     target_dir = None
@@ -31,9 +31,9 @@ if __name__ == '__main__':
     if need_version is not None:
         try:
             from distutils.version import LooseVersion
-            me,it=trunnel.__version__ ,need_version
+            me, it = trunnel.__version__, need_version
             if LooseVersion(me) < LooseVersion(it):
-                sys.stderr.write("I'm %s; you asked for %s\n"%(me,it))
+                sys.stderr.write("I'm %s; you asked for %s\n" % (me, it))
                 sys.exit(1)
         except ImportError:
             print "Can't import"
