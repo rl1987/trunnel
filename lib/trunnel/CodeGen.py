@@ -338,6 +338,9 @@ class Checker(ASTVisitor):
     def visitSMString(self, sms):
         self.addMemberName(sms.name)
 
+    def visitSMPosition(self, smp):
+        self.addMemberName(smp.name)
+
     def visitSMLenConstrained(self, sml):
         if sml.lengthfield != None:
             self.checkIntField(
@@ -543,6 +546,9 @@ class Annotator(ASTVisitor):
 
     def visitSMString(self, ss):
         self.annotateMember(ss)
+
+    def visitSMPosition(self, smp):
+        self.annotateMember(smp)
 
     def visitSMLenConstrained(self, sml):
         sml.lengthfieldmember = None
@@ -780,6 +786,11 @@ class DeclarationGenerationVisitor(CodeGenerator):
             self.w(ss.annotation)
 
         self.w("char *%s;\n" % (ss.c_name))
+
+    def visitSMPosition(self, smp):
+        if smp.annotation != None:
+            self.w(smp.annotation)
+        self.w("const uint8_t *%s;\n" % smp.c_name)
 
     def visitSMLenConstrained(self, sml):
         sml.visitChildren(self)
@@ -1071,6 +1082,9 @@ class FreeFnGenerator(CodeGenerator):
         # trunnel_free must handle NULL.)
         self.w("trunnel_wipestr(obj->%s);\n" % (ss.c_name))
         self.w("trunnel_free(obj->%s);\n" % (ss.c_name))
+
+    def visitSMPosition(self, smp):
+        pass
 
     def visitSMLenConstrained(self, sml):
         sml.visitChildren(self)
@@ -1579,6 +1593,17 @@ class AccessorFnGenerator(CodeGenerator):
                return 0;
              }}""", c_name=sms.c_name)
 
+    def visitSMPosition(self, smp):
+        st = self.structName
+        nm = smp.c_fn_name
+        self.docstring("Return the position for %s when we parsed "
+                       "this object"%nm)
+        self.declaration("const uint8_t *",
+                         "%s_get_%s(const %s_t *inp)" % (st,nm,st))
+        self.format("""
+              {{
+                return inp->{nm};
+              }}""", nm = smp.c_name)
 
 def iterateOverFixedArray(generator, sfa, body, extraDecl=""):
     """Helper: write the code needed to iterate over every element of a
@@ -1739,6 +1764,9 @@ class CheckFnGenerator(CodeGenerator):
         self.w('if (NULL == obj->%s)\n  return "Missing %s";\n' %
                (ss.c_name, ss.c_name))
 
+    def visitSMPosition(self, smp):
+        pass
+
     def visitSMLenConstrained(self, sml):
         # To check a SMlenConstrained, check its children.
         sml.visitChildren(self)
@@ -1871,6 +1899,9 @@ class EncodedLenFnGenerator(CodeGenerator):
     def visitSMString(self, ss):
         self.eltHeader(ss)
         self.w("result += strlen(obj->%s) + 1;\n" % ss.c_name)
+
+    def visitSMPosition(self, smp):
+        pass
 
     def visitSMLenConstrained(self, sml):
         sml.visitChildren(self)
@@ -2190,6 +2221,9 @@ class EncodeFnGenerator(CodeGenerator):
                   memcpy(ptr, obj->{c_name}, len + 1);
                   ptr += len + 1; written += len + 1;
                 }}""", c_name=ss.c_name)
+
+    def visitSMPosition(self, smp):
+        pass
 
     def visitSMLenConstrained(self, sml):
         # To encode a length-constained field of a structure,
@@ -2642,6 +2676,9 @@ class ParseFnGenerator(CodeGenerator):
                   memcpy(obj->{c_name}, ptr, memlen);
                   remaining -= memlen; ptr += memlen;
                 }}""", c_name=ss.c_name, truncated=self.truncatedLabel)
+
+    def visitSMPosition(self, smp):
+        self.format("obj->{c_name} = ptr;", c_name=smp.c_name);
 
     def visitSMLenConstrained(self, sml):
         # To parse a length-constrained region, make sure that at

@@ -113,7 +113,7 @@ class Lexer(trunnel.spark.GenericScanner, object):
         trunnel.spark.GenericScanner.tokenize(self, input)
         return self.rv
 
-    @pattern(r"(?:[;{}\[\]\-=,:]|\.\.\.|\.\.|\.)")
+    @pattern(r"(?:[;{}@\[\]\-=,:]|\.\.\.|\.\.|\.)")
     def t_punctuation(self, s):
         self.rv.append(Token(s, self.lineno))
 
@@ -570,6 +570,15 @@ class SMIgnore(StructMember):
        ignored."""
     pass
 
+class SMPosition(StructMember):
+    """ A struct member: notes that we should store a pointer to this point
+        in the input when we """
+    def __init__(self, name):
+        StructMember.__init__(self, name)
+
+    def __str__(self):
+        return "@" + self.name
+
 
 class IDReference(AST):
 
@@ -776,6 +785,10 @@ class Parser(trunnel.spark.GenericParser, object):
 
     @rule(" StructMember ::= SMUnion ")
     def p_StructMember_4(self, info):
+        return info[0]
+
+    @rule(" StructMember ::= SMPosition ")
+    def p_StructMember_5(self, info):
         return info[0]
 
     @rule(" SMInteger ::= IntType ID OptIntConstraint ")
@@ -997,6 +1010,10 @@ class Parser(trunnel.spark.GenericParser, object):
     def p_UnionField_5(self, info):
         return info[0]
 
+    @rule(" UnionField ::= SMSPosition ")
+    def p_UnionField_6(self, info):
+        return info[0]
+
     @rule(" ContextDecl ::= context ID { ContextMembers } ")
     def p_ContextDecl(self, info):
         return StructDecl(str(info[1]), info[3], isContext=True)
@@ -1016,6 +1033,16 @@ class Parser(trunnel.spark.GenericParser, object):
     @rule(" ContextMember ::= IntType ID ; ")
     def p_ContextMember(self, info):
         return SMInteger(info[0], str(info[1]), None)
+
+    @rule(" SMPosition ::= @ PtrKW ID ")
+    def p_SMPosition(self, info):
+        return SMPosition(str(info[2]))
+
+    @rule(" PtrKW ::= ID ")
+    def p_PtrKW(self, info):
+        if str(info[0]) != 'ptr':
+            raise SyntaxError("Expected 'ptr' at %s" % info[0].lineno)
+        return None
 
 if __name__ == '__main__':
     print ("===== Here is our actual grammar, extracted from Grammar.py\n")

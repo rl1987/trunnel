@@ -31,6 +31,7 @@ TEST_OBJS = \
     c/test_contexts_varsize2.o \
     c/test_contexts_complex.o \
     c/test_remainder_repeats.o \
+    c/test_positions.o \
     c/test_util.o
 
 BOILERPLATE_FILES=\
@@ -44,6 +45,7 @@ OBJS=tinytest/tinytest.o \
     valid/opaque.o \
     valid/leftover.o \
     valid/contexts.o \
+    valid/positions.o \
     ./include/trunnel.o \
     $(TEST_OBJS)
 
@@ -69,6 +71,7 @@ valid/derived.o: valid/derived.h valid/derived.c
 valid/opaque.o: valid/opaque.h valid/opaque.h
 valid/leftover.o: valid/leftover.h valid/leftover.c
 valid/contexts.o: valid/contexts.h
+valid/positions.o: valid/positions.h
 $(TEST_OBJS) : tinytest/tinytest.h tinytest/tinytest_macros.h valid/simple.h valid/derived.h
 $(OBJS) : include/trunnel.h include/trunnel-impl.h
 tinytest/tinytest.o: tinytest/tinytest.h tinytest/tinytest_macros.h
@@ -87,6 +90,9 @@ valid/leftover.c valid/leftover.h: valid/leftover.trunnel ../lib/trunnel/*py
 
 valid/contexts.c valid/contexts.h: valid/contexts.trunnel ../lib/trunnel/*py
 	PYTHONPATH=../lib:${PYTHONPATH} python -m trunnel valid/contexts.trunnel
+
+valid/positions.c valid/positions.h: valid/positions.trunnel ../lib/trunnel/*py
+	PYTHONPATH=../lib:${PYTHONPATH} python -m trunnel valid/positions.trunnel
 
 $(BOILERPLATE_FILES): ../lib/trunnel/*py ../lib/trunnel/data/*.[ch]
 	PYTHONPATH=../lib:${PYTHONPATH} python -m trunnel --target-dir=./include --write-c-files

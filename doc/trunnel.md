@@ -281,6 +281,28 @@ In newly constructed structures, all variable-length arrays are empty.
 It's an error to try to encode a variable-length array with a length field if
 that array's length field doesn't match its actual length.
 
+### Structure members: zero-length indices into the input
+
+Sometimes you need to record the position in the input the corresponds to
+a position in the structure.  You can use an `@ptr` field to record
+a position within a structure when parsing it:
+
+    struct s {
+      nulterm unsigned_header;
+      @ptr start_of_signed_material;
+      u32 bodylen;
+      u8 body[bodylen];
+      u64 flags;
+      @ptr end_of_signed_material;
+      u16 signature_len;
+      u8 signature[signature_len];
+    }
+
+When an object of this type is parsed, then `start_of_signed_material`
+and `end_of_signed_material` will get set to pointers into the input.
+These pointers are only set when the input is parsed; you don't need
+to set them to encode the object.
+
 ### Structure members: unions
 
 You can specify that different elements should be parsed based on some

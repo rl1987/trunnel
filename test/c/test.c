@@ -21,6 +21,7 @@ struct testgroup_t test_groups[] = {
   { "contexts/varsize/", contexts_varsize_tests },
   { "contexts/varsize2/", contexts_varsize2_tests },
   { "contexts/complex/", contexts_complex_tests },
+  { "positions/", positions_tests },
   END_OF_GROUPS,
 };
 
