@@ -7,7 +7,7 @@ FOR VERSION 1
 
   o Windows support (msvc, mingw)
 
-FOR VERSION 1.1 OR LATER
+FOR VERSION 2 OR LATER
 
   - Correctness:
     - Allow union case statements to contain ranges that involve named
@@ -26,4 +26,25 @@ FOR VERSION 1.1 OR LATER
   - Code quality:
     - Simplify huge union case statements.
 
+MORE IDEAS FOR PEOPLE WHO WOULD LIKE TO HACK ON TRUNNEL
+
+  * It would be cool to have a formal specification of trunnel's input
+language, and maybe even a proof of some parts of trunnel's
+correctness.
+
+  * The code is not as clean as it could be, in spite of its level of
+coverage.  It would be good to identity refactoring opportunities.
+
+  * There are probably more tests we could do.
+
+  * It might be interesting to provide a mechanism to plug in external
+data types and transformations.
+
+  * If you use Trunnel for a while yourself, you will probably find
+other things that should be improved in it.  (This might be the best
+way to proceed: use-motivated changes are probably much smarter than
+theory-motivated ones.)
+
+  * It might be interesting to write something that can take trunnel
+grammars and output a fuzzer for alleged parsers of those formats.
 
