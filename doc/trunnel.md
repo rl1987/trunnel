@@ -161,7 +161,7 @@ All integers are given as 8, 16, 32, or 64-bit values:
     u8 value_a;
     u16 value_b;
     u32 value_c;
-    u32 value_d;
+    u64 value_d;
 
 These values are encoded and parsed in network (big-endian) order.  The
 corresponding values in C are generated as `uint8_t`, `uint16_t`, `uint32_t`,
