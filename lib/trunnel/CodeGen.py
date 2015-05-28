@@ -2409,7 +2409,7 @@ class ParseFnGenerator(CodeGenerator):
             self.w(' truncated:\n  return -2;\n')
         if 'relay_fail' in self.needLabels:
             self.w(
-                ' relay_fail:\n  if (result >= 0) result = -1;\n  return result;\n')
+                ' relay_fail:\n  trunnel_assert(result < 0);\n  return result;\n')
         if 'trunnel_alloc_failed' in self.needLabels:
             self.w(" trunnel_alloc_failed:\n  return -1;\n")
         if 'fail' in self.needLabels:

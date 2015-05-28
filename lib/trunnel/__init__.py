@@ -3,4 +3,4 @@
 # a package.
 #
 
-__version__ = "1.4-pre"
+__version__ = "1.4.1"
