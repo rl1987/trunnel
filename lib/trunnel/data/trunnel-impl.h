@@ -1,7 +1,7 @@
 /* trunnel-impl.h -- Implementation helpers for trunnel, included by
  * generated trunnel files
  *
- * Copyright 2014, The Tor Project, Inc.
+ * Copyright 2014-2015, The Tor Project, Inc.
  * See license at the end of this file for copying information.
  */
 
@@ -14,7 +14,7 @@
 #include "trunnel-local.h"
 #endif
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && (_MSC_VER < 1600)
 #define uint8_t unsigned char
 #define uint16_t unsigned short
 #define uint32_t unsigned int
