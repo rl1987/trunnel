@@ -885,7 +885,7 @@ class PrototypeGenerationVisitor(CodeGenerator):
                           was not long enough, and -1 if the input was
                           invalid.""" % (name))
         self.w(
-            "ssize_t %s_encode(uint8_t *output, const size_t avail, const %s_t *input%s);\n" %
+            "ssize_t %s_encode(uint8_t *output, size_t avail, const %s_t *input%s);\n" %
                (name, name, contextFormals))
 
         self.docstring("""Check whether the internal state of the %s in
