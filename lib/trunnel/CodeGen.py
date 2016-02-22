@@ -2190,7 +2190,8 @@ class EncodeFnGenerator(CodeGenerator):
             self.checkAvail("elt_len", sva)
             self.popIndent(2)
             self.format("""
-                    memcpy(ptr, obj->{c_name}.elts_, elt_len);
+                    if (elt_len)
+                      memcpy(ptr, obj->{c_name}.elts_, elt_len);
                     written += elt_len; ptr += elt_len;
                   }}""", c_name=sva.c_name)
             return
@@ -2597,7 +2598,8 @@ class ParseFnGenerator(CodeGenerator):
                 self.format("""
                     TRUNNEL_DYNARRAY_EXPAND({tp}, &obj->{c_name}, {w}, {{}});
                     obj->{c_name}.n_ = {w};
-                    memcpy({elt}, ptr, {w});
+                    if ({w})
+                      memcpy({elt}, ptr, {w});
                     """, w=w, elt=elt, tp=tp, c_name=sva.c_name)
 
             self.format('ptr += {w}; remaining -= {w};\n', w=w)
