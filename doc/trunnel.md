@@ -416,7 +416,7 @@ You can also use this notation to indicate the extent of a union:
 
 ### Parameterizing structures
 
-Some protocols have the type of length of some structure fields depend
+Some protocols have the type or length of some structure fields depend
 on settings elsewhere in the protocol.  For example, you might have a
 TLS-like protocol where each encrypted records's format depends on
 some session parameters.
@@ -570,7 +570,7 @@ on success and `-1` on failure.  Additionally on failure, they set an error
 code on the object that prevents the object from being encoded unless the
 error code is cleared.
 
-**Integers** and **nul-terminated strings** have a` get` and `set` function:
+**Integers** and **nul-terminated strings** have a `get` and `set` function:
 
      struct example {
         u8 a;
@@ -748,7 +748,7 @@ Finally, if you want to ensure that all objects freed by trunnel are
 wiped from memory before they're freed, you can define a
 `trunnel_memwipe` function.  For example:
 
-    #define trunnel_memipe(mem, len)  memset_s((mem), 0, (len));
+    #define trunnel_memwipe(mem, len)  memset_s((mem), 0, (len));
 
 Note that the standard caveats about wiping memory apply: if this
 matters to you, you should know why you should be using memset_s or
