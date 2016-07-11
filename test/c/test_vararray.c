@@ -281,6 +281,7 @@ test_varlen_encdec(void *arg)
   out->len2 = 1;
   out->len3 = 1;
   out->len4 = 1;
+  tt_int_op(0, ==, varlen_setlen_a8(out, 0)); /* <= 1.4.4 had a bug here. */
   varlen_setstr_str(out, "Y");
   varlen_add_a8(out, 0);
   varlen_add_a16(out, 0);
