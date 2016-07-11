@@ -1488,7 +1488,7 @@ class AccessorFnGenerator(CodeGenerator):
                                &inp->{c_name}.n_, inp->{c_name}.elts_, newlen,
                                sizeof(inp->{c_name}.elts_[0]), {freefn},
                                &inp->trunnel_error_code_);
-                if (newptr == NULL)
+                if (newlen != 0 && newptr == NULL)
                   goto trunnel_alloc_failed;
                 inp->{c_name}.elts_ = newptr;
                 return 0;""", c_name=sva.c_name, freefn=freefn)
