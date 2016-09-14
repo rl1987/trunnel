@@ -1189,6 +1189,7 @@ class AccessorFnGenerator(CodeGenerator):
         """For a struct field 'FIELD' in a structure called 'TYPE', we
            generate these functions:
                  TYPE_get_FIELD(x)
+                 TYPE_getconst_FIELD(x)
                  TYPE_set_FIELD(x, v)
                  TYPE_set0_FIELD(x, v)
            The 'get' function returns the current value of the field in a
@@ -1206,6 +1207,13 @@ class AccessorFnGenerator(CodeGenerator):
         self.w("{\n"
                "  return inp->%s;\n"
                "}\n" % sms.c_name)
+        self.docstring("As %s_get_%s, but take and return a const pointer"
+                       %(st,nm))
+        self.declaration("const %s"%tp,
+                         "%s_getconst_%s(const %s_t *inp)" % (st, nm, st))
+        self.w("{\n"
+               "  return %s_get_%s((%s_t*) inp);\n"
+               "}\n" %(st, nm, st))
 
         self.docstring("Set the value of the %s field of the %s_t in 'inp' to "
                        "'val'.  Free the old value if any.  Steals the reference"
@@ -1236,8 +1244,10 @@ class AccessorFnGenerator(CodeGenerator):
         """For a fixed-length array field 'FIELD' in a structure called
            'TYPE', we generate these functions:
                  TYPE_get_FIELD(x, index)
+                 TYPE_getconst_FIELD(x, index)
                  TYPE_getlen_FIELD(x)
                  TYPE_getarray_FIELD(x)
+                 TYPE_getconstarray_FIELD(x)
                  TYPE_set_FIELD(x, index, v)
                  TYPE_set0_FIELD(x, index, v)
 
@@ -1255,10 +1265,12 @@ class AccessorFnGenerator(CodeGenerator):
         """
         st = self.structName
         nm = sfa.c_fn_name
+        extraconst = ""
         if str(sfa.basetype) == 'char':
             elttype = 'char'
         elif type(sfa.basetype) == str:
             elttype = "struct %s_st *" % sfa.basetype
+            extraconst = " const "
         else:
             elttype = "uint%d_t" % sfa.basetype.width
 
@@ -1276,12 +1288,20 @@ class AccessorFnGenerator(CodeGenerator):
         self.docstring("""Return the element at position 'idx' of the
                           fixed array field %s of the %s_t in 'inp'.""" %
                        (nm, st))
-        self.declaration(elttype, '%s_get_%s(const %s_t *inp, size_t idx)'
+        self.declaration(elttype, '%s_get_%s(%s_t *inp, size_t idx)'
                          % (st, nm, st))
         self.w("{\n"
                "  trunnel_assert(idx < %s);\n"
                "  return inp->%s[idx];\n"
                "}\n\n" % (sfa.width, sfa.c_name))
+
+        self.docstring("As %s_get_%s, but take and return a const pointer"
+                       %(st,nm))
+        self.declaration(extraconst+elttype,
+                         "%s_getconst_%s(const %s_t *inp, size_t idx)" % (st, nm, st))
+        self.w("{\n"
+               "  return %s_get_%s((%s_t*)inp, idx);\n"
+               "}\n" %(st, nm, st))
 
         freestr = ""
         if type(sfa.basetype) == str:
@@ -1321,6 +1341,14 @@ class AccessorFnGenerator(CodeGenerator):
                 "  return inp->%s;\n"
                 "}\n") % (sfa.c_name))
 
+        self.docstring("As %s_get_%s, but take and return a const pointer"
+                       %(st,nm))
+        self.declaration("const %s %s *"%(elttype,extraconst),
+                         "%s_getconstarray_%s(const %s_t *inp)" % (st, nm, st))
+        self.w("{\n"
+               "  return (const %s %s *)%s_getarray_%s((%s_t*)inp);\n"
+               "}\n" %(elttype, extraconst, st, nm, st))
+
     def visitSMLenConstrained(self, sml):
         sml.visitChildren(self)
 
@@ -1339,8 +1367,10 @@ class AccessorFnGenerator(CodeGenerator):
         """For a variable-length array field 'FIELD' in a structure called
            'TYPE', we generate these functions:
                  TYPE_get_FIELD(x, index)
+                 TYPE_getconst_FIELD(x, index)
                  TYPE_getlen_FIELD(x)
                  TYPE_getarray_FIELD(x)
+                 TYPE_getconstarray_FIELD(x)
                  TYPE_set_FIELD(x, index, v)
                  TYPE_set0_FIELD(x, index, v)
 
@@ -1361,8 +1391,10 @@ class AccessorFnGenerator(CodeGenerator):
 
         st = self.structName
         nm = sva.c_fn_name
+        extraconst = ""
         if type(sva.basetype) == str:
             elttype = "struct %s_st *" % sva.basetype
+            extraconst = " const "
         elif str(sva.basetype) == 'char':
             elttype = 'char'
         else:
@@ -1390,6 +1422,14 @@ class AccessorFnGenerator(CodeGenerator):
         self.w("{\n"
                "  return TRUNNEL_DYNARRAY_GET(&inp->%s, idx);\n"
                "}\n\n" % nm)
+
+        self.docstring("As %s_get_%s, but take and return a const pointer"
+                       %(st,nm))
+        self.declaration(extraconst+elttype,
+                         "%s_getconst_%s(const %s_t *inp, size_t idx)" % (st, nm, st))
+        self.w("{\n"
+               "  return %s_get_%s((%s_t*)inp, idx);\n"
+               "}\n" %(st, nm, st))
 
         freestr = ""
         if type(sva.basetype) == str:
@@ -1448,6 +1488,13 @@ class AccessorFnGenerator(CodeGenerator):
         self.w(("{\n"
                 "  return inp->%s.elts_;\n"
                 "}\n") % (sva.c_name))
+        self.docstring("As %s_get_%s, but take and return a const pointer"
+                       %(st,nm))
+        self.declaration("const %s %s *"%(elttype,extraconst),
+                         "%s_getconstarray_%s(const %s_t *inp)" % (st, nm, st))
+        self.w("{\n"
+               "  return (const %s %s *)%s_getarray_%s((%s_t*)inp);\n"
+               "}\n" %(elttype, extraconst, st, nm, st))
 
         if type(sva.basetype) == str:
             fill = "Fill extra elements with NULL; free removed elements."
@@ -1571,7 +1618,7 @@ class AccessorFnGenerator(CodeGenerator):
 
         self.docstring(
             "Return the value of the %s field of the %s_t in 'inp'" % (nm, st))
-        self.declaration("const char *", "%s_get_%s(%s_t *inp)" % (st, nm, st))
+        self.declaration("const char *", "%s_get_%s(const %s_t *inp)" % (st, nm, st))
         self.w("{\n"
                "  return inp->%s;\n"
                "}\n" % sms.c_name)
