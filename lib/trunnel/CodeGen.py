@@ -1160,7 +1160,7 @@ class AccessorFnGenerator(CodeGenerator):
 
         self.docstring(
             "Return the value of the %s field of the %s_t in 'inp'" % (nm, st))
-        self.declaration(tp, "%s_get_%s(%s_t *inp)" % (st, nm, st))
+        self.declaration(tp, "%s_get_%s(const %s_t *inp)" % (st, nm, st))
         self.w("{\n"
                "  return inp->%s;\n"
                "}\n" % smi.c_name)
