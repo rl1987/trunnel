@@ -467,7 +467,7 @@ class Checker(ASTVisitor):
             raise CheckError("Non-integer %s field %s for %s" % (
                 ftype, fieldname, inside))
 
-        note = {'tag': 'TL', 'array length': 'TL',
+        note = {'tag': 'TL', 'array length': 'AL',
                 'union length': 'CL'}[ftype]
         try:
             curUsage = self.structIntFieldUsage[fieldname]
