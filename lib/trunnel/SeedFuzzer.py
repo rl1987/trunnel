@@ -193,8 +193,12 @@ class NamedInt(object):
             # didn't.  How about 3? 3 is a nice number.
             val = 3
         # encode val little-endian in width bytes.
-        return b"".join(chr((val >> (self._width-i)) & 0xff)
-                        for i in xrange(1, self._width+1))
+        return encodeInt(val, self._width)
+
+
+def encodeInt(val, width):
+    return b"".join(chr((val >> (width-i)*8) & 0xff)
+                    for i in xrange(1, width+1))
 
 
 def findLength(lst):
