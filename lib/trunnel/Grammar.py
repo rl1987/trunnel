@@ -247,6 +247,8 @@ class StructDecl(AST):
     #     for every field that is used as the length of a SMLenConstrained
     #   has_leftover_field -- boolean: true iff this struct contains
     #     an SMLenConstrained.
+    #   constrainedIntFields -- set: names of integer fields that
+    #     are referenced elsewhere in the structure.
 
     def __init__(self, name, members, contextList=(), isContext=False):
         self.name = name

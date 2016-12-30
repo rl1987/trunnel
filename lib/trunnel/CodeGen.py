@@ -266,6 +266,7 @@ class Checker(ASTVisitor):
         self.structUses[sd.name] = set(sd.contextList)
         self.structUsesContexts[sd.name] = set(sd.contextList)
         sd.visitChildren(self)
+        sd.constrainedIntFields = set(self.structIntFieldUsage.keys())
         self.structFieldNames = None
         self.structIntFieldNames = None
         self.structIntFieldUsage = None
