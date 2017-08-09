@@ -2854,7 +2854,7 @@ MODULE_BOILERPLATE = """\
   } while (0)
 
 #if defined(__COVERITY__) || defined(__clang_analyzer__)
-/* If we're runnning a static analysis tool, we don't want it to complain
+/* If we're running a static analysis tool, we don't want it to complain
  * that some of our remaining-bytes checks are dead-code. */
 int %(csafe_fname)s_deadcode_dummy__ = 0;
 #define OR_DEADCODE_DUMMY || %(csafe_fname)s_deadcode_dummy__
