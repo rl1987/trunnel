@@ -283,7 +283,7 @@ that array's length field doesn't match its actual length.
 
 ### Structure members: zero-length indices into the input
 
-Sometimes you need to record the position in the input the corresponds to
+Sometimes you need to record the position in the input that corresponds to
 a position in the structure.  You can use an `@ptr` field to record
 a position within a structure when parsing it:
 
@@ -686,7 +686,7 @@ functions.  For example, if you say:
        u16 items[len.len];
     }
 
-Then trunnel will generate those functions with the protptypes:
+Then trunnel will generate those functions with the prototypes:
 
     ssize_t msg_encode(uint8_t *buf, size_t buf_len, msg_t *obj,
                        const len_t *len_ctx);
