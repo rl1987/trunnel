@@ -16,6 +16,7 @@ const CMD_CONNECT = 1;
 const CMD_BIND = 2;
 const CMD_UDP_ASSOCIATE = 3;
 // This is a tor extension
+const CMD_RESOLVE = 0xF0;
 const CMD_RESOLVE_PTR = 0xF1;
 
 const ATYPE_IPV4 = 1;
@@ -29,7 +30,7 @@ struct domainname {
 
 struct socks5_client_request {
    u8 version IN [5];
-   u8 command IN [CMD_CONNECT, CMD_BIND, CMD_UDP_ASSOCIATE, CMD_RESOLVE_PTR];
+   u8 command IN [CMD_CONNECT, CMD_BIND, CMD_UDP_ASSOCIATE, CMD_RESOLVE, CMD_RESOLVE_PTR];
    u8 reserved IN [0];
    u8 atype;
    union dest_addr[atype] {
@@ -63,7 +64,7 @@ struct socks5_client_userpass_auth {
    char passwd[passwd_len];
 }
 
-struct socks5_server_userpath_auth {
+struct socks5_server_userpass_auth {
    u8 version IN [1];
    u8 status;
 }
@@ -72,7 +73,7 @@ struct socks5_server_userpath_auth {
 
 struct socks4_client_request {
    u8 version IN [4];
-   u8 command IN [CMD_CONNECT,CMD_BIND,CMD_RESOLVE_PTR];
+   u8 command IN [CMD_CONNECT,CMD_BIND,CMD_RESOLVE,CMD_RESOLVE_PTR];
    u16 port;
    u32 addr;
    nulterm username;
@@ -85,31 +86,9 @@ struct socks4_client_request {
 }
 
 struct socks4_server_reply {
-   u8 version IN [4];
+   u8 version IN [0,4];
    u8 status;
    u16 port;
    u32 addr;
-}
-
-// And here's the extended stuff from proposal 229
-
-struct tor_socksauth_keyval {
-  u16 keylen;
-  char key[keylen];
-  u16 vallen;
-  char val[vallen];
-}
-
-struct tor_extended_socks_auth_request {
-  u8 version IN [1];
-  u16 npairs;
-  struct tor_socksauth_keyval pairs[npairs];
-}
-
-struct tor_extended_socks_auth_response {
-  u8 version IN [1];
-  u8 status;
-  u16 npairs;
-  struct tor_socksauth_keyval pairs[npairs];
 }
 
