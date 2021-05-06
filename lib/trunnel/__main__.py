@@ -36,7 +36,7 @@ if __name__ == '__main__':
                 sys.stderr.write("I'm %s; you asked for %s\n" % (me, it))
                 sys.exit(1)
         except ImportError:
-            print "Can't import"
+            print("Can't import")
 
     if len(args) < 1 and not write_c_files and not need_version:
         sys.stderr.write("Syntax: python -m trunnel <fname>\n")

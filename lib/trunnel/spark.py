@@ -41,7 +41,7 @@ def _namelist(instance):
         for c in classlist:
                 for b in c.__bases__:
                         classlist.append(b)
-                for name in c.__dict__.keys():
+                for name in list(c.__dict__.keys()):
                         if name not in namedict:
                                 namelist.append(name)
                                 namedict[name] = 1
@@ -53,7 +53,7 @@ class GenericScanner:
                 self.re = re.compile(pattern, re.VERBOSE|flags)
 
                 self.index2func = {}
-                for name, number in self.re.groupindex.items():
+                for name, number in list(self.re.groupindex.items()):
                         self.index2func[number-1] = getattr(self, 't_' + name)
 
         def makeRE(self, name):
@@ -75,7 +75,7 @@ class GenericScanner:
                 return "|".join(rv)
 
         def error(self, s, pos):
-                print( "Lexical error at position %s" % pos )
+                print(( "Lexical error at position %s" % pos ))
                 raise SystemExit
 
         def position(self, newpos=None):
@@ -161,14 +161,14 @@ class GenericParser:
                 changes = 1
                 while changes:
                         changes = 0
-                        for k, v in self.edges.items():
+                        for k, v in list(self.edges.items()):
                                 if v is None:
                                         state, sym = k
                                         if state in self.states:
                                                 self.goto(state, sym)
                                                 changes = 1
                 rv = self.__dict__.copy()
-                for s in self.states.values():
+                for s in list(self.states.values()):
                         del s.items
                 del rv['rule2func']
                 del rv['nullable']
@@ -237,7 +237,7 @@ class GenericParser:
                 self.nullable = {}
                 tbd = []
 
-                for rulelist in self.rules.values():
+                for rulelist in list(self.rules.values()):
                         lhs = rulelist[0][0]
                         self.nullable[lhs] = 0
                         for rule in rulelist:
@@ -286,7 +286,7 @@ class GenericParser:
 
         def makeNewRules(self):
                 worklist = []
-                for rulelist in self.rules.values():
+                for rulelist in list(self.rules.values()):
                         for rule in rulelist:
                                 worklist.append((rule, 0, 1, rule))
 
@@ -322,7 +322,7 @@ class GenericParser:
                 return None
 
         def error(self, token):
-                print( "Syntax error at or near `%s' token" % token )
+                print(( "Syntax error at or near `%s' token" % token ))
                 raise SystemExit
 
         def parse(self, tokens):
@@ -853,15 +853,15 @@ class GenericASTMatcher(GenericParser):
 
 def _dump(tokens, sets, states):
         for i in range(len(sets)):
-                print( 'set', i )
+                print(( 'set', i ))
                 for item in sets[i]:
-                        print( '\t', item )
+                        print(( '\t', item ))
                         for (lhs, rhs), pos in states[item[0]].items:
-                                print( '\t\t', lhs, '::=', )
-                                print( string.join(rhs[:pos]), )
-                                print( '.', )
-                                print( string.join(rhs[pos:]) )
+                                print(( '\t\t', lhs, '::=', ))
+                                print(( string.join(rhs[:pos]), ))
+                                print(( '.', ))
+                                print(( string.join(rhs[pos:]) ))
                 if i < len(tokens):
                         print()
-                        print( 'token', str(tokens[i]))
+                        print(( 'token', str(tokens[i])))
                         print()

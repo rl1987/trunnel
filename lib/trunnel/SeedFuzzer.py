@@ -152,7 +152,7 @@ class SomeConstraints(Constraints):
 
         newd = self._d.copy()
         newd.update(other._d)
-        for k, v in self._d.iteritems():  # XXX Here's the inefficient O(n).
+        for k, v in self._d.items():  # XXX Here's the inefficient O(n).
             if newd[k] != v:
                 return FAILED
         return SomeConstraints(newd)
@@ -198,7 +198,7 @@ class NamedInt(object):
 
 def encodeInt(val, width):
     return b"".join(chr((val >> (width-i)*8) & 0xff)
-                    for i in xrange(1, width+1))
+                    for i in range(1, width+1))
 
 
 def findLength(lst):
@@ -219,9 +219,9 @@ def combineExamples(grp, n, maximum=256):
     """
     if len(grp) ** n > maximum:
         # we have to sample.
-        for i in xrange(maximum):
+        for i in range(maximum):
             result = []
-            for j in xrange(n):
+            for j in range(n):
                 result.append(random.choice(grp))
             yield b"".join(result)
         return
@@ -277,7 +277,7 @@ def explore(lol):
         for item, constraint in lol[0]:
             yield item, constraint
     else:
-        for idx in xrange(len(lol)):
+        for idx in range(len(lol)):
             for item, constraint in exploreAt(lol, idx):
                 yield item, constraint
 
@@ -374,7 +374,7 @@ class CorpusGenerator(trunnel.CodeGen.ASTVisitor):
                 continue
             digest = hashlib.sha256(item).hexdigest()
             fname = os.path.join(target, digest)
-            print fname
+            print(fname)
             with open(fname, 'wb') as f:
                 f.write(item)
             examples.add(item)
@@ -399,7 +399,7 @@ class CorpusGenerator(trunnel.CodeGen.ASTVisitor):
             yield [ni], NIL
         elif smi.constraints is None:
             yield [ni.withVal(0)], NIL
-            yield [ni.withVal((1L << width) - 1)], NIL
+            yield [ni.withVal((1 << width) - 1)], NIL
         else:
             for lo, hi in smi.constraints.ranges:
                 lo = self.expandConst(lo)

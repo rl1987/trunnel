@@ -1055,7 +1055,7 @@ if __name__ == '__main__':
                 'SMArray': 4, 'SMString': 4, 'SMStruct': 4, 'SMUnion': 4
                 }
     docs = []
-    for item in Parser.__dict__.values():
+    for item in list(Parser.__dict__.values()):
         if not getattr(item, '__name__', '').startswith("p_"):
             continue
         doc = item.rule
@@ -1066,7 +1066,7 @@ if __name__ == '__main__':
         if o != lasto:
             print("")
             lasto = o
-        print(d.rstrip())
+        print((d.rstrip()))
 
     print("""
 

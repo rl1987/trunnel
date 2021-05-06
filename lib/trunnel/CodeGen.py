@@ -206,7 +206,7 @@ class Checker(ASTVisitor):
         # Compute the transitive closure of self.structUses
         while True:
             changed = False
-            for structname, uses in self.structUses.items():
+            for structname, uses in list(self.structUses.items()):
                 oldlen = len(uses)
                 newuses = uses.copy()
                 for used in uses:
@@ -219,13 +219,13 @@ class Checker(ASTVisitor):
                 break
 
         # check for cycles
-        for structname, uses in self.structUses.items():
+        for structname, uses in list(self.structUses.items()):
             if structname in uses:
                 raise CheckError(
                     "There is a cycle in the %s structure" % structname)
 
         # check for context mismatch.
-        for structname, uses in self.structUses.items():
+        for structname, uses in list(self.structUses.items()):
             for u in uses:
                 missing = self.structUsesContexts[
                     u] - self.structUsesContexts[structname]
@@ -238,7 +238,7 @@ class Checker(ASTVisitor):
         removed = set()
         while len(self.structUses):
             removed_this_time = []
-            for structname, uses in self.structUses.items():
+            for structname, uses in list(self.structUses.items()):
                 uses.difference_update(removed)
                 if len(uses) == 0:
                     removed_this_time.append(structname)
